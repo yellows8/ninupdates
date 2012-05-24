@@ -4,7 +4,7 @@ include_once("/home/yellows8/ninupdates/config.php");
 include_once("/home/yellows8/ninupdates/db.php");
 include_once("/home/yellows8/ninupdates/weblogging.php");
 
-$logging_dir = "/home/yellows8/ninupdates/weblogs/reportsphp";
+$logging_dir = "$workdir/weblogs/reportsphp";
 
 dbconnection_start();
 
@@ -203,7 +203,7 @@ else
 
 dbconnection_end();
 
-writeNormalLog("date: $reportdate system: $system region: $region RESULT: 200");
+writeNormalLog("RESULT: 200");
 
 echo $con;
 
