@@ -1,0 +1,2 @@
+These scripts check for Nintendo 3DS/DSi system updates, and generate reports of the updated titles. The reports.php script must be located in the pub_html root. A configuration file must be located at ninupdates/site_cfg.php, see ninupdates/config.php.
+
