@@ -12,10 +12,13 @@ $reportdate = "";
 $system = "";
 $region = "";
 $usesoap = "";
+$setver = "";
 if($_REQUEST['date']!="")$reportdate = mysql_real_escape_string($_REQUEST['date']);
 if($_REQUEST['sys']!="")$system = mysql_real_escape_string($_REQUEST['sys']);
 if($_REQUEST['reg']!="")$region = mysql_real_escape_string($_REQUEST['reg']);
 if($_REQUEST['soap']!="")$usesoap = mysql_real_escape_string($_REQUEST['soap']);
+if($_REQUEST['setver']!="")$setver = mysql_real_escape_string($_REQUEST['setver']);
+if($_REQUEST['setsysver']!="")$setsysver = mysql_real_escape_string($_POST['setsysver']);
 
 if(($reportdate!="" && $system=="") || ($system!="" && $reportdate==""))
 {
@@ -28,6 +31,33 @@ if(($reportdate!="" && $system=="") || ($system!="" && $reportdate==""))
 $sys="";
 if($system=="twl")$sys = "DSi";
 if($system=="ctr")$sys = "3DS";
+
+if($reportdate!="" && $system!="")
+{
+	if($setver=="1")
+	{
+		$con = "<html><head><title>Nintendo System Update $sys $reportdate Set System Version</title></head><body>
+<form method=\"post\" action=\"reports.php?date=$reportdate&sys=$system\" enctype=\"multipart/form-data\">
+  System version: <input type=\"text\" value=\"\" name=\"setsysver\"/><input type=\"submit\" value=\"Submit\"/></form></body></html>";
+
+		dbconnection_end();
+		writeNormalLog("RESULT: 200");
+		echo $con;
+
+		return;
+	}
+	else if($setsysver!="")
+	{
+		$query = "UPDATE ninupdates_reports SET updateversion='".$setsysver."' WHERE reportdate='".$reportdate."' && system='".$system."' && log='report'";
+		$result=mysql_query($query);
+		dbconnection_end();
+
+		header("Location: reports.php?date=".$reportdate."&sys=".$system);
+		writeNormalLog("CHANGED SYSVER TO $setsysver. RESULT: 302");
+
+		return;
+	}
+}
 
 $text = "reports";
 if($reportdate!="")
@@ -54,7 +84,7 @@ if($reportdate!="")
 }
 
 $con = "";
-if($region=="")$con = "<html><head><title>Nintendo system update $text</title></head>\n<body>";
+if($region=="")$con = "<html><head><title>Nintendo System Update $text</title></head>\n<body>";
 
 if($reportdate=="")
 {
@@ -80,7 +110,9 @@ if($reportdate=="")
 		if($system=="twl")$sys = "DSi";
 		if($system=="ctr")$sys = "3DS";
 
-		$url = "$httpbase/reports.php?date=".$reportdate."&sys=".$system;
+		$url = "$httpbase/reports.php?date=$reportdate&sys=$system";
+
+		if($updateversion=="N/A")$updateversion = "<a href=\"$url&setver=1\">N/A</a>";
 
 		$con.= "<tr>\n";
 
@@ -106,7 +138,7 @@ else
   <th>Titlelist log</th>
 </tr>\n";
 
-		$query="SELECT regions, reportdaterfc FROM ninupdates_reports WHERE reportdate='".$reportdate."' && system='".$system."' && log='report'";
+		$query="SELECT regions, reportdaterfc, updateversion FROM ninupdates_reports WHERE reportdate='".$reportdate."' && system='".$system."' && log='report'";
 		$result=mysql_query($query);
 		$numrows=mysql_numrows($result);
 		if($numrows==0)
@@ -122,6 +154,7 @@ else
 		$row = mysql_fetch_row($result);
 		$regions = $row[0];
 		$reportdaterfc = $row[1];
+		$updateversion = $row[2];
 
 		if(strlen($regions)==0)
 		{
@@ -155,7 +188,8 @@ else
 		}
 
 		$con.= "</table><br>\n";
-		$con.= "Request timestamp: $reportdaterfc<br>\n";
+		$con.= "Request timestamp: $reportdaterfc<br><br>\n";
+		if($updateversion=="N/A")$con.= "Set system <a href=\"$httpbase/reports.php?date=$reportdate&sys=$system&setver=1>version.</a>";
 		$con.= "</body></html>";
 
 		$con.= "</body></html>";
