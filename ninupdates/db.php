@@ -26,4 +26,29 @@ function dbconnection_end()
 	$dbconn_started = 0;
 }
 
+function db_checkmaintenance($abort)
+{
+	$query="SELECT maintenanceflag FROM ninupdates_management";
+	$result=mysql_query($query);
+	$numrows=mysql_numrows($result);
+	if($numrows)
+	{
+		$row = mysql_fetch_row($result);
+		if($row[0]==1)
+		{
+			if($abort)
+			{
+				writeNormalLog("RESULT: 500");
+
+				dbconnection_end();
+				die("Site is currently under maintenance.");
+			}
+
+			return 1;
+		}
+	}
+	
+	return 0;
+}
+
 ?>

@@ -42,17 +42,34 @@ function do_systems_soap($sys)
 		while(1)
 		{
 			sleep(60);
-			init_curl();
-			dosystem("twl");
-			dosystem("ctr");
-			close_curl();
+			dbconnection_start();
+			if(!db_checkmaintenance(0))
+			{
+				init_curl();
+
+				$query="SELECT system FROM ninupdates_consoles";
+				$result=mysql_query($query);
+				$numrows=mysql_numrows($result);
+
+				for($i=0; $i<$numrows; $i++)
+				{
+					$row = mysql_fetch_row($result);
+
+					dosystem($row[0]);
+				}
+
+				close_curl();
+			}
+			dbconnection_end();
 		}
 	}
 	else
 	{
+		dbconnection_start();
 		init_curl();
 		dosystem($sys);
 		close_curl();
+		dbconnection_end();
 	}
 }
 
@@ -72,15 +89,14 @@ function dosystem($console)
 
 	if($arg_diffregion=="")
 	{
-		main("E");
-		main("P");
-		main("J");
-		main("C");
-		main("K");
-		main("A");
-		if($system=="ctr")
+		$query="SELECT regions FROM ninupdates_consoles WHERE system='".$system."'";
+		$result=mysql_query($query);
+		$row = mysql_fetch_row($result);
+		$regions = $row[0];
+
+		for($i=0; $i<strlen($regions); $i++)
 		{
-			main("T");
+			main(substr($regions, $i, 1));
 		}
 	}
 	else
@@ -93,24 +109,27 @@ function dosystem($console)
 		$msgme_message = "$httpbase/reports.php?date=".$sysupdate_timestamp."&sys=".$system;
 		$email_message = "$msgme_message";
 		
-		dbconnection_start();
+		
 
-		$query="SELECT reportdate FROM ninupdates_reports WHERE reportdate='".$sysupdate_timestamp."' && system='".$system."' && log='report'";
+		$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 		$result=mysql_query($query);
 		$numrows=mysql_numrows($result);
 		if($numrows==0)
 		{
-			$query = "INSERT INTO ninupdates_reports (reportdate, curdate, system, log, regions, updateversion) VALUES ('".$sysupdate_timestamp."',now(),'".$system."','report','".$sysupdate_regions."','N/A')";
+			$query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
+			$result=mysql_query($query);
+			$row = mysql_fetch_row($result);
+			$systemid = $row[0];
+
+			$query = "INSERT INTO ninupdates_reports (reportdate, curdate, system, log, regions, updateversion) VALUES ('".$sysupdate_timestamp."',now(),'".$systemid."','report','".$sysupdate_regions."','N/A')";
 			$result=mysql_query($query);
 		}
 		else
 		{
 			//this will only happen when the report row already exists and the --difflogs option was used.
-			$query="UPDATE ninupdates_reports SET curdate=now(), regions='".$sysupdate_regions."' WHERE reportdate='".$sysupdate_timestamp."' && system='".$system."' && log='report'";
+			$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.regions='".$sysupdate_regions."' WHERE reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
 			$result=mysql_query($query);
 		}
-
-		dbconnection_end();
 
 		echo "\nSending IRC msg...\n";
 		sendircmsg($msgme_message);
@@ -125,10 +144,14 @@ function initialize()
 	
 	error_reporting(E_ALL);
 
-	$deviceid = $twldeviceid;
 	$regionid = "";
 	$countrycode = "";
-	if($system=="ctr")$deviceid = $ctrdeviceid;
+
+	$query="SELECT deviceid FROM ninupdates_consoles WHERE system='".$system."'";
+	$result=mysql_query($query);
+	$row = mysql_fetch_row($result);
+
+	$deviceid = $row[0];
 
 	if($region=="E")
 	{
@@ -229,7 +252,13 @@ function close_curl()
 
 function send_httprequest($url)
 {
-	global $hdrs, $soapreq, $httpstat, $workdir, $soapreq_data, $curl_handle;
+	global $hdrs, $soapreq, $httpstat, $workdir, $soapreq_data, $curl_handle, $system;
+
+	$query="SELECT clientcertfn, clientprivfn FROM ninupdates_consoles WHERE system='".$system."'";
+	$result=mysql_query($query);
+	$row = mysql_fetch_row($result);
+	$clientcertfn = $row[0];
+	$clientprivfn = $row[1];
 
 	$error_FH = fopen("$workdir/debuglogs/error.log","w");
 
@@ -248,8 +277,8 @@ function send_httprequest($url)
 	curl_setopt($curl_handle, CURLOPT_URL, $url);
 
 	curl_setopt($curl_handle, CURLOPT_SSLCERTTYPE, "PEM");
-	curl_setopt($curl_handle, CURLOPT_SSLCERT, "$workdir/sslcerts/twl-shop-cert.pem");
-	curl_setopt($curl_handle, CURLOPT_SSLKEY, "$workdir/sslcerts/twl-shop-priv.pem");
+	curl_setopt($curl_handle, CURLOPT_SSLCERT, "$workdir/sslcerts/$clientcertfn");
+	curl_setopt($curl_handle, CURLOPT_SSLKEY, "$workdir/sslcerts/$clientprivfn");
 
 	curl_setopt($curl_handle, CURLOPT_SSL_VERIFYPEER, 0);
 	curl_setopt($curl_handle, CURLOPT_SSL_VERIFYHOST, 0);
@@ -269,8 +298,8 @@ function send_httprequest($url)
 	return $buf;
 }
 
-    function parse_soapresp($buf)
-    {
+function parse_soapresp($buf)
+{
 	global $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles, $log, $system, $region;
 	$title = $buf;
 	$titleid_pos = 0;
@@ -340,7 +369,7 @@ function send_httprequest($url)
    			echo $text;
 		}
 	}
-    }
+}
 
 function compare_logs($oldlog, $curlog, $curdatefn)
 {
@@ -355,7 +384,7 @@ function compare_logs($oldlog, $curlog, $curdatefn)
 	$titlehashold_pos = strpos($oldlog, "titlehash");
 	if($titlehashcur_pos===FALSE || $titlehashold_pos===FALSE)
 	{
-		echo "Titlehash is missing from CTR log.\n";
+		echo "Titlehash is missing from log.\n";
 		return diff_titlelists($oldlog, $curdatefn);
 	}
 	else
@@ -525,10 +554,15 @@ function main($reg)
 
 	if($arg_difflogold=="")
 	{
+		$query="SELECT nushttpsurl FROM ninupdates_consoles WHERE system='".$system."'";
+		$result=mysql_query($query);
+		$row = mysql_fetch_row($result);
+		$nushttpsurl = $row[0];
+
 		initialize();
 		for($i=0; $i<5; $i++)
 		{
-			$ret = send_httprequest("https://nus.t.shop.nintendowifi.net/nus/services/NetUpdateSOAP");
+			$ret = send_httprequest("$nushttpsurl/nus/services/NetUpdateSOAP");
 			if($httpstat!="0")break;
 		}
 	}

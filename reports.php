@@ -8,6 +8,8 @@ $logging_dir = "$workdir/weblogs/reportsphp";
 
 dbconnection_start();
 
+db_checkmaintenance(1);
+
 $reportdate = "";
 $system = "";
 $region = "";
@@ -48,7 +50,7 @@ if($reportdate!="" && $system!="")
 	}
 	else if($setsysver!="")
 	{
-		$query = "UPDATE ninupdates_reports SET updateversion='".$setsysver."' WHERE reportdate='".$reportdate."' && system='".$system."' && log='report'";
+		$query = "UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.updateversion='".$setsysver."' WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
 		$result=mysql_query($query);
 		dbconnection_end();
 
@@ -62,7 +64,7 @@ if($reportdate!="" && $system!="")
 $text = "reports";
 if($reportdate!="")
 {
-	$query="SELECT updateversion FROM ninupdates_reports WHERE reportdate='".$reportdate."' && system='".$system."' && log='report'";
+	$query="SELECT updateversion FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 	$result=mysql_query($query);
 	$numrows=mysql_numrows($result);
 	if($numrows==0)
@@ -93,9 +95,10 @@ if($reportdate=="")
   <th>Report date</th>
   <th>Update Version</th>
   <th>System</th>
+  <th>Datetime</th>
 </tr>\n";
 
-	$query="SELECT reportdate, updateversion, system FROM ninupdates_reports WHERE log='report' ORDER BY system, curdate";
+	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.reportdaterfc FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system, curdate";
 	$result=mysql_query($query);
 	$numrows=mysql_numrows($result);
 	
@@ -105,6 +108,7 @@ if($reportdate=="")
 		$reportdate = $row[0];
 		$updateversion = $row[1];
 		$system = $row[2];
+		$reportdaterfc = $row[3];
 
 		$sys="";
 		if($system=="twl")$sys = "DSi";
@@ -119,10 +123,12 @@ if($reportdate=="")
 		$con.= "<td><a href=\"".$url."\">$reportdate</a></td>\n";
 		$con.= "<td>".$updateversion."</td>\n";
 		$con.= "<td>".$sys."</td>\n";
+		$con.= "<td>".$reportdaterfc."</td>\n";
 
 		$con.= "</tr>\n";
 	}
 	$con.= "</table><br>\n";
+	$con.= "RSS feed is available <a href=\"feed.php\">here.</a><br>";
 	$con.= "Source code is available <a href=\"https://github.com/yellows8/ninupdates\">here.</a>";
 
 	$con.= "</body></html>";
@@ -138,7 +144,7 @@ else
   <th>Titlelist log</th>
 </tr>\n";
 
-		$query="SELECT regions, reportdaterfc, updateversion FROM ninupdates_reports WHERE reportdate='".$reportdate."' && system='".$system."' && log='report'";
+		$query="SELECT ninupdates_reports.regions, ninupdates_reports.reportdaterfc, ninupdates_reports.updateversion FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
 		$result=mysql_query($query);
 		$numrows=mysql_numrows($result);
 		if($numrows==0)
@@ -196,7 +202,7 @@ else
 	}
 	else
 	{
-		$query="SELECT regions FROM ninupdates_reports WHERE reportdate='".$reportdate."' && system='".$system."' && log='report'";
+		$query="SELECT ninupdates_reports.regions FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && system='".$system."' && log='report'";
 		$result=mysql_query($query);
 		$numrows=mysql_numrows($result);
 		if($numrows==0)

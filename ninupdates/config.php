@@ -10,7 +10,6 @@ $sshhost SSH host used for the SSH IRC msgme.
 $workdir Absolute path to the location of these scripts.
 $mysqldb_username MySQL username.
 $mysqldb_database MySQL database.
-$twldeviceid / $ctrdeviceid The SOAP DSi/3DS DeviceId. This is a u64 decimal string, the lower hex word can be random. The upper hex word is the consoletype: 3=DSi, 4=3DS.
 */
 
 include_once("site_cfg.php");
