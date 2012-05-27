@@ -34,6 +34,8 @@ $sys="";
 if($system=="twl")$sys = "DSi";
 if($system=="ctr")$sys = "3DS";
 
+$con = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" dir=\"ltr\">\n";
+
 if($reportdate!="" && $system!="")
 {
 	if($setver=="1" || $setsysver!="")
@@ -65,8 +67,8 @@ if($reportdate!="" && $system!="")
 
 		if($setver=="1")
 		{
-			$con = "<html><head><title>Nintendo System Update $sys $reportdate Set System Version</title></head><body>
-<form method=\"post\" action=\"reports.php?date=$reportdate&sys=$system\" enctype=\"multipart/form-data\">
+			$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update $sys $reportdate Set System Version</title></head><body>
+<form method=\"post\" action=\"reports.php?date=$reportdate&amp;sys=$system\" enctype=\"multipart/form-data\">
   System version: <input type=\"text\" value=\"\" name=\"setsysver\"/><input type=\"submit\" value=\"Submit\"/></form></body></html>";
 
 			dbconnection_end();
@@ -113,8 +115,7 @@ if($reportdate!="")
 	}
 }
 
-$con = "";
-if($region=="")$con = "<html><head><title>Nintendo System Update $text</title></head>\n<body>";
+if($region=="")$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update $text</title></head>\n<body>";
 
 if($reportdate=="")
 {
@@ -142,7 +143,7 @@ if($reportdate=="")
 		if($system=="twl")$sys = "DSi";
 		if($system=="ctr")$sys = "3DS";
 
-		$url = "$httpbase/reports.php?date=$reportdate&sys=$system";
+		$url = "$reports.php?date=$reportdate&amp;sys=$system";
 
 		if($updateversion=="N/A")$updateversion = "<a href=\"$url&setver=1\">N/A</a>";
 
@@ -155,8 +156,8 @@ if($reportdate=="")
 
 		$con.= "</tr>\n";
 	}
-	$con.= "</table><br>\n";
-	$con.= "RSS feed is available <a href=\"feed.php\">here.</a><br>";
+	$con.= "</table><br />\n";
+	$con.= "RSS feed is available <a href=\"feed.php\">here.</a><br />";
 	$con.= "Source code is available <a href=\"https://github.com/yellows8/ninupdates\">here.</a>";
 
 	$con.= "</body></html>";
@@ -221,8 +222,8 @@ else
 			$region = strtok(",");
 		}
 
-		$con.= "</table><br>\n";
-		$con.= "Request timestamp: $reportdaterfc<br><br>\n";
+		$con.= "</table><br />\n";
+		$con.= "Request timestamp: $reportdaterfc<br /><br />\n";
 		if($updateversion=="N/A")$con.= "Set system <a href=\"reports.php?date=$reportdate&sys=$system&setver=1\">version.</a>";
 		$con.= "</body></html>";
 	}
