@@ -36,28 +36,56 @@ if($system=="ctr")$sys = "3DS";
 
 if($reportdate!="" && $system!="")
 {
-	if($setver=="1")
+	if($setver=="1" || $setsysver!="")
 	{
-		$con = "<html><head><title>Nintendo System Update $sys $reportdate Set System Version</title></head><body>
+		$query="SELECT updateversion FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
+		$result=mysql_query($query);
+		$numrows=mysql_numrows($result);
+		
+		if($numrows==0)
+		{
+			dbconnection_end();
+
+			header("Location: reports.php");
+			writeNormalLog("ROW FOR SETVER NOT FOUND. RESULT: 302");
+
+			return;
+		}		
+
+		$row = mysql_fetch_row($result);
+		if($row[0]!="N/A")
+		{
+			dbconnection_end();
+
+			header("Location: reports.php");
+			writeNormalLog("UPDATEVERSION ALREADY SET TO ".$row[0].". RESULT: 302");
+
+			return;
+		}
+
+		if($setver=="1")
+		{
+			$con = "<html><head><title>Nintendo System Update $sys $reportdate Set System Version</title></head><body>
 <form method=\"post\" action=\"reports.php?date=$reportdate&sys=$system\" enctype=\"multipart/form-data\">
   System version: <input type=\"text\" value=\"\" name=\"setsysver\"/><input type=\"submit\" value=\"Submit\"/></form></body></html>";
 
-		dbconnection_end();
-		writeNormalLog("RESULT: 200");
-		echo $con;
+			dbconnection_end();
+			writeNormalLog("RESULT: 200");
+			echo $con;
 
-		return;
-	}
-	else if($setsysver!="")
-	{
-		$query = "UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.updateversion='".$setsysver."' WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
-		$result=mysql_query($query);
-		dbconnection_end();
+			return;
+		}
+		else if($setsysver!="")
+		{
+			$query = "UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.updateversion='".$setsysver."' WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
+			$result=mysql_query($query);
+			dbconnection_end();
 
-		header("Location: reports.php?date=".$reportdate."&sys=".$system);
-		writeNormalLog("CHANGED SYSVER TO $setsysver. RESULT: 302");
+			header("Location: reports.php?date=".$reportdate."&sys=".$system);
+			writeNormalLog("CHANGED SYSVER TO $setsysver. RESULT: 302");
 
-		return;
+			return;
+		}
 	}
 }
 
@@ -95,10 +123,10 @@ if($reportdate=="")
   <th>Report date</th>
   <th>Update Version</th>
   <th>System</th>
-  <th>Datetime</th>
+  <th>UTC datetime</th>
 </tr>\n";
 
-	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.reportdaterfc FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system, curdate";
+	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system, ninupdates_reports.curdate";
 	$result=mysql_query($query);
 	$numrows=mysql_numrows($result);
 	
@@ -108,7 +136,7 @@ if($reportdate=="")
 		$reportdate = $row[0];
 		$updateversion = $row[1];
 		$system = $row[2];
-		$reportdaterfc = $row[3];
+		$curdate = $row[3];
 
 		$sys="";
 		if($system=="twl")$sys = "DSi";
@@ -123,7 +151,7 @@ if($reportdate=="")
 		$con.= "<td><a href=\"".$url."\">$reportdate</a></td>\n";
 		$con.= "<td>".$updateversion."</td>\n";
 		$con.= "<td>".$sys."</td>\n";
-		$con.= "<td>".$reportdaterfc."</td>\n";
+		$con.= "<td>".$curdate."</td>\n";
 
 		$con.= "</tr>\n";
 	}
@@ -195,9 +223,7 @@ else
 
 		$con.= "</table><br>\n";
 		$con.= "Request timestamp: $reportdaterfc<br><br>\n";
-		if($updateversion=="N/A")$con.= "Set system <a href=\"$httpbase/reports.php?date=$reportdate&sys=$system&setver=1>version.</a>";
-		$con.= "</body></html>";
-
+		if($updateversion=="N/A")$con.= "Set system <a href=\"reports.php?date=$reportdate&sys=$system&setver=1\">version.</a>";
 		$con.= "</body></html>";
 	}
 	else

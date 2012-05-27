@@ -75,7 +75,7 @@ function do_systems_soap($sys)
 
 function dosystem($console)
 {
-	global $region, $system, $emailhost, $target_email, $httpbase, $sysupdate_available, $sysupdate_timestamp, $workdir, $soap_timestamp, $sysupdate_regions, $arg_diffregion, $arg_difflognew, $sysupdate_timestamp;
+	global $region, $system, $emailhost, $target_email, $httpbase, $sysupdate_available, $sysupdate_timestamp, $workdir, $soap_timestamp, $sysupdate_regions, $arg_diffregion, $arg_difflognew, $sysupdate_timestamp, $sysupdate_systitlehashes;
 
 	$system = $console;
 	$msgme_message = "";
@@ -84,6 +84,7 @@ function dosystem($console)
 	$sysupdate_timestamp = "";
 	$soap_timestamp = "";
 	$sysupdate_regions = "";
+	$sysupdate_systitlehashes = array();
 
 	if($arg_difflognew!="")$sysupdate_timestamp = $arg_difflognew;
 
@@ -121,8 +122,19 @@ function dosystem($console)
 			$row = mysql_fetch_row($result);
 			$systemid = $row[0];
 
-			$query = "INSERT INTO ninupdates_reports (reportdate, curdate, system, log, regions, updateversion) VALUES ('".$sysupdate_timestamp."',now(),'".$systemid."','report','".$sysupdate_regions."','N/A')";
+			$query = "INSERT INTO ninupdates_reports (reportdate, curdate, systemid, log, regions, updateversion, reportdaterfc) VALUES ('".$sysupdate_timestamp."',now(),$systemid,'report','".$sysupdate_regions."','N/A','".$soap_timestamp."')";
 			$result=mysql_query($query);
+			$reportid = mysql_insert_id();
+			echo "query $query\n";
+
+			$region = strtok($sysupdate_regions, ",");
+			while($region!==FALSE)
+			{
+				$query = "INSERT INTO ninupdates_systitlehashes (reportid, region, titlehash) VALUES ('".$reportid."','".$region."','".$sysupdate_systitlehashes[$region]."')";
+				$result=mysql_query($query);
+
+				$region = strtok(",");
+			}
 		}
 		else
 		{
@@ -213,7 +225,6 @@ function initialize()
 
 	$log = fopen("$workdir/soap$system/$region/current.html", "w");
 	$text = "<html><head></head><body>\n";
-	echo $text;
 	fprintf($log, $text);
 }
 
@@ -300,7 +311,7 @@ function send_httprequest($url)
 
 function parse_soapresp($buf)
 {
-	global $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles, $log, $system, $region;
+	global $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles, $log, $system, $region, $sysupdate_systitlehashes;
 	$title = $buf;
 	$titleid_pos = 0;
 	$titlever_pos = 0;
@@ -344,13 +355,12 @@ function parse_soapresp($buf)
 		$newtitles_tiksizes[] = $titlesizetik;
 		$newtitles_tmdsizes[] = $titlesizetmd;
 
-		$total_titles++;
+		$newtotal_titles++;
 		$extra_text = "";
 		$text = "titleid $titleid ver $titlever size $titlesize";
 		if($system=="ctr")$text.= " tiksize $titlesizetik tmdsize $titlesizetmd";
 		$text.= "$extra_text<br>\n";
 		fprintf($log, $text);
-   		echo $text;
 
 		$title = strstr($title, "</TitleVersion>");
 	}
@@ -362,38 +372,41 @@ function parse_soapresp($buf)
 		if($titlehash_pos!==FALSE && $titlehash_posend!==FALSE)
 		{
 			$titlehash = substr($buf, $titlehash_pos, $titlehash_posend - $titlehash_pos);
-			//if($region=="E")$titlehash.=" test";
+			$sysupdate_systitlehashes[$region] = $titlehash;
 
 			$text = "titlehash $titlehash<br>\n";
 			fprintf($log, $text);
-   			echo $text;
 		}
 	}
 }
 
 function compare_logs($oldlog, $curlog, $curdatefn)
 {
-	global $system, $difflogbuf;
+	global $system, $difflogbuf, $region;
 
-	if($system=="twl")
+	if($system!="ctr")
 	{
 		return diff_titlelists($oldlog, $curdatefn);
 	}
 
+	$query="SELECT ninupdates_systitlehashes.titlehash FROM ninupdates_reports, ninupdates_consoles, ninupdates_systitlehashes WHERE ninupdates_systitlehashes.reportid=ninupdates_reports.id && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' && ninupdates_systitlehashes.region='".$region."' && ninupdates_reports.log='report' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
+	$result=mysql_query($query);
+	$numrows=mysql_numrows($result);
+
 	$titlehashcur_pos = strpos($curlog, "titlehash");
-	$titlehashold_pos = strpos($oldlog, "titlehash");
-	if($titlehashcur_pos===FALSE || $titlehashold_pos===FALSE)
+	if($titlehashcur_pos===FALSE || $numrows==0)
 	{
 		echo "Titlehash is missing from log.\n";
 		return diff_titlelists($oldlog, $curdatefn);
 	}
 	else
 	{
-		$titlehashcur_pos+= 9;
-		$titlehashold_pos+= 9;
+		$row = mysql_fetch_row($result);
+
+		$titlehashcur_pos+= 10;
 
 		$titlehashcur = substr($curlog, $titlehashcur_pos, 32);
-		$titlehashold = substr($oldlog, $titlehashold_pos, 32);
+		$titlehashold = $row[0];
 
 		if($titlehashcur!=$titlehashold)
 		{
@@ -550,7 +563,7 @@ function main($reg)
 
 	$region = $reg;
 
-	echo "Region $reg\n";
+	echo "Region $reg System $system\n";
 
 	if($arg_difflogold=="")
 	{
@@ -588,7 +601,6 @@ function main($reg)
 	{
 		$text = "SOAP request timestamp: " . $soap_timestamp . "</body></html>";
 		fprintf($log, $text);
-		echo $text . "\n";
 		fclose($log);
 	}
 
@@ -689,7 +701,8 @@ function main($reg)
 
 		echo "System update available.\n";
 
-		$sysupdate_regions.= $region . ",";
+		if($sysupdate_regions!="")$sysupdate_regions.= ",";
+		$sysupdate_regions.= $region;
 	}
 
 }
