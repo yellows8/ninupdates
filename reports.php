@@ -2,6 +2,7 @@
 
 include_once("/home/yellows8/ninupdates/config.php");
 include_once("/home/yellows8/ninupdates/db.php");
+include_once("/home/yellows8/ninupdates/logs.php");
 include_once("/home/yellows8/ninupdates/weblogging.php");
 
 $logging_dir = "$workdir/weblogs/reportsphp";
@@ -15,12 +16,12 @@ $system = "";
 $region = "";
 $usesoap = "";
 $setver = "";
-if($_REQUEST['date']!="")$reportdate = mysql_real_escape_string($_REQUEST['date']);
-if($_REQUEST['sys']!="")$system = mysql_real_escape_string($_REQUEST['sys']);
-if($_REQUEST['reg']!="")$region = mysql_real_escape_string($_REQUEST['reg']);
-if($_REQUEST['soap']!="")$usesoap = mysql_real_escape_string($_REQUEST['soap']);
-if($_REQUEST['setver']!="")$setver = mysql_real_escape_string($_REQUEST['setver']);
-if($_REQUEST['setsysver']!="")$setsysver = mysql_real_escape_string($_POST['setsysver']);
+if(isset($_REQUEST['date']))$reportdate = mysql_real_escape_string($_REQUEST['date']);
+if(isset($_REQUEST['sys']))$system = mysql_real_escape_string($_REQUEST['sys']);
+if(isset($_REQUEST['reg']))$region = mysql_real_escape_string($_REQUEST['reg']);
+if(isset($_REQUEST['soap']))$usesoap = mysql_real_escape_string($_REQUEST['soap']);
+if(isset($_REQUEST['setver']))$setver = mysql_real_escape_string($_REQUEST['setver']);
+if(isset($_REQUEST['setsysver']))$setsysver = mysql_real_escape_string($_POST['setsysver']);
 
 if(($reportdate!="" && $system=="") || ($system!="" && $reportdate==""))
 {
@@ -30,9 +31,7 @@ if(($reportdate!="" && $system=="") || ($system!="" && $reportdate==""))
 	return;
 }
 
-$sys="";
-if($system=="twl")$sys = "DSi";
-if($system=="ctr")$sys = "3DS";
+$sys = getsystem_sysname($system);
 
 $con = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" dir=\"ltr\">\n";
 
@@ -127,7 +126,7 @@ if($reportdate=="")
   <th>UTC datetime</th>
 </tr>\n";
 
-	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system, ninupdates_reports.curdate";
+	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.initialscan=0 && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system, ninupdates_reports.curdate";
 	$result=mysql_query($query);
 	$numrows=mysql_numrows($result);
 	
@@ -139,11 +138,9 @@ if($reportdate=="")
 		$system = $row[2];
 		$curdate = $row[3];
 
-		$sys="";
-		if($system=="twl")$sys = "DSi";
-		if($system=="ctr")$sys = "3DS";
+		$sys = getsystem_sysname($system);
 
-		$url = "$reports.php?date=$reportdate&amp;sys=$system";
+		$url = "reports.php?date=$reportdate&amp;sys=$system";
 
 		if($updateversion=="N/A")$updateversion = "<a href=\"$url&setver=1\">N/A</a>";
 
@@ -216,8 +213,8 @@ else
 
 			$con.= "<tr>\n";
 			$con.= "<td>Region $region</td>\n";
-			$con.= "<td><a href=\"reports.php?date=".$reportdate."&sys=".$system."&reg=".$region."\">$reportdate</a></td>\n";
-			$con.= "<td><a href=\"reports.php?date=".$reportdate."&sys=".$system."&reg=".$region."&soap=1\">$reportdate</a></td>\n";
+			$con.= "<td><a href=\"titlelist.php?date=".$reportdate."&sys=".$system."&reg=".$region."\">$reportdate</a></td>\n";
+			$con.= "<td><a href=\"titlelist.php?date=".$reportdate."&sys=".$system."&reg=".$region."&soap=1\">$reportdate</a></td>\n";
 
 			$region = strtok(",");
 		}
@@ -254,17 +251,9 @@ else
 			return;
 		}
 
-		if($usesoap=="")$con = file_get_contents("$workdir/reports$system/$region/$reportdate.html");
-		if($usesoap!="")$con = file_get_contents("$workdir/soap$system/$region/$reportdate.html");
-		if($con===FALSE)
-		{
-			writeNormalLog("REPORT LOG NOT FOUND. RESULT: 302");
-
-			header("Location: reports.php?date=".$reportdate."&sys=".$system);
-
-			dbconnection_end();
-			return;
-		}
+		writeNormalLog("REDIRECT TO TITLELIST. RESULT: 302");
+		header("Location: titlelist.php?date=".$reportdate."&sys=".$system."&reg=".$region);
+		return;
 	}
 }
 

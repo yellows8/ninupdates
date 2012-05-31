@@ -2,13 +2,14 @@
 
 include_once("/home/yellows8/ninupdates/config.php");
 include_once("/home/yellows8/ninupdates/db.php");
+include_once("/home/yellows8/ninupdates/logs.php");
 include_once("/home/yellows8/ninupdates/weblogging.php");
 
 $logging_dir = "$workdir/weblogs/feedphp";
 
 dbconnection_start();
 
-db_checkmaintenance();
+db_checkmaintenance(1);
 
 header("Content-Type: text/xml;charset=iso-8859-1");
 
@@ -43,9 +44,7 @@ for($i=0; $i<$numrows; $i++)
 	$system = $row[2];
 	$curdate = gmdate(DATE_RSS, strtotime($row[3]));
 
-	$sys="";
-	if($system=="twl")$sys = "DSi";
-	if($system=="ctr")$sys = "3DS";
+	$sys = getsystem_sysname($system);
 
 	$item_title = "$sys $updateversion";
 	if($updateversion=="N/A")$item_title = $reportdate;
