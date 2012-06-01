@@ -14,12 +14,10 @@ db_checkmaintenance(1);
 $reportdate = "";
 $system = "";
 $region = "";
-$usesoap = "";
 $setver = "";
 if(isset($_REQUEST['date']))$reportdate = mysql_real_escape_string($_REQUEST['date']);
 if(isset($_REQUEST['sys']))$system = mysql_real_escape_string($_REQUEST['sys']);
 if(isset($_REQUEST['reg']))$region = mysql_real_escape_string($_REQUEST['reg']);
-if(isset($_REQUEST['soap']))$usesoap = mysql_real_escape_string($_REQUEST['soap']);
 if(isset($_REQUEST['setver']))$setver = mysql_real_escape_string($_REQUEST['setver']);
 if(isset($_REQUEST['setsysver']))$setsysver = mysql_real_escape_string($_POST['setsysver']);
 
@@ -187,100 +185,66 @@ if($reportdate=="")
 }
 else
 {
-	if($region=="")
-	{
-		$con.= "<table border=\"1\">
+	$con.= "<table border=\"1\">
 <tr>
   <th>Region</th>
-  <th>Report log</th>
-  <th>Titlelist log</th>
+  <th>Report</th>
+  <th>Titlelist</th>
 </tr>\n";
 
-		$query="SELECT ninupdates_reports.regions, ninupdates_reports.reportdaterfc, ninupdates_reports.updateversion FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
-		$result=mysql_query($query);
-		$numrows=mysql_numrows($result);
-		if($numrows==0)
-		{
-			writeNormalLog("REPORT ROW NOT FOUND. RESULT: 302");
-
-			header("Location: reports.php");
-
-			dbconnection_end();
-			return;
-		}
-
-		$row = mysql_fetch_row($result);
-		$regions = $row[0];
-		$reportdaterfc = $row[1];
-		$updateversion = $row[2];
-
-		if(strlen($regions)==0)
-		{
-			writeNormalLog("INVALID ROW REGIONS. RESULT: 302");
-
-			header("Location: reports.php");
-
-			dbconnection_end();
-			return;
-		}
-
-		$region = strtok($regions, ",");
-		while($region!==FALSE)
-		{
-			if(strlen($region)>1)
-			{
-				writeNormalLog("INVALID ROW REGIONS FIELD $region. RESULT: 302");
-
-				header("Location: reports.php");
-
-				dbconnection_end();
-				return;
-			}
-
-			$con.= "<tr>\n";
-			$con.= "<td>Region $region</td>\n";
-			$con.= "<td><a href=\"titlelist.php?date=".$reportdate."&sys=".$system."&reg=".$region."\">$reportdate</a></td>\n";
-			$con.= "<td><a href=\"titlelist.php?date=".$reportdate."&sys=".$system."&reg=".$region."&soap=1\">$reportdate</a></td>\n";
-
-			$region = strtok(",");
-		}
-
-		$con.= "</table><br />\n";
-		$con.= "Request timestamp: $reportdaterfc<br /><br />\n";
-		if($updateversion=="N/A")$con.= "Set system <a href=\"reports.php?date=$reportdate&sys=$system&setver=1\">version.</a>";
-		$con.= "</body></html>";
-	}
-	else
+	$query="SELECT ninupdates_reports.regions, ninupdates_reports.reportdaterfc, ninupdates_reports.updateversion FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
+	$result=mysql_query($query);
+	$numrows=mysql_numrows($result);
+	if($numrows==0)
 	{
-		$query="SELECT ninupdates_reports.regions FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && system='".$system."' && log='report'";
-		$result=mysql_query($query);
-		$numrows=mysql_numrows($result);
-		if($numrows==0)
-		{
-			writeNormalLog("REPORT ROW NOT FOUND. RESULT: 302");
+		writeNormalLog("REPORT ROW NOT FOUND. RESULT: 302");
 
-			header("Location: reports.php");
+		header("Location: reports.php");
 
-			dbconnection_end();
-			return;
-		}
-
-		$row = mysql_fetch_row($result);
-		$regions = $row[0];
-		if(!strstr($regions, $region))
-		{
-			writeNormalLog("REPORT REGION NOT FOUND. RESULT: 302");
-
-			header("Location: reports.php?date=".$reportdate."&sys=".$system);
-
-			dbconnection_end();
-			return;
-		}
-
-		writeNormalLog("REDIRECT TO TITLELIST. RESULT: 302");
-		header("Location: titlelist.php?date=".$reportdate."&sys=".$system."&reg=".$region);
+		dbconnection_end();
 		return;
 	}
+
+	$row = mysql_fetch_row($result);
+	$regions = $row[0];
+	$reportdaterfc = $row[1];
+	$updateversion = $row[2];
+
+	if(strlen($regions)==0)
+	{
+		writeNormalLog("INVALID ROW REGIONS. RESULT: 302");
+
+		header("Location: reports.php");
+
+		dbconnection_end();
+		return;
+	}
+
+	$region = strtok($regions, ",");
+	while($region!==FALSE)
+	{
+		if(strlen($region)>1)
+		{
+			writeNormalLog("INVALID ROW REGIONS FIELD $region. RESULT: 302");
+
+			header("Location: reports.php");
+
+			dbconnection_end();
+			return;
+		}
+
+		$con.= "<tr>\n";
+		$con.= "<td>Region $region</td>\n";
+		$con.= "<td><a href=\"titlelist.php?date=".$reportdate."&sys=".$system."&reg=".$region."\">$reportdate</a></td>\n";
+		$con.= "<td><a href=\"titlelist.php?date=".$reportdate."&sys=".$system."&reg=".$region."&soap=1\">$reportdate</a></td>\n";
+
+		$region = strtok(",");
+	}
+
+	$con.= "</table><br />\n";
+	$con.= "Request timestamp: $reportdaterfc<br /><br />\n";
+	if($updateversion=="N/A")$con.= "Set system <a href=\"reports.php?date=$reportdate&sys=$system&setver=1\">version.</a>";
+	$con.= "</body></html>";
 }
 
 dbconnection_end();
