@@ -126,7 +126,7 @@ if($reportdate=="")
   <th>UTC datetime</th>
 </tr>\n";
 
-	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.initialscan=0 && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system, ninupdates_reports.curdate";
+	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system, ninupdates_reports.curdate";
 	$result=mysql_query($query);
 	$numrows=mysql_numrows($result);
 	
@@ -154,6 +154,32 @@ if($reportdate=="")
 		$con.= "</tr>\n";
 	}
 	$con.= "</table><br />\n";
+
+	$con.= "<table border=\"1\">
+<tr>
+  <th>System</th>
+  <th>Title List</th>
+</tr>\n";
+
+	$query="SELECT DISTINCT ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system";
+	$result=mysql_query($query);
+	$numrows=mysql_numrows($result);
+
+	for($i=0; $i<$numrows; $i++)
+	{
+		$row = mysql_fetch_row($result);
+		$system = $row[0];
+
+		$sys = getsystem_sysname($system);
+
+		$con.= "<tr>\n";
+		$con.= "<td>".$sys."</td>\n";
+		$con.= "<td><a href=\"titlelist.php?sys=$system\">Titlelist</a></td>\n";
+		$con.= "</tr>\n";
+	}
+
+	$con.= "</table><br />\n";
+
 	$con.= "RSS feed is available <a href=\"feed.php\">here.</a><br />";
 	$con.= "Source code is available <a href=\"https://github.com/yellows8/ninupdates\">here.</a>";
 

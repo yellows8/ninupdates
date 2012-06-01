@@ -18,7 +18,7 @@ $usesoap = "";
 if(isset($_REQUEST['date']))$reportdate = mysql_real_escape_string($_REQUEST['date']);
 if(isset($_REQUEST['sys']))$system = mysql_real_escape_string($_REQUEST['sys']);
 if(isset($_REQUEST['reg']))$region = mysql_real_escape_string($_REQUEST['reg']);
-if(isset($_REQUEST['reg']))$usesoap = mysql_real_escape_string($_REQUEST['soap']);
+if(isset($_REQUEST['soap']))$usesoap = mysql_real_escape_string($_REQUEST['soap']);
 
 if($system=="")
 {
@@ -118,7 +118,7 @@ for($i=0; $i<$numrows; $i++)
 	$row = mysql_fetch_row($result);
 	$titleid = $row[0];
 	$versions = $row[1];
-	$region = $row[2];
+	$reg = $row[2];
 	$reportdates = $row[3];
 	$updateversions = $row[4];
 	$updatesize += $row[5] + $row[6] + $row[7];
@@ -150,7 +150,7 @@ for($i=0; $i<$numrows; $i++)
 		for($enti=0; $enti<$total_entries; $enti++)
 		{
 			$url = "titlelist.php?date=".$reportdate_array[$enti]."&amp;sys=$system";
-			if($region!="")$url.= "&amp;reg=$region";
+			if($region!="")$url.= "&amp;reg=$reg";
 			if($first==0)$versiontext .= ", ";
 			$first = 0;
 
@@ -158,9 +158,19 @@ for($i=0; $i<$numrows; $i++)
 		}
 	}
 
+	$regtext = $reg;
+	if($reg!=$region)
+	{
+		$url = "titlelist.php?";
+		if($reportdate!="")$url.= "date=$reportdate&amp;";
+		$url.= "sys=$system&amp;reg=$reg";
+		if($usesoap!="")$url.= "&amp;soap=1";
+		$regtext = "<a href=\"$url\">$reg</a>";
+	}
+
 	$con.= "<tr>\n";
 	$con.= "<td>$titleid</td>\n";
-	$con.= "<td>$region</td>\n";
+	$con.= "<td>$regtext</td>\n";
 	$con.= "<td>$versiontext</td>\n";
 	$con.= "<td>$updateversions</td>\n";
 	$con.= "</tr>\n";
