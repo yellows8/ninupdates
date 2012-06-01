@@ -46,6 +46,8 @@ function dosystem($console)
 	$dbcurdate = "";
 	$sysupdate_systitlehashes = array();
 
+	echo "System $system\n";
+
 	$query="SELECT regions FROM ninupdates_consoles WHERE system='".$system."'";
 	$result=mysql_query($query);
 	$row = mysql_fetch_row($result);
@@ -56,7 +58,11 @@ function dosystem($console)
 		main(substr($regions, $i, 1));
 	}
 
-	if($sysupdate_available)
+	if($sysupdate_available==0)
+	{
+		echo "System $system: No updated titles available.\n";
+	}
+	else
 	{
 		$msgme_message = "$httpbase/reports.php?date=".$sysupdate_timestamp."&sys=".$system;
 		$email_message = "$msgme_message";
@@ -104,6 +110,9 @@ function dosystem($console)
 			$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.regions='".$sysupdate_regions."' WHERE reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
 			$result=mysql_query($query);
 		}
+
+		if($initialscan==0)echo "System $system: System update available for regions $sysupdate_regions.\n";
+		if($initialscan)echo "System $system: Initial scan successful for regions $sysupdate_regions.\n";
 
 		echo "\nSending IRC msg...\n";
 		sendircmsg($msgme_message);
@@ -330,7 +339,7 @@ function compare_titlelists()
 
 	if($numrows==0)
 	{
-		echo "Titlehash is missing.\n";
+		echo "System $system Region $region: Titlehash is missing.\n";
 		return titlelist_dbupdate();
 	}
 	else
@@ -340,8 +349,7 @@ function compare_titlelists()
 
 		if($sysupdate_systitlehashes[$region]!=$titlehashold)
 		{
-			titlelist_dbupdate();
-			return 1;
+			return titlelist_dbupdate();
 		}
 		else
 		{
@@ -357,8 +365,6 @@ function main($reg)
 	global $system, $log, $region, $httpstat, $syscmd, $httpbase, $sysupdate_available, $sysupdate_timestamp, $workdir, $curdate, $dbcurdate, $soap_timestamp, $sysupdate_regions, $arg_difflogold, $arg_difflognew, $newtotal_titles;
 
 	$region = $reg;
-
-	echo "Region $reg System $system\n";
 
 	$query="SELECT nushttpsurl FROM ninupdates_consoles WHERE system='".$system."'";
 	$result=mysql_query($query);
@@ -410,9 +416,9 @@ function main($reg)
 		fwrite($fsoap, $ret);
 		fclose($fsoap);
 
-		echo "This is first scan for region $region, unknown if any titles were recently updated.\n";
+		echo "System $system: This is first scan for region $region, unknown if any titles were recently updated.\n";
 
-		$sendupdatelogs = 0;
+		$sendupdatelogs = 1;
 	}
 	else
 	{
@@ -423,12 +429,9 @@ function main($reg)
 			$fsoap = fopen("$workdir/soap$system/$region/$curdatefn.soap", "w");
 			fwrite($fsoap, $ret);
 			fclose($fsoap);
-
-			echo "Titles were updated since last update scan.\n";
 		}
 		else
 		{
-			echo "No titles were updated since last update scan.\n";
 			$sendupdatelogs = 0;
 		}
 	}
@@ -437,8 +440,6 @@ function main($reg)
 	{
 		$sysupdate_available = 1;
 		if($sysupdate_timestamp=="")$sysupdate_timestamp = $curdate;
-
-		echo "System update available.\n";
 
 		if($sysupdate_regions!="")$sysupdate_regions.= ",";
 		$sysupdate_regions.= $region;
