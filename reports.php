@@ -233,13 +233,22 @@ else
 			return;
 		}
 
+		$url = "titlelist.php?date=$reportdate&amp;sys=$system&amp;reg=$region";
+
 		$con.= "<tr>\n";
-		$con.= "<td>Region $region</td>\n";
-		$con.= "<td><a href=\"titlelist.php?date=".$reportdate."&sys=".$system."&reg=".$region."\">$reportdate</a></td>\n";
-		$con.= "<td><a href=\"titlelist.php?date=".$reportdate."&sys=".$system."&reg=".$region."&soap=1\">$reportdate</a></td>\n";
+		$con.= "<td>$region</td>\n";
+		$con.= "<td><a href=\"$url\">$reportdate</a></td>\n";
+		$con.= "<td><a href=\"$url&amp;soap=1\">$reportdate</a></td>\n";
 
 		$region = strtok(",");
 	}
+
+	$url = "titlelist.php?date=$reportdate&amp;sys=$system";
+
+	$con.= "<tr>\n";
+	$con.= "<td>All</td>\n";
+	$con.= "<td><a href=\"$url\">$reportdate</a></td>\n";
+	$con.= "<td><a href=\"$url&amp;soap=1\">$reportdate</a></td>\n";
 
 	$con.= "</table><br />\n";
 	$con.= "Request timestamp: $reportdaterfc<br /><br />\n";
