@@ -15,10 +15,12 @@ $reportdate = "";
 $system = "";
 $region = "";
 $usesoap = "";
+$genwiki = "";
 if(isset($_REQUEST['date']))$reportdate = mysql_real_escape_string($_REQUEST['date']);
 if(isset($_REQUEST['sys']))$system = mysql_real_escape_string($_REQUEST['sys']);
 if(isset($_REQUEST['reg']))$region = mysql_real_escape_string($_REQUEST['reg']);
 if(isset($_REQUEST['soap']))$usesoap = mysql_real_escape_string($_REQUEST['soap']);
+if(isset($_REQUEST['wiki']))$genwiki = mysql_real_escape_string($_REQUEST['wiki']);
 
 if($system=="")
 {
@@ -30,7 +32,10 @@ if($system=="")
 
 $sys = getsystem_sysname($system);
 
-$con = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" dir=\"ltr\">\n";
+if($genwiki=="")
+{
+	$con = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" dir=\"ltr\">\n";
+}
 
 $query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
 $result=mysql_query($query);
@@ -76,15 +81,29 @@ else
 	$text = $sys;
 }
 
-$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update Titlelist $text</title></head>\n<body>";
+if($genwiki=="")
+{
+	$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update Titlelist $text</title></head>\n<body>";
 
-$con.= "<table border=\"1\">
+	$con.= "<table border=\"1\">
 <tr>
   <th>TitleID</th>
   <th>Region</th>
   <th>Title versions</th>
   <th>Update versions</th>
 </tr>\n";
+}
+else
+{
+	header("Content-Type: text/plain");
+
+	$con.= "=== $text ===\n";
+	$con.= "{| class=\"wikitable\" border=\"1\"\n";
+	$con.= "|-
+!  TitleID
+!  Region
+!  Versions\n";
+}
 
 $numrows = 0;
 
@@ -130,11 +149,12 @@ for($i=0; $i<$numrows; $i++)
 		$total_entries = 0;
 		$version_array = array();
 		$reportdate_array = array();
+		$updateversion_array = array();
 
 		$ver = strtok($versions, ", ");
 		while($ver!==FALSE)
 		{
-			$version_array[] = $ver;
+			$version_array[] = "v$ver";
 			$total_entries++;
 			$ver = strtok(", ");
 		}
@@ -146,6 +166,13 @@ for($i=0; $i<$numrows; $i++)
 			$cur_reportdate = strtok(", ");
 		}
 
+		$updatever = strtok($updateversions, ", ");
+		while($updatever!==FALSE)
+		{
+			$updateversion_array[] = $updatever;
+			$updatever = strtok(", ");
+		}
+
 		$first = 1;
 		for($enti=0; $enti<$total_entries; $enti++)
 		{
@@ -154,8 +181,13 @@ for($i=0; $i<$numrows; $i++)
 			if($first==0)$versiontext .= ", ";
 			$first = 0;
 
-			$versiontext .= "<a href =\"$url\">".$version_array[$enti]."</a>";
+			if($genwiki=="")$versiontext .= "<a href =\"$url\">".$version_array[$enti]."</a>";
+			if($genwiki!="")$versiontext .= "[[".$updateversion_array[$enti]."|".$version_array[$enti]."]]";
 		}
+	}
+	else if($usesoap==0)
+	{
+		$versiontext = "v$versions";
 	}
 
 	$regtext = $reg;
@@ -168,23 +200,40 @@ for($i=0; $i<$numrows; $i++)
 		$regtext = "<a href=\"$url\">$reg</a>";
 	}
 
-	$con.= "<tr>\n";
-	$con.= "<td>$titleid</td>\n";
-	$con.= "<td>$regtext</td>\n";
-	$con.= "<td>$versiontext</td>\n";
-	$con.= "<td>$updateversions</td>\n";
-	$con.= "</tr>\n";
+	if($genwiki=="")
+	{
+		$con.= "<tr>\n";
+		$con.= "<td>$titleid</td>\n";
+		$con.= "<td>$regtext</td>\n";
+		$con.= "<td>$versiontext</td>\n";
+		$con.= "<td>$updateversions</td>\n";
+		$con.= "</tr>\n";
+	}
+	else
+	{
+		$con.= "|-
+| $titleid
+| $reg
+| $versiontext\n";
+	}
 }
 
-$con.= "</table>";
+if($genwiki=="")
+{
+	$con.= "</table>";
+}
+else
+{
+	$con.= "|}\n";
+}
 
-if($reportdate!="" && $soapquery=="")
+if($genwiki=="" && $reportdate!="" && $soapquery=="")
 {
 	$con.= "<br />\n";
 	$con.= "Total titles sizes: $updatesize<br />\n";
 }
 
-$con .= "</body></html>";
+if($genwiki=="")$con .= "</body></html>";
 
 dbconnection_end();
 
