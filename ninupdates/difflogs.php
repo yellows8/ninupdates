@@ -40,6 +40,8 @@ dbconnection_end();
 
 function diffinsert_main()
 {
+	global $arg_difflog, $arg_diffregion, $system;
+
 	$query = "SELECT ninupdates_reports.curdate, ninupdates_reports.id FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$arg_difflog."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
 	$result=mysql_query($query);
 	$numrows=mysql_numrows($result);
