@@ -132,47 +132,31 @@ function initialize()
 
 	$query="SELECT deviceid FROM ninupdates_consoles WHERE system='".$system."'";
 	$result=mysql_query($query);
+	$numrows=mysql_numrows($result);
+
+	if($numrows)
+	{
+		$row = mysql_fetch_row($result);
+		$deviceid = $row[0];
+	}
+	else
+	{
+		die("Row doesn't exist in the db for system $system.");
+	}
+
+	$query="SELECT regionid, countrycode FROM ninupdates_regions WHERE regioncode='".$region."'";
+	$result=mysql_query($query);
 	$row = mysql_fetch_row($result);
 
-	$deviceid = $row[0];
-
-	if($region=="E")
+	if($numrows)
 	{
-		$regionid = "USA";
-		$countrycode = "US";
+		$regionid = $row[0];
+		$countrycode = $row[1];
 	}
-	if($region=="P")
+	else
 	{
-		$regionid = "EUR";
-		$countrycode = "EU";
+		die("Row doesn't exist in the db for region $region.");
 	}
-	if($region=="J")
-	{
-		$regionid = "JPN";
-		$countrycode = "JP";
-	}
-	if($region=="C")
-	{
-		$regionid = "CHN";
-		$countrycode = "CN";
-	}
-	if($region=="K")
-	{
-		$regionid = "KOR";
-		$countrycode = "KR";
-	}
-	if($region=="T")
-	{
-		$regionid = "TWN";
-		$countrycode = "TW";
-	}
-	if($region=="A")
-	{
-		$regionid = "AUS";
-		$countrycode = "AU";
-	}
-	
-	if($regionid=="")die("Unknown region $region");
 
 	$soapreq_data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
   <soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\"
@@ -197,29 +181,29 @@ function initialize()
 
 function init_curl()
 {
-	global $curl_handle;
+	global $curl_handle, $workdir, $error_FH;
 
+	$error_FH = fopen("$workdir/debuglogs/error.log","w");
 	$curl_handle = curl_init();
 }
 
 function close_curl()
 {
-	global $curl_handle;
+	global $curl_handle, $error_FH;
 
 	curl_close($curl_handle);
+	fclose($error_FH);
 }
 
 function send_httprequest($url)
 {
-	global $hdrs, $soapreq, $httpstat, $workdir, $soapreq_data, $curl_handle, $system;
+	global $hdrs, $soapreq, $httpstat, $workdir, $soapreq_data, $curl_handle, $system, $error_FH;
 
 	$query="SELECT clientcertfn, clientprivfn FROM ninupdates_consoles WHERE system='".$system."'";
 	$result=mysql_query($query);
 	$row = mysql_fetch_row($result);
 	$clientcertfn = $row[0];
 	$clientprivfn = $row[1];
-
-	$error_FH = fopen("$workdir/debuglogs/error.log","w");
 
 	curl_setopt($curl_handle, CURLOPT_VERBOSE, true);
 	curl_setopt ($curl_handle, CURLOPT_STDERR, $error_FH );
@@ -254,8 +238,6 @@ function send_httprequest($url)
 		$buf = "HTTP request failed.<br>\n";
 		$httpstat = "0";
 	} else if($httpstat!="200")$buf = "HTTP error $httpstat<br>\n";
-
-	fclose($error_FH);
 
 	return $buf;
 }
