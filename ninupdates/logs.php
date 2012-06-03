@@ -240,7 +240,7 @@ function titlelist_dbupdate()
 			$tid = $row[0];
 		}
 
-		$query = "SELECT version FROM ninupdates_titles WHERE version>=".$newtitlesversions[$titlei]." && region='".$region."' && tid=$tid";
+		$query = "SELECT version FROM ninupdates_titles WHERE version=".$newtitlesversions[$titlei]." && region='".$region."' && tid=$tid";
 		$result=mysql_query($query);
 		$numrows=mysql_numrows($result);
 

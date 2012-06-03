@@ -126,7 +126,7 @@ if($reportquery!="")$query.= $reportquery;
 if($soapquery!="")$query.= $soapquery;
 if($regionquery!="")$query.= $regionquery;
 
-$query.= " GROUP BY ninupdates_titles.tid";
+$query.= " GROUP BY ninupdates_titles.tid, ninupdates_titles.region";
 
 $result=mysql_query($query);
 $numrows=mysql_numrows($result);
