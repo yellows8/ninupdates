@@ -75,7 +75,7 @@ function dosystem($console)
 		if($numrows==0)$initialscan = 1;
 
 		$updateversion = "N/A";
-		if($initialscan)$updateversion = "Initial_scan";
+		if($initialscan)$updateversion = "Initial scan";
 
 		$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 		$result=mysql_query($query);

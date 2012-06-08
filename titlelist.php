@@ -118,10 +118,13 @@ if($reportdate!="")
 $regionquery = "";
 if($region!="")$regionquery = " && ninupdates_titles.region='".$region."'";
 
-$versionquery = "ninupdates_titles.version";
-if($soapquery!="" || $reportdate=="")$versionquery = "GROUP_CONCAT(DISTINCT ninupdates_titles.version ORDER BY ninupdates_titles.version SEPARATOR ', ')";
+$versionquery = "ninupdates_titles.version,";
+if($soapquery!="" || $reportdate=="")$versionquery = "GROUP_CONCAT(DISTINCT ninupdates_titles.version ORDER BY ninupdates_titles.version SEPARATOR ','),";
 
-$query = "SELECT ninupdates_titleids.titleid, $versionquery, ninupdates_titles.region, ninupdates_regions.regionid, GROUP_CONCAT(DISTINCT ninupdates_reports.reportdate ORDER BY ninupdates_reports.curdate SEPARATOR ', '), GROUP_CONCAT(DISTINCT ninupdates_reports.updateversion ORDER BY ninupdates_reports.updateversion SEPARATOR ', '), fssize, tmdsize, tiksize FROM ninupdates_titles, ninupdates_titleids, ninupdates_reports, ninupdates_regions WHERE ninupdates_titles.systemid=$systemid && ninupdates_reports.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_reports.id=ninupdates_titles.reportid && ninupdates_regions.regioncode=ninupdates_titles.region";
+$reportdatequery = "GROUP_CONCAT(DISTINCT ninupdates_reports.reportdate ORDER BY ninupdates_reports.curdate SEPARATOR ','),";
+$updateverquery = "GROUP_CONCAT(DISTINCT ninupdates_reports.updateversion ORDER BY ninupdates_reports.updateversion SEPARATOR ','),";
+
+$query = "SELECT ninupdates_titleids.titleid, $versionquery ninupdates_titles.region, ninupdates_regions.regionid, $reportdatequery $updateverquery fssize, tmdsize, tiksize FROM ninupdates_titles, ninupdates_titleids, ninupdates_reports, ninupdates_regions WHERE ninupdates_titles.systemid=$systemid && ninupdates_reports.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_reports.id=ninupdates_titles.reportid && ninupdates_regions.regioncode=ninupdates_titles.region";
 if($reportquery!="")$query.= $reportquery;
 if($soapquery!="")$query.= $soapquery;
 if($regionquery!="")$query.= $regionquery;
@@ -144,43 +147,46 @@ for($i=0; $i<$numrows; $i++)
 	$updatesize += $row[6] + $row[7] + $row[8];
 
 	$versiontext = $versions;
+	$updatevers = $updateversions;
 	if($reportdates!=$reportdate)
 	{
 		$versiontext = "";
+		$updatevers = "";
 		$total_entries = 0;
 		$version_array = array();
 		$reportdate_array = array();
 		$updateversion_array = array();
 
-		$ver = strtok($versions, ", ");
+		$ver = strtok($versions, ",");
 		while($ver!==FALSE)
 		{
 			$version_array[] = "v$ver";
 			$total_entries++;
-			$ver = strtok(", ");
+			$ver = strtok(",");
 		}
 
-		$cur_reportdate = strtok($reportdates, ", ");
+		$cur_reportdate = strtok($reportdates, ",");
 		while($cur_reportdate!==FALSE)
 		{
 			$reportdate_array[] = $cur_reportdate;
-			$cur_reportdate = strtok(", ");
+			$cur_reportdate = strtok(",");
 		}
 
-		$updatever = strtok($updateversions, ", ");
+		$updatever = strtok($updateversions, ",");
 		while($updatever!==FALSE)
 		{
 			$updateversion_array[] = $updatever;
-			$updatever = strtok(", ");
+			$updatever = strtok(",");
 		}
 
-		$first = 1;
 		for($enti=0; $enti<$total_entries; $enti++)
 		{
 			$url = "titlelist.php?date=".$reportdate_array[$enti]."&amp;sys=$system";
 			if($region!="")$url.= "&amp;reg=$reg";
-			if($first==0)$versiontext .= ", ";
-			$first = 0;
+			if($enti>0)$versiontext .= ", ";
+
+			if($enti>0)$updatevers .= ", ";
+			$updatevers.= $updateversion_array[$enti];
 
 			if($genwiki=="")$versiontext .= "<a href =\"$url\">".$version_array[$enti]."</a>";
 			if($genwiki!="")$versiontext .= "[[".$updateversion_array[$enti]."|".$version_array[$enti]."]]";
@@ -207,7 +213,7 @@ for($i=0; $i<$numrows; $i++)
 		$con.= "<td>$titleid</td>\n";
 		$con.= "<td>$regtext</td>\n";
 		$con.= "<td>$versiontext</td>\n";
-		$con.= "<td>$updateversions</td>\n";
+		$con.= "<td>$updatevers</td>\n";
 		$con.= "</tr>\n";
 	}
 	else
