@@ -16,13 +16,21 @@ include_once("site_cfg.php");
 
 $httpbase = "http://$host";
 
-function sendircmsg($msg)
+function appendmsg_tofile($msg, $filename)
 {
 	global $remotecmd, $sshhost;
-	$tmp_cmd = "echo '" . $msg . "' >> /home/yellows8/.irssi/msgme";
+	$tmp_cmd = "echo '" . $msg . "' >> /home/yellows8/.irssi/$filename";
 	$irc_syscmd = $tmp_cmd;
 	if($remotecmd==1)$irc_syscmd = "ssh yellows8@$sshhost \"".$tmp_cmd."\"";
 	system($irc_syscmd);
+}
+
+function sendircmsg($msg)
+{
+	global $system;
+
+	appendmsg_tofile($msg, "msgme");
+	if($system=="ctr")appendmsg_tofile($msg, "msgchan");
 }
 
 ?>
