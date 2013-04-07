@@ -23,6 +23,7 @@ if(isset($_REQUEST['setsysver']))$setsysver = mysql_real_escape_string($_POST['s
 
 if(($reportdate!="" && $system=="") || ($system!="" && $reportdate==""))
 {
+	writeNormalLog("INVALID PARAMS. RESULT: 302");
 	header("Location: reports.php");
 
 	dbconnection_end();
@@ -76,6 +77,8 @@ if($reportdate!="" && $system!="")
 		}
 		else if($setsysver!="")
 		{
+			$setsysver = strip_tags($setsysver);
+
 			$query = "UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.updateversion='".$setsysver."' WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
 			$result=mysql_query($query);
 			dbconnection_end();
@@ -121,8 +124,8 @@ if($reportdate=="")
   <th>Report date</th>
   <th>Update Version</th>
   <th>System</th>
-  <th>UTC datetime</th>
 </tr>\n";
+//  <th>UTC datetime</th>
 
 	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system, ninupdates_reports.curdate";
 	$result=mysql_query($query);
@@ -147,7 +150,7 @@ if($reportdate=="")
 		$con.= "<td><a href=\"".$url."\">$reportdate</a></td>\n";
 		$con.= "<td>".$updateversion."</td>\n";
 		$con.= "<td>".$sys."</td>\n";
-		$con.= "<td>".$curdate."</td>\n";
+		//$con.= "<td>".$curdate."</td>\n";
 
 		$con.= "</tr>\n";
 	}
@@ -180,8 +183,13 @@ if($reportdate=="")
 
 	$con.= "</table><br />\n";
 
-	$con.= "RSS feed is available <a href=\"feed.php\">here.</a><br />";
-	$con.= "Source code is available <a href=\"https://github.com/yellows8/ninupdates\">here.</a>";
+	/*$query="SELECT lastscan FROM ninupdates_management";
+	$result=mysql_query($query);
+	$row = mysql_fetch_row($result);
+	$con.= "Last scan UTC datetime: " . $row[0] . "<br /><br />\n";*/
+
+	$con.= "RSS feed is available <a href=\"feed.php\">here.</a><br />\n";
+	$con.= "Source code is available <a href=\"https://github.com/yellows8/ninupdates\">here.</a>\n";
 
 	$con.= "</body></html>";
 }

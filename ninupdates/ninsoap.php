@@ -26,6 +26,9 @@ function do_systems_soap()
 					dosystem($row[0]);
 			}
 
+			$query="UPDATE ninupdates_management SET lastscan=now()";
+			$result=mysql_query($query);
+
 			close_curl();
 		}
 		dbconnection_end();
@@ -268,20 +271,26 @@ function parse_soapresp($buf)
 		$titlesizetmd_pos = strpos($title, "<TMDSize>") + 9;
 		$titlesizetmd_posend = strpos($title, "</TMDSize>");
 
-		if($titleid_pos!==FALSE)$titleid = substr($title, $titleid_pos, 16);
-		if($titlever_pos!==FALSE)$titlever = substr($title, $titlever_pos, $titlever_posend - $titlever_pos);
-		if($titlesize_pos!==FALSE)$titlesize = substr($title, $titlesize_pos, $titlesize_posend - $titlesize_pos);
-		if($titlesizetik_pos!==FALSE)$titlesizetik = substr($title, $titlesizetik_pos, $titlesizetik_posend - $titlesizetik_pos);
-		if($titlesizetmd_pos!==FALSE)$titlesizetmd = substr($title, $titlesizetmd_pos, $titlesizetmd_posend - $titlesizetmd_pos);
+		if($titlesize_posend===FALSE)
+		{
+			$titlesize_pos = strpos($title, "<RawSize>") + 9;
+			$titlesize_posend = strpos($title, "</RawSize>");
+		}
 
-		if($titlever_pos!==FALSE)$titlever = intval($titlever);
-		if($titlesize_pos!==FALSE)$titlesize = intval($titlesize);
+		if($titleid_pos!==FALSE)$titleid = substr($title, $titleid_pos, 16);
+		if($titlever_posend!==FALSE)$titlever = substr($title, $titlever_pos, $titlever_posend - $titlever_pos);
+		if($titlesize_posend!==FALSE)$titlesize = substr($title, $titlesize_pos, $titlesize_posend - $titlesize_pos);
+		if($titlesizetik_posend!==FALSE)$titlesizetik = substr($title, $titlesizetik_pos, $titlesizetik_posend - $titlesizetik_pos);
+		if($titlesizetmd_posend!==FALSE)$titlesizetmd = substr($title, $titlesizetmd_pos, $titlesizetmd_posend - $titlesizetmd_pos);
+
+		if($titlever_posend!==FALSE)$titlever = intval($titlever);
+		if($titlesize_posend!==FALSE)$titlesize = intval($titlesize);
 
 		if($titleid_pos===FALSE)$titleid="tagsmissing";
-		if($titlever_pos===FALSE || $titlever_posend===FALSE)$titlever="tagsmissing";
-		if($titlesize_pos===FALSE || $titlesize_posend===FALSE)$titlesize="tagsmissing";
-		if($titlesizetik_pos===FALSE || $titlesizetik_posend===FALSE)$titlesizetik="tagsmissing";
-		if($titlesizetmd_pos===FALSE || $titlesizetmd_posend===FALSE)$titlesizetmd="tagsmissing";
+		if($titlever_pos===FALSE || $titlever_posend===FALSE)$titlever = 0;
+		if($titlesize_pos===FALSE || $titlesize_posend===FALSE)$titlesize = 0;
+		if($titlesizetik_pos===FALSE || $titlesizetik_posend===FALSE)$titlesizetik = 0;
+		if($titlesizetmd_pos===FALSE || $titlesizetmd_posend===FALSE)$titlesizetmd = 0;
 
 		$newtitles[] = $titleid;
 		$newtitlesversions[] = $titlever;
@@ -366,6 +375,7 @@ function main($reg)
 	}
 	else
 	{
+		echo "HTTP error " . $httpstat . ".\n";
 		return;
 	}
 	

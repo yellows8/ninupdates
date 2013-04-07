@@ -240,7 +240,7 @@ function titlelist_dbupdate()
 			$tid = $row[0];
 		}
 
-		$query = "SELECT version FROM ninupdates_titles WHERE version=".$newtitlesversions[$titlei]." && region='".$region."' && tid=$tid";
+		$query = "SELECT id FROM ninupdates_titles WHERE version=".$newtitlesversions[$titlei]." && region='".$region."' && tid=$tid";
 		$result=mysql_query($query);
 		$numrows=mysql_numrows($result);
 
@@ -250,6 +250,13 @@ function titlelist_dbupdate()
 			$result=mysql_query($query);
 
 			$titles_added++;
+		}
+		else
+		{
+			$row = mysql_fetch_row($result);
+			$id = $row[0];
+			$query="UPDATE ninupdates_titles SET fssize='".$newtitles_sizes[$titlei]."', tmdsize='".$newtitles_tmdsizes[$titlei]."', tiksize='".$newtitles_tiksizes[$titlei]."' WHERE id=$id";
+			$result=mysql_query($query);
 		}
 	}
 

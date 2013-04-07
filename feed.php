@@ -47,7 +47,7 @@ for($i=0; $i<$numrows; $i++)
 	$sys = getsystem_sysname($system);
 
 	$item_title = "$sys $updateversion";
-	if($updateversion=="N/A")$item_title = $reportdate;
+	if($updateversion=="N/A")$item_title = "$sys $reportdate";
 
 	$url = "$httpbase/reports.php?date=$reportdate&sys=$system";
 	$url = "<![CDATA[$url]]>";
