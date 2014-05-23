@@ -10,7 +10,7 @@ function do_systems_soap()
 {
 	while(1)
 	{
-		sleep(60);
+		//sleep(60);
 		dbconnection_start();
 		if(!db_checkmaintenance(0))
 		{
@@ -32,6 +32,7 @@ function do_systems_soap()
 			close_curl();
 		}
 		dbconnection_end();
+		break;
 	}
 }
 

@@ -53,7 +53,7 @@ if($reportdate!="" && $system!="")
 		}		
 
 		$row = mysql_fetch_row($result);
-		if($row[0]!="N/A")
+		/*if($row[0]!="N/A")
 		{
 			dbconnection_end();
 
@@ -61,7 +61,7 @@ if($reportdate!="" && $system!="")
 			writeNormalLog("UPDATEVERSION ALREADY SET TO ".$row[0].". RESULT: 302");
 
 			return;
-		}
+		}*/
 
 		if($setver=="1")
 		{
