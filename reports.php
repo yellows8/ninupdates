@@ -177,7 +177,7 @@ if($reportdate=="")
 
 		$con.= "<tr>\n";
 		$con.= "<td>".$sys."</td>\n";
-		$con.= "<td><a href=\"$url\">HTML</a> <a href=\"$url&amp;wiki=1\">Wiki</a></td>\n";
+		$con.= "<td><a href=\"$url\">HTML</a> <a href=\"$url&amp;wiki=1\">Wiki</a> <a href=\"$url&amp;csv=1\">CSV</a></td>\n";
 		$con.= "</tr>\n";
 	}
 
@@ -247,8 +247,8 @@ else
 
 		$con.= "<tr>\n";
 		$con.= "<td>$region</td>\n";
-		$con.= "<td><a href=\"$url\">$reportdate</a> <a href=\"$url&amp;wiki=1\">Wiki</a></td>\n";
-		$con.= "<td><a href=\"$url&amp;soap=1\">$reportdate</a> <a href=\"$url&amp;soap=1&amp;wiki=1\">Wiki</a></td>\n";
+		$con.= "<td><a href=\"$url\">$reportdate</a> <a href=\"$url&amp;wiki=1\">Wiki</a> <a href=\"$url&amp;csv=1\">CSV</a></td>\n";
+		$con.= "<td><a href=\"$url&amp;soap=1\">$reportdate</a> <a href=\"$url&amp;soap=1&amp;wiki=1\">Wiki</a> <a href=\"$url&amp;soap=1&amp;csv=1\">CSV</a></td>\n";
 
 		$region = strtok(",");
 	}
@@ -257,8 +257,8 @@ else
 
 	$con.= "<tr>\n";
 	$con.= "<td>All</td>\n";
-	$con.= "<td><a href=\"$url\">$reportdate</a> <a href=\"$url&amp;wiki=1\">Wiki</a></td>\n";
-	$con.= "<td><a href=\"$url&amp;soap=1\">$reportdate</a> <a href=\"$url&amp;soap=1&amp;wiki=1\">Wiki</a></td>\n";
+	$con.= "<td><a href=\"$url\">$reportdate</a> <a href=\"$url&amp;wiki=1\">Wiki</a> <a href=\"$url&amp;csv=1\">CSV</a></td>\n";
+	$con.= "<td><a href=\"$url&amp;soap=1\">$reportdate</a> <a href=\"$url&amp;soap=1&amp;wiki=1\">Wiki</a> <a href=\"$url&amp;soap=1&amp;csv=1\">CSV</a></td>\n";
 
 	$con.= "</table><br />\n";
 	$con.= "Request timestamp: $reportdaterfc<br /><br />\n";
