@@ -1,20 +1,23 @@
-<?
+<?php
 
 /*
 site_cfg.php Should set the following config params:
-$remotecmd flag, Determines whether to use SSH for the IRC msgme.
-$target_email email Address to send the report url to.
-$host Website host.
+$remotecmd Determines whether to use SSH for the IRC msgme(optional, default is 0 for disabled).
+$target_email Email address to send the report url to.
+$httpbase Optional override for the URL where the pub_html scripts are located.
 $emailhost Email host portion of the sender email address.
-$sshhost SSH host used for the SSH IRC msgme.
+$sshhost SSH host used for the SSH IRC msgme(only needed when $remotecmd is non-zero).
 $workdir Absolute path to the location of these scripts.
 $mysqldb_username MySQL username.
+$mysqldb_pwdpath Path to file containing MySQL password.
 $mysqldb_database MySQL database.
 */
 
 include_once("site_cfg.php");
 
-$httpbase = "http://$host";
+if(!isset($remotecmd))$remotecmd = 0;
+if(!isset($httpbase))$httpbase = "http://" . $_SERVER["SERVER_NAME"];
+if(!isset($sshhost))$sshhost = "";
 
 function appendmsg_tofile($msg, $filename)
 {

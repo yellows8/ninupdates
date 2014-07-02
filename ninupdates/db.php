@@ -1,4 +1,4 @@
-<?
+<?php
 
 include_once("config.php");
 
@@ -6,10 +6,10 @@ $dbconn_started = 0;
 
 function dbconnection_start()
 {
-	global $dbconn_started, $mysqldb_username, $mysqldb_database;
+	global $dbconn_started, $mysqldb_username, $mysqldb_pwdpath, $mysqldb_database;
 	if($dbconn_started==1)return;
 
-	$password = file_get_contents("/home/yellows8/auth/pwd");
+	$password = file_get_contents($mysqldb_pwdpath);
 
 	@mysql_connect("localhost",$mysqldb_username,$password) or die("Failed to connect to mysql");
 	@mysql_select_db($mysqldb_database) or die("Failed to select database");

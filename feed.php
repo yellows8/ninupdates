@@ -1,4 +1,4 @@
-<?
+<?php
 
 include_once("/home/yellows8/ninupdates/config.php");
 include_once("/home/yellows8/ninupdates/db.php");

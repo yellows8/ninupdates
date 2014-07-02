@@ -1,4 +1,4 @@
-<?
+<?php
 
 include_once("config.php");
 include_once("logs.php");
@@ -8,31 +8,27 @@ do_systems_soap();
 
 function do_systems_soap()
 {
-	while(1)
+	dbconnection_start();
+	if(!db_checkmaintenance(0))
 	{
-		//sleep(60);
-		dbconnection_start();
-		if(!db_checkmaintenance(0))
+		init_curl();
+
+		$query="SELECT system FROM ninupdates_consoles";
+		$result=mysql_query($query);
+		$numrows=mysql_numrows($result);
+
+		for($i=0; $i<$numrows; $i++)
 		{
-			init_curl();
-
-			$query="SELECT system FROM ninupdates_consoles";
-			$result=mysql_query($query);
-			$numrows=mysql_numrows($result);
-
-			for($i=0; $i<$numrows; $i++)
-			{
-				$row = mysql_fetch_row($result);
-					dosystem($row[0]);
-			}
-
-			$query="UPDATE ninupdates_management SET lastscan=now()";
-			$result=mysql_query($query);
-
-			close_curl();
+			$row = mysql_fetch_row($result);
+				dosystem($row[0]);
 		}
+
+		$query="UPDATE ninupdates_management SET lastscan=now()";
+		$result=mysql_query($query);
+
+		close_curl();
+
 		dbconnection_end();
-		break;
 	}
 }
 
