@@ -108,9 +108,15 @@ else
   <th>TitleID</th>
   <th>Region</th>
   <th>Title versions</th>
-  <th>Update versions</th>
-</tr>\n";
+  <th>Update versions</th>\n";
+
+	if($reportdate!="" && $usesoap=="")$con.="  <th>Title status</th>\n";
+
+	$con.="</tr>\n";
 }
+
+$titlelist_array = array();
+$titlelist_array_numentries = 0;
 
 $numrows = 0;
 
@@ -131,7 +137,7 @@ if($soapquery!="" || $reportdate=="")$versionquery = "GROUP_CONCAT(DISTINCT ninu
 $reportdatequery = "GROUP_CONCAT(DISTINCT ninupdates_reports.reportdate ORDER BY ninupdates_reports.curdate SEPARATOR ','),";
 $updateverquery = "GROUP_CONCAT(DISTINCT ninupdates_reports.updateversion ORDER BY ninupdates_reports.updateversion SEPARATOR ','),";
 
-$query = "SELECT ninupdates_titleids.titleid, $versionquery ninupdates_titles.region, ninupdates_regions.regionid, $reportdatequery $updateverquery fssize, tmdsize, tiksize FROM ninupdates_titles, ninupdates_titleids, ninupdates_reports, ninupdates_regions WHERE ninupdates_titles.systemid=$systemid && ninupdates_reports.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_reports.id=ninupdates_titles.reportid && ninupdates_regions.regioncode=ninupdates_titles.region";
+$query = "SELECT ninupdates_titleids.titleid, $versionquery ninupdates_titles.region, ninupdates_regions.regionid, $reportdatequery $updateverquery fssize, tmdsize, tiksize, ninupdates_titles.region FROM ninupdates_titles, ninupdates_titleids, ninupdates_reports, ninupdates_regions WHERE ninupdates_titles.systemid=$systemid && ninupdates_reports.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_reports.id=ninupdates_titles.reportid && ninupdates_regions.regioncode=ninupdates_titles.region";
 if($reportquery!="")$query.= $reportquery;
 if($soapquery!="")$query.= $soapquery;
 if($regionquery!="")$query.= $regionquery;
@@ -140,6 +146,8 @@ $query.= " GROUP BY ninupdates_titles.tid, ninupdates_titles.region";
 
 $result=mysql_query($query);
 $numrows=mysql_numrows($result);
+$titlelist_array_numentries = $numrows;
+$regioncode = "";
 
 $updatesize = 0;
 for($i=0; $i<$numrows; $i++)
@@ -152,6 +160,7 @@ for($i=0; $i<$numrows; $i++)
 	$reportdates = $row[4];
 	$updateversions = $row[5];
 	$updatesize += $row[6] + $row[7] + $row[8];
+	$regioncode = $row[9];
 
 	$versiontext = $versions;
 	$updatevers = $updateversions;
@@ -217,7 +226,7 @@ for($i=0; $i<$numrows; $i++)
 			}
 		}
 	}
-	else if($usesoap==0)
+	else
 	{
 		$versiontext = "v$versions";
 	}
@@ -232,16 +241,56 @@ for($i=0; $i<$numrows; $i++)
 		$regtext = "<a href=\"$url\">$regionid</a>";
 	}
 
+	$titlelist_array[] = array();
+	$titlelist_array[$i][0] = $titleid;
+	if($genwiki!="" || $gencsv!="")
+	{
+		$titlelist_array[$i][1] = $regtext;
+	}
+	else
+	{
+		$titlelist_array[$i][1] = $regionid;
+	}
+	$titlelist_array[$i][2] = $versiontext;
+	$titlelist_array[$i][3] = $updatevers;
+	$titlelist_array[$i][4] = $versions;
+	$titlelist_array[$i][5] = $regioncode;
+}
+
+for($i=0; $i<$titlelist_array_numentries; $i++)
+{
+	$titleid = $titlelist_array[$i][0];
+	$regtext = $titlelist_array[$i][1];
+	$versiontext = $titlelist_array[$i][2];
+	$updatevers = $titlelist_array[$i][3];
+	$versions = $titlelist_array[$i][4];
+	$regioncode = $titlelist_array[$i][5];
+
+	$titlestatus = "";
+	if($reportdate!="" && $usesoap=="")
+	{
+		$titlestatus = "N/A";
+
+		$query = "SELECT MIN(ninupdates_titles.version) FROM ninupdates_titles, ninupdates_titleids WHERE ninupdates_titles.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_titleids.titleid='$titleid' && ninupdates_titles.region='$regioncode'";
+		$result=mysql_query($query);
+		if(mysql_numrows($result)>0)
+		{
+			$row = mysql_fetch_row($result);
+			$titlestatus = "Changed";
+			if($versions==$row[0])$titlestatus = "New";
+		}
+	}
+
 	if($genwiki!="")
 	{
 		$con.= "|-
 | $titleid
-| $regionid
+| $regtext
 | $versiontext\n";
 	}
 	else if($gencsv!="")
 	{
-		$con.= "$titleid,$regionid,$versiontext,$updatevers\n";
+		$con.= "$titleid,$regtext,$versiontext,$updatevers\n";
 	}
 	else
 	{
@@ -250,6 +299,7 @@ for($i=0; $i<$numrows; $i++)
 		$con.= "<td>$regtext</td>\n";
 		$con.= "<td>$versiontext</td>\n";
 		$con.= "<td>$updatevers</td>\n";
+		if($reportdate!="" && $usesoap=="")$con.= "<td>$titlestatus</td>\n";
 		$con.= "</tr>\n";
 	}
 }

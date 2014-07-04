@@ -15,6 +15,7 @@ $reportdate = "";
 $system = "";
 $region = "";
 $setver = "";
+$setsysver = "";
 if(isset($_REQUEST['date']))$reportdate = mysql_real_escape_string($_REQUEST['date']);
 if(isset($_REQUEST['sys']))$system = mysql_real_escape_string($_REQUEST['sys']);
 if(isset($_REQUEST['reg']))$region = mysql_real_escape_string($_REQUEST['reg']);
