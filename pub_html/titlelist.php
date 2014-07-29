@@ -107,6 +107,7 @@ else
 <tr>
   <th>TitleID</th>
   <th>Region</th>
+  <th>Title description</th>
   <th>Title versions</th>
   <th>Update versions</th>\n";
 
@@ -137,7 +138,7 @@ if($soapquery!="" || $reportdate=="")$versionquery = "GROUP_CONCAT(DISTINCT ninu
 $reportdatequery = "GROUP_CONCAT(DISTINCT ninupdates_reports.reportdate ORDER BY ninupdates_reports.curdate SEPARATOR ','),";
 $updateverquery = "GROUP_CONCAT(DISTINCT ninupdates_reports.updateversion ORDER BY ninupdates_reports.updateversion SEPARATOR ','),";
 
-$query = "SELECT ninupdates_titleids.titleid, $versionquery ninupdates_titles.region, ninupdates_regions.regionid, $reportdatequery $updateverquery fssize, tmdsize, tiksize, ninupdates_titles.region FROM ninupdates_titles, ninupdates_titleids, ninupdates_reports, ninupdates_regions WHERE ninupdates_titles.systemid=$systemid && ninupdates_reports.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_reports.id=ninupdates_titles.reportid && ninupdates_regions.regioncode=ninupdates_titles.region";
+$query = "SELECT ninupdates_titleids.titleid, ninupdates_titleids.description, $versionquery ninupdates_titles.region, ninupdates_regions.regionid, $reportdatequery $updateverquery fssize, tmdsize, tiksize, ninupdates_titles.region FROM ninupdates_titles, ninupdates_titleids, ninupdates_reports, ninupdates_regions WHERE ninupdates_titles.systemid=$systemid && ninupdates_reports.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_reports.id=ninupdates_titles.reportid && ninupdates_regions.regioncode=ninupdates_titles.region";
 if($reportquery!="")$query.= $reportquery;
 if($soapquery!="")$query.= $soapquery;
 if($regionquery!="")$query.= $regionquery;
@@ -154,13 +155,14 @@ for($i=0; $i<$numrows; $i++)
 {
 	$row = mysql_fetch_row($result);
 	$titleid = $row[0];
-	$versions = $row[1];
-	$reg = $row[2];
-	$regionid = $row[3];
-	$reportdates = $row[4];
-	$updateversions = $row[5];
-	$updatesize += $row[6] + $row[7] + $row[8];
-	$regioncode = $row[9];
+	$desctext = $row[1];
+	$versions = $row[2];
+	$reg = $row[3];
+	$regionid = $row[4];
+	$reportdates = $row[5];
+	$updateversions = $row[6];
+	$updatesize += $row[7] + $row[8] + $row[9];
+	$regioncode = $row[10];
 
 	$versiontext = $versions;
 	$updatevers = $updateversions;
@@ -241,6 +243,8 @@ for($i=0; $i<$numrows; $i++)
 		$regtext = "<a href=\"$url\">$regionid</a>";
 	}
 
+	if($desctext == NULL || $desctext == "")$desctext = "<a href=\"title_setdesc.php?titleid=$titleid\">N/A</a>";
+
 	$titlelist_array[] = array();
 	$titlelist_array[$i][0] = $titleid;
 	if($genwiki!="" || $gencsv!="")
@@ -251,20 +255,22 @@ for($i=0; $i<$numrows; $i++)
 	{
 		$titlelist_array[$i][1] = $regionid;
 	}
-	$titlelist_array[$i][2] = $versiontext;
-	$titlelist_array[$i][3] = $updatevers;
-	$titlelist_array[$i][4] = $versions;
-	$titlelist_array[$i][5] = $regioncode;
+	$titlelist_array[$i][2] = $desctext;
+	$titlelist_array[$i][3] = $versiontext;
+	$titlelist_array[$i][4] = $updatevers;
+	$titlelist_array[$i][5] = $versions;
+	$titlelist_array[$i][6] = $regioncode;
 }
 
 for($i=0; $i<$titlelist_array_numentries; $i++)
 {
 	$titleid = $titlelist_array[$i][0];
 	$regtext = $titlelist_array[$i][1];
-	$versiontext = $titlelist_array[$i][2];
-	$updatevers = $titlelist_array[$i][3];
-	$versions = $titlelist_array[$i][4];
-	$regioncode = $titlelist_array[$i][5];
+	$desctext = $titlelist_array[$i][2];
+	$versiontext = $titlelist_array[$i][3];
+	$updatevers = $titlelist_array[$i][4];
+	$versions = $titlelist_array[$i][5];
+	$regioncode = $titlelist_array[$i][6];
 
 	$titlestatus = "";
 	if($reportdate!="" && $usesoap=="")
@@ -297,6 +303,7 @@ for($i=0; $i<$titlelist_array_numentries; $i++)
 		$con.= "<tr>\n";
 		$con.= "<td>$titleid</td>\n";
 		$con.= "<td>$regtext</td>\n";
+		$con.= "<td>$desctext</td>\n";
 		$con.= "<td>$versiontext</td>\n";
 		$con.= "<td>$updatevers</td>\n";
 		if($reportdate!="" && $usesoap=="")$con.= "<td>$titlestatus</td>\n";
