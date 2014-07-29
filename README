@@ -1,2 +1,2 @@
-These scripts check for Nintendo system updates, and generate reports of the updated titles. With the default $httpbase config value("http://<servername>"), the reports.php, titlelist.php, and feed.php scripts must be located in the pub_html root, this can be changed via setting $httpbase in site_cfg.php. A configuration file must be located at ninupdates/site_cfg.php, see ninupdates/config.php.
+These scripts check for Nintendo system updates, and generate reports of the updated titles. The base URL for the scripts under this pub_html directory must be specified with $httpbase in site_cfg.php. A configuration file must be located at ninupdates/site_cfg.php, see ninupdates/config.php.
 
