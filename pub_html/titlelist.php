@@ -34,9 +34,11 @@ if($system=="")
 
 $sys = getsystem_sysname($system);
 
+$con = "";
+
 if($genwiki=="" && $gencsv=="")
 {
-	$con = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" dir=\"ltr\">\n";
+	$con .= "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" dir=\"ltr\">\n";
 }
 
 $query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
@@ -234,7 +236,7 @@ for($i=0; $i<$numrows; $i++)
 	}
 
 	$regtext = $regionid;
-	if($reg!=$region)
+	if($reg!=$region && $genwiki=="" && $gencsv=="")
 	{
 		$url = "titlelist.php?";
 		if($reportdate!="")$url.= "date=$reportdate&amp;";
