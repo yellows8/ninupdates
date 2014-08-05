@@ -71,7 +71,7 @@ if($reportdate!="" && $system!="")
   System version: <input type=\"text\" value=\"\" name=\"setsysver\"/><input type=\"submit\" value=\"Submit\"/></form></body></html>";
 
 			dbconnection_end();
-			writeNormalLog("RESULT: 200");
+			if($sitecfg_logplainhttp200!=0)writeNormalLog("RESULT: 200");
 			echo $con;
 
 			return;
@@ -269,7 +269,7 @@ else
 
 dbconnection_end();
 
-writeNormalLog("RESULT: 200");
+if($sitecfg_logplainhttp200!=0)writeNormalLog("RESULT: 200");
 
 echo $con;
 

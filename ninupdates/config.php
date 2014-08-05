@@ -8,6 +8,7 @@ $sitecfg_httpbase URL where the pub_html scripts are located.
 $sitecfg_emailhost Email host portion of the sender email address.
 $sitecfg_sshhost SSH host used for the SSH IRC msgme(only needed when $sitecfg_remotecmd is non-zero).
 $sitecfg_workdir Absolute path to the location of these scripts.
+$sitecfg_logplainhttp200 This is optional, default is zero. When non-zero, the following is enabled: writeNormalLog("RESULT: 200")
 $sitecfg_mysqldb_username MySQL username.
 $sitecfg_mysqldb_pwdpath Path to file containing MySQL password.
 $sitecfg_mysqldb_database MySQL database.
@@ -17,6 +18,7 @@ include_once("site_cfg.php");
 
 if(!isset($sitecfg_remotecmd))$sitecfg_remotecmd = 0;
 if(!isset($sitecfg_sshhost))$sitecfg_sshhost = "";
+if(!isset($sitecfg_logplainhttp200))$sitecfg_logplainhttp200 = 0;
 
 function appendmsg_tofile($msg, $filename)
 {

@@ -67,7 +67,7 @@ $con.= " </channel>
 
 dbconnection_end();
 
-writeNormalLog("RESULT: 200");
+if($sitecfg_logplainhttp200!=0)writeNormalLog("RESULT: 200");
 echo $con;
 
 ?>
