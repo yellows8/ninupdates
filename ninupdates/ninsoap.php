@@ -300,15 +300,14 @@ function parse_soapresp($buf)
 		$title = strstr($title, "</TitleVersion>");
 	}
 
-	if($system=="ctr")
+	$sysupdate_systitlehashes[$region] = "";
+
+	$titlehash_pos = strpos($buf, "<TitleHash>") + 11;
+	$titlehash_posend = strpos($buf, "</TitleHash>");
+	if($titlehash_pos!==FALSE && $titlehash_posend!==FALSE)
 	{
-		$titlehash_pos = strpos($buf, "<TitleHash>") + 11;
-		$titlehash_posend = strpos($buf, "</TitleHash>");
-		if($titlehash_pos!==FALSE && $titlehash_posend!==FALSE)
-		{
-			$titlehash = substr($buf, $titlehash_pos, $titlehash_posend - $titlehash_pos);
-			$sysupdate_systitlehashes[$region] = $titlehash;
-		}
+		$titlehash = substr($buf, $titlehash_pos, $titlehash_posend - $titlehash_pos);
+		$sysupdate_systitlehashes[$region] = $titlehash;
 	}
 }
 
