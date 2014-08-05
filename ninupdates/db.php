@@ -6,13 +6,13 @@ $dbconn_started = 0;
 
 function dbconnection_start()
 {
-	global $dbconn_started, $mysqldb_username, $mysqldb_pwdpath, $mysqldb_database;
+	global $dbconn_started, $sitecfg_mysqldb_username, $sitecfg_mysqldb_pwdpath, $sitecfg_mysqldb_database;
 	if($dbconn_started==1)return;
 
-	$password = file_get_contents($mysqldb_pwdpath);
+	$password = file_get_contents($sitecfg_mysqldb_pwdpath);
 
-	@mysql_connect("localhost",$mysqldb_username,$password) or die("Failed to connect to mysql");
-	@mysql_select_db($mysqldb_database) or die("Failed to select database");
+	@mysql_connect("localhost",$sitecfg_mysqldb_username,$password) or die("Failed to connect to mysql");
+	@mysql_select_db($sitecfg_mysqldb_database) or die("Failed to select database");
 
 	$dbconn_started = 1;
 }

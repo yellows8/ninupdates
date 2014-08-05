@@ -148,7 +148,7 @@ function load_titlelist($soaplog, &$titleids, &$titleversions, &$titles_sizes, &
 
 function diff_titlelists($oldlog, $curdatefn)
 {
-	global $oldtitles, $oldtitlesversions, $oldtitles_sizes, $oldtitles_tiksizes, $oldtitles_tmdsizes, $oldtotal_titles, $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles, $difflogbuf, $system, $region, $workdir, $soap_timestamp, $dbcurdate;
+	global $oldtitles, $oldtitlesversions, $oldtitles_sizes, $oldtitles_tiksizes, $oldtitles_tmdsizes, $oldtotal_titles, $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles, $difflogbuf, $system, $region, $sitecfg_workdir, $soap_timestamp, $dbcurdate;
 
 	$difflogbuf = "<html><head></head><body>\n";
 	$text = "";
@@ -205,7 +205,7 @@ function diff_titlelists($oldlog, $curdatefn)
 	$difflogbuf .= "Update content size: $update_size<br>\n";
 	$difflogbuf .= "</body></html>";
 
-	$freport = fopen("$workdir/reports$system/$region/$curdatefn", "w");
+	$freport = fopen("$sitecfg_workdir/reports$system/$region/$curdatefn", "w");
 	fwrite($freport, $difflogbuf);
 	fclose($freport);
 

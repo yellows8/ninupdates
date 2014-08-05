@@ -2,28 +2,28 @@
 
 /*
 site_cfg.php Should set the following config params:
-$remotecmd Determines whether to use SSH for the IRC msgme(optional, default is 0 for disabled).
-$target_email Email address to send the report url to.
-$httpbase URL where the pub_html scripts are located.
-$emailhost Email host portion of the sender email address.
-$sshhost SSH host used for the SSH IRC msgme(only needed when $remotecmd is non-zero).
-$workdir Absolute path to the location of these scripts.
-$mysqldb_username MySQL username.
-$mysqldb_pwdpath Path to file containing MySQL password.
-$mysqldb_database MySQL database.
+$sitecfg_remotecmd Determines whether to use SSH for the IRC msgme(optional, default is 0 for disabled).
+$sitecfg_target_email Email address to send the report url to.
+$sitecfg_httpbase URL where the pub_html scripts are located.
+$sitecfg_emailhost Email host portion of the sender email address.
+$sitecfg_sshhost SSH host used for the SSH IRC msgme(only needed when $sitecfg_remotecmd is non-zero).
+$sitecfg_workdir Absolute path to the location of these scripts.
+$sitecfg_mysqldb_username MySQL username.
+$sitecfg_mysqldb_pwdpath Path to file containing MySQL password.
+$sitecfg_mysqldb_database MySQL database.
 */
 
 include_once("site_cfg.php");
 
-if(!isset($remotecmd))$remotecmd = 0;
-if(!isset($sshhost))$sshhost = "";
+if(!isset($sitecfg_remotecmd))$sitecfg_remotecmd = 0;
+if(!isset($sitecfg_sshhost))$sitecfg_sshhost = "";
 
 function appendmsg_tofile($msg, $filename)
 {
-	global $remotecmd, $sshhost;
+	global $sitecfg_remotecmd, $sitecfg_sshhost;
 	$tmp_cmd = "echo '" . $msg . "' >> /home/yellows8/.irssi/$filename";
 	$irc_syscmd = $tmp_cmd;
-	if($remotecmd==1)$irc_syscmd = "ssh yellows8@$sshhost \"".$tmp_cmd."\"";
+	if($sitecfg_remotecmd==1)$irc_syscmd = "ssh yellows8@$sitecfg_sshhost \"".$tmp_cmd."\"";
 	system($irc_syscmd);
 }
 

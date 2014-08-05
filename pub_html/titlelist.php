@@ -5,7 +5,7 @@ include_once("/home/yellows8/ninupdates/db.php");
 include_once("/home/yellows8/ninupdates/logs.php");
 include_once("/home/yellows8/ninupdates/weblogging.php");
 
-$logging_dir = "$workdir/weblogs/titlelistphp";
+$logging_dir = "$sitecfg_workdir/weblogs/titlelistphp";
 
 dbconnection_start();
 

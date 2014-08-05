@@ -81,15 +81,15 @@ function diffinsert_main()
 
 function difflogshtml()
 {
-	global $region, $system, $arg_difflogold, $arg_difflognew, $workdir;
+	global $region, $system, $arg_difflogold, $arg_difflognew, $sitecfg_workdir;
 
 	$logexists = 1;
-	if(!file_exists("$workdir/soap$system/$region/$arg_difflogold.html"))
+	if(!file_exists("$sitecfg_workdir/soap$system/$region/$arg_difflogold.html"))
 	{
 		$logexists = 0;
 		echo "Log for $arg_difflogold doesn't exist.\n";
 	}
-	if(!file_exists("$workdir/soap$system/$region/$arg_difflognew.html"))
+	if(!file_exists("$sitecfg_workdir/soap$system/$region/$arg_difflognew.html"))
 	{
 		$logexists = 0;
 		echo "Log for $arg_difflognew doesn't exist.\n";
@@ -101,8 +101,8 @@ function difflogshtml()
 	}
 	else
 	{
-		$logstripped = getlogcontents("$workdir/soap$system/$region/$arg_difflognew.html");
-		$oldlogstripped = getlogcontents("$workdir/soap$system/$region/$arg_difflogold.html");
+		$logstripped = getlogcontents("$sitecfg_workdir/soap$system/$region/$arg_difflognew.html");
+		$oldlogstripped = getlogcontents("$sitecfg_workdir/soap$system/$region/$arg_difflogold.html");
 		load_newtitlelist($logstripped);
 
 		if(diff_titlelists($oldlogstripped, $curdatefn))
@@ -118,12 +118,12 @@ function difflogshtml()
 
 function diffinsert($reg)
 {
-	global $region, $system, $arg_difflog, $workdir, $reportid, $dbcurdate;
+	global $region, $system, $arg_difflog, $sitecfg_workdir, $reportid, $dbcurdate;
 	$region = $reg;
 
 	echo "region $region\n";
 
-	$curlog = getlogcontents("$workdir/soap$system/$region/$arg_difflog.html");
+	$curlog = getlogcontents("$sitecfg_workdir/soap$system/$region/$arg_difflog.html");
 	if($curlog=="")
 	{
 		echo "failed to open log region $region\n";

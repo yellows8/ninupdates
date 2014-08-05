@@ -5,7 +5,7 @@ include_once("/home/yellows8/ninupdates/db.php");
 include_once("/home/yellows8/ninupdates/logs.php");
 include_once("/home/yellows8/ninupdates/weblogging.php");
 
-$logging_dir = "$workdir/weblogs/feedphp";
+$logging_dir = "$sitecfg_workdir/weblogs/feedphp";
 
 dbconnection_start();
 
@@ -23,8 +23,8 @@ $con = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\" ?>
 <rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\" xmlns:sy=\"http://purl.org/rss/1.0/modules/syndication/\">
     <channel>
       <title>Sysupdate Reports</title>
-      <atom:link href=\"$httpbase/feed.php\" rel=\"self\" type=\"application/rss+xml\" />
-      <link>$httpbase/reports.php</link>
+      <atom:link href=\"$sitecfg_httpbase/feed.php\" rel=\"self\" type=\"application/rss+xml\" />
+      <link>$sitecfg_httpbase/reports.php</link>
       <description>Nintendo System Update Reports</description>
       <lastBuildDate>$curdate</lastBuildDate>
       <language>en</language>
@@ -49,7 +49,7 @@ for($i=0; $i<$numrows; $i++)
 	$item_title = "$sys $updateversion";
 	if($updateversion=="N/A")$item_title = "$sys $reportdate";
 
-	$url = "$httpbase/reports.php?date=$reportdate&sys=$system";
+	$url = "$sitecfg_httpbase/reports.php?date=$reportdate&sys=$system";
 	$url = "<![CDATA[$url]]>";
 	//$url = str_replace ("&","",htmlspecialchars(strip_tags($url))); 
 

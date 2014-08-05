@@ -34,7 +34,7 @@ function do_systems_soap()
 
 function dosystem($console)
 {
-	global $region, $system, $emailhost, $target_email, $httpbase, $sysupdate_available, $soap_timestamp, $dbcurdate, $sysupdate_regions, $sysupdate_timestamp, $sysupdate_systitlehashes;
+	global $region, $system, $sitecfg_emailhost, $sitecfg_target_email, $sitecfg_httpbase, $sysupdate_available, $soap_timestamp, $dbcurdate, $sysupdate_regions, $sysupdate_timestamp, $sysupdate_systitlehashes;
 
 	$system = $console;
 	$msgme_message = "";
@@ -64,7 +64,7 @@ function dosystem($console)
 	}
 	else
 	{
-		$msgme_message = "$httpbase/reports.php?date=".$sysupdate_timestamp."&sys=".$system;
+		$msgme_message = "$sitecfg_httpbase/reports.php?date=".$sysupdate_timestamp."&sys=".$system;
 		$email_message = "$msgme_message";
 		
 		$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE  ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
@@ -117,13 +117,13 @@ function dosystem($console)
 		echo "\nSending IRC msg...\n";
 		sendircmsg($msgme_message);
 		echo "Sending email...\n";
-        	if(!mail($target_email, "$system SOAP updates", $email_message, "From: ninsoap@$emailhost"))echo "Failed to send mail.\n";
+        	if(!mail($sitecfg_target_email, "$system SOAP updates", $email_message, "From: ninsoap@$sitecfg_emailhost"))echo "Failed to send mail.\n";
 	}
 }
 
 function initialize()
 {
-	global $hdrs, $soapreq, $fp, $system, $region, $workdir, $soapreq_data;
+	global $hdrs, $soapreq, $fp, $system, $region, $sitecfg_workdir, $soapreq_data;
 	
 	error_reporting(E_ALL);
 
@@ -181,9 +181,9 @@ function initialize()
 
 function init_curl()
 {
-	global $curl_handle, $workdir, $error_FH;
+	global $curl_handle, $sitecfg_workdir, $error_FH;
 
-	$error_FH = fopen("$workdir/debuglogs/error.log","w");
+	$error_FH = fopen("$sitecfg_workdir/debuglogs/error.log","w");
 	$curl_handle = curl_init();
 }
 
@@ -197,7 +197,7 @@ function close_curl()
 
 function send_httprequest($url)
 {
-	global $hdrs, $soapreq, $httpstat, $workdir, $soapreq_data, $curl_handle, $system, $error_FH;
+	global $hdrs, $soapreq, $httpstat, $sitecfg_workdir, $soapreq_data, $curl_handle, $system, $error_FH;
 
 	$query="SELECT clientcertfn, clientprivfn FROM ninupdates_consoles WHERE system='".$system."'";
 	$result=mysql_query($query);
@@ -222,8 +222,8 @@ function send_httprequest($url)
 	if(strstr($url, "https") && $clientcertfn!="" && $clientprivfn!="")
 	{
 		curl_setopt($curl_handle, CURLOPT_SSLCERTTYPE, "PEM");
-		curl_setopt($curl_handle, CURLOPT_SSLCERT, "$workdir/sslcerts/$clientcertfn");
-		curl_setopt($curl_handle, CURLOPT_SSLKEY, "$workdir/sslcerts/$clientprivfn");
+		curl_setopt($curl_handle, CURLOPT_SSLCERT, "$sitecfg_workdir/sslcerts/$clientcertfn");
+		curl_setopt($curl_handle, CURLOPT_SSLKEY, "$sitecfg_workdir/sslcerts/$clientprivfn");
 
 		curl_setopt($curl_handle, CURLOPT_SSL_VERIFYPEER, 0);
 		curl_setopt($curl_handle, CURLOPT_SSL_VERIFYHOST, 0);
@@ -349,7 +349,7 @@ function compare_titlelists()
 
 function main($reg)
 {
-	global $system, $log, $region, $httpstat, $syscmd, $httpbase, $sysupdate_available, $sysupdate_timestamp, $workdir, $curdate, $dbcurdate, $soap_timestamp, $sysupdate_regions, $arg_difflogold, $arg_difflognew, $newtotal_titles;
+	global $system, $log, $region, $httpstat, $syscmd, $sitecfg_httpbase, $sysupdate_available, $sysupdate_timestamp, $sitecfg_workdir, $curdate, $dbcurdate, $soap_timestamp, $sysupdate_regions, $arg_difflogold, $arg_difflognew, $newtotal_titles;
 
 	$region = $reg;
 
@@ -400,7 +400,7 @@ function main($reg)
 	{
 		titlelist_dbupdate();
 
-		$fsoap = fopen("$workdir/soap$system/$region/$curdatefn.soap", "w");
+		$fsoap = fopen("$sitecfg_workdir/soap$system/$region/$curdatefn.soap", "w");
 		fwrite($fsoap, $ret);
 		fclose($fsoap);
 
@@ -414,7 +414,7 @@ function main($reg)
 		{
 			$sendupdatelogs = 1;
 
-			$fsoap = fopen("$workdir/soap$system/$region/$curdatefn.soap", "w");
+			$fsoap = fopen("$sitecfg_workdir/soap$system/$region/$curdatefn.soap", "w");
 			fwrite($fsoap, $ret);
 			fclose($fsoap);
 		}
