@@ -43,7 +43,7 @@ else
 	$curdesc = "  Current description: $curdesc</br></br>";
 }
 
-if($desc=="")
+if(!isset($_REQUEST['desc']))
 {
 	$con = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update Set Title Description</title></head><body>
 <form method=\"post\" action=\"title_setdesc.php?titleid=$titleid\" enctype=\"multipart/form-data\">
@@ -59,6 +59,13 @@ $curdesc
 else
 {
 	$desc = strip_tags($desc);
+
+	while(1)
+	{
+		$pos = strpos($desc, ",");
+		if($pos === FALSE)break;
+		$desc[$pos] = " ";
+	}
 
 	$query = "UPDATE ninupdates_titleids SET description='".$desc."' WHERE id=$rowid";
 	$result=mysql_query($query);

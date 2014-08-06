@@ -80,6 +80,13 @@ if($reportdate!="" && $system!="")
 		{
 			$setsysver = strip_tags($setsysver);
 
+			while(1)
+			{
+				$pos = strpos($setsysver, ",");
+				if($pos === FALSE)break;
+				$setsysver[$pos] = " ";
+			}
+
 			$query = "UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.updateversion='".$setsysver."' WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
 			$result=mysql_query($query);
 			dbconnection_end();
