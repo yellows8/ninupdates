@@ -12,6 +12,9 @@ $sitecfg_logplainhttp200 This is optional, default is zero. When non-zero, the f
 $sitecfg_mysqldb_username MySQL username.
 $sitecfg_mysqldb_pwdpath Path to file containing MySQL password.
 $sitecfg_mysqldb_database MySQL database.
+
+$sitecfg_homepage_header Optional HTML to include near the beginning of the "reports.php"(homepage) <body>.
+$sitecfg_homepage_footer Optional HTML to include at the very end of the "reports.php"(homepage) <body>.
 */
 
 include_once("site_cfg.php");
@@ -19,6 +22,8 @@ include_once("site_cfg.php");
 if(!isset($sitecfg_remotecmd))$sitecfg_remotecmd = 0;
 if(!isset($sitecfg_sshhost))$sitecfg_sshhost = "";
 if(!isset($sitecfg_logplainhttp200))$sitecfg_logplainhttp200 = 0;
+if(!isset($sitecfg_homepage_header))$sitecfg_homepage_header = "";
+if(!isset($sitecfg_homepage_footer))$sitecfg_homepage_footer = "";
 
 function appendmsg_tofile($msg, $filename)
 {

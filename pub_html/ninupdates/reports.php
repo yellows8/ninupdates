@@ -127,7 +127,7 @@ if($region=="")$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/h
 
 if($reportdate=="")
 {
-	$con.= "<table border=\"1\">
+	$con.= "$sitecfg_homepage_header<table border=\"1\">
 <tr>
   <th>Report date</th>
   <th>Update Version</th>
@@ -197,9 +197,9 @@ if($reportdate=="")
 	$con.= "Last scan UTC datetime: " . $row[0] . "<br /><br />\n";*/
 
 	$con.= "RSS feed is available <a href=\"feed.php\">here.</a><br />\n";
-	$con.= "Source code is available <a href=\"https://github.com/yellows8/ninupdates\">here.</a>\n";
+	$con.= "Source code is available <a href=\"https://github.com/yellows8/ninupdates\">here.</a><br />\n";
 
-	$con.= "</body></html>";
+	$con.= "$sitecfg_homepage_footer</body></html>";
 }
 else
 {
