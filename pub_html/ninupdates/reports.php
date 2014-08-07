@@ -16,11 +16,13 @@ $system = "";
 $region = "";
 $setver = "";
 $setsysver = "";
+$order = "";
 if(isset($_REQUEST['date']))$reportdate = mysql_real_escape_string($_REQUEST['date']);
 if(isset($_REQUEST['sys']))$system = mysql_real_escape_string($_REQUEST['sys']);
 if(isset($_REQUEST['reg']))$region = mysql_real_escape_string($_REQUEST['reg']);
 if(isset($_REQUEST['setver']))$setver = mysql_real_escape_string($_REQUEST['setver']);
 if(isset($_REQUEST['setsysver']))$setsysver = mysql_real_escape_string($_POST['setsysver']);
+if(isset($_REQUEST['order']))$order = mysql_real_escape_string($_REQUEST['order']);
 
 if(($reportdate!="" && $system=="") || ($system!="" && $reportdate==""))
 {
@@ -127,15 +129,37 @@ if($region=="")$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/h
 
 if($reportdate=="")
 {
+	$reportdate_columntext = "Report date";
+	$system_columntext = "System";
+
+	if($order=="")
+	{
+		$reportdate_columntext = "<a href=\"reports.php?order=1\">$reportdate_columntext</a>";
+	}
+	else
+	{
+		$system_columntext = "<a href=\"reports.php\">$system_columntext</a>";
+	}
+
 	$con.= "$sitecfg_homepage_header<table border=\"1\">
 <tr>
-  <th>Report date</th>
+  <th>$reportdate_columntext</th>
   <th>Update Version</th>
-  <th>System</th>
+  <th>$system_columntext</th>
 </tr>\n";
 //  <th>UTC datetime</th>
 
-	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system, ninupdates_reports.curdate";
+	$orderquery = "";
+	if($order=="")
+	{
+		$orderquery = "ninupdates_consoles.system, ninupdates_reports.curdate";
+	}
+	else
+	{
+		$orderquery = "ninupdates_reports.curdate";
+	}
+
+	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY $orderquery";
 	$result=mysql_query($query);
 	$numrows=mysql_numrows($result);
 	
