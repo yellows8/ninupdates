@@ -267,6 +267,16 @@ function getsystem_sysname($sys)
 {
 	$query="SELECT sysname FROM ninupdates_consoles WHERE system='".$sys."'";
 	$result=mysql_query($query);
+
+	$numrows=mysql_numrows($result);
+	if($numrows==0)
+	{
+		dbconnection_end();
+		writeNormalLog("THE SPECIFIED SYSTEM DOES NOT EXIST IN THE TABLE. RESULT: 200");
+		echo "The specified system is invalid.\n";
+		exit;
+	}
+
 	$row = mysql_fetch_row($result);
 	return $row[0];
 }

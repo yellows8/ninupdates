@@ -13,13 +13,11 @@ db_checkmaintenance(1);
 
 $reportdate = "";
 $system = "";
-$region = "";
 $setver = "";
 $setsysver = "";
 $order = "";
 if(isset($_REQUEST['date']))$reportdate = mysql_real_escape_string($_REQUEST['date']);
 if(isset($_REQUEST['sys']))$system = mysql_real_escape_string($_REQUEST['sys']);
-if(isset($_REQUEST['reg']))$region = mysql_real_escape_string($_REQUEST['reg']);
 if(isset($_REQUEST['setver']))$setver = mysql_real_escape_string($_REQUEST['setver']);
 if(isset($_REQUEST['setsysver']))$setsysver = mysql_real_escape_string($_POST['setsysver']);
 if(isset($_REQUEST['order']))$order = mysql_real_escape_string($_REQUEST['order']);
@@ -120,6 +118,7 @@ if($reportdate!="" && $system!="")
 }
 
 $text = "reports";
+$report_titletext = "";
 if($reportdate!="")
 {
 	$query="SELECT updateversion FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
@@ -141,9 +140,11 @@ if($reportdate!="")
 			$text = "$sys ".$row[0]." report";
 		}
 	}
+
+	$report_titletext = $text;
 }
 
-if($region=="")$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update $text</title></head>\n<body>";
+$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update $text</title></head>\n<body>";
 
 if($reportdate=="")
 {
@@ -245,6 +246,8 @@ if($reportdate=="")
 }
 else
 {
+	$con.= "<a href=\"reports.php\">Homepage</a> -> $report_titletext<hr><br/><br/>\n";
+
 	$con.= "<table border=\"1\">
 <tr>
   <th>Region</th>

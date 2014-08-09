@@ -46,10 +46,26 @@ $result=mysql_query($query);
 $row = mysql_fetch_row($result);
 $systemid = $row[0];
 
+if($region!="")
+{
+	$query="SELECT id FROM ninupdates_regions WHERE regioncode='".$region."'";
+	$result=mysql_query($query);
+	$numrows=mysql_numrows($result);
+
+	if($numrows==0)
+	{
+		dbconnection_end();
+		writeNormalLog("REGION ROW NOT FOUND. RESULT: 200");
+		echo "Invalid region.\n";
+		return;
+	}
+}
+
 $reportid = 0;
 $curdate = "";
 
 $text = "";
+$reportname = "";
 
 if($reportdate!="")
 {
@@ -67,17 +83,18 @@ if($reportdate!="")
 	else
 	{
 		$row = mysql_fetch_row($result);
-		if($row[0]=="N/A")
+		if($row[1]=="N/A")
 		{
 			$text = "$sys $reportdate";
 		}
 		else
 		{
 			$text = "$sys ".$row[1];
-			$reportid = $row[0];
-			$curdate = $row[2];
 		}
+		$reportid = $row[0];
+		$curdate = $row[2];
 	}
+	$reportname = $text;
 	if($region!="")$text.= " $region";
 }
 else
@@ -104,6 +121,14 @@ else if($gencsv!="")
 else
 {
 	$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update Titlelist $text</title></head>\n<body>";
+
+	$con.= "<a href=\"reports.php\">Homepage</a> -> ";
+	if($reportdate!="")$con.= "<a href=\"reports.php?date=$reportdate&sys=$system\">$reportname report</a> -> ";
+	if($reportdate=="")$con.= "$text ";
+	if($region!="")$con.= "Region $region Titlelist";
+	if($region=="")$con.= "Titlelist";
+	if($usesoap!="")$con.= " SOAP";
+	$con.= "<hr><br/><br/>\n";
 
 	$con.= "<table border=\"1\">
 <tr>
