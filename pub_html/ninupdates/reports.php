@@ -87,9 +87,27 @@ if($reportdate!="" && $system!="")
 				$pos = strpos($setsysver, ",");
 				if($pos === FALSE)break;
 				$setsysver[$pos] = " ";
+
 			}
 
-			$query = "UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.updateversion='".$setsysver."' WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
+			if($setsysver!="N/A")
+			{
+				$query = "SELECT updateversion FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updateversion='".$setsysver."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
+				$result=mysql_query($query);
+				$numrows=mysql_numrows($result);
+			
+				if($numrows!=0)
+				{
+					dbconnection_end();
+
+					header("Location: reports.php");
+					writeNormalLog("THE SPECIFIED SYSVER ALREADY EXISTS FOR ANOTHER REPORT UNDER THE SPECIFIED SYSTEM. RESULT: 302");
+
+					return;
+				}
+			}
+
+			$query = "UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.updateversion='".$setsysver."' WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 			$result=mysql_query($query);
 			dbconnection_end();
 
