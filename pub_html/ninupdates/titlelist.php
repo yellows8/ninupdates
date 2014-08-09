@@ -50,7 +50,7 @@ if($region!="")
 {
 	$query="SELECT id FROM ninupdates_regions WHERE regioncode='".$region."'";
 	$result=mysql_query($query);
-	$numrows=mysql_numrows($result);
+	$numrows=mysql_num_rows($result);
 
 	if($numrows==0)
 	{
@@ -71,7 +71,7 @@ if($reportdate!="")
 {
 	$query="SELECT id, updateversion, curdate FROM ninupdates_reports WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_reports.systemid=$systemid && ninupdates_reports.log='report'";
 	$result=mysql_query($query);
-	$numrows=mysql_numrows($result);
+	$numrows=mysql_num_rows($result);
 
 	if($numrows==0)
 	{
@@ -173,7 +173,7 @@ if($regionquery!="")$query.= $regionquery;
 $query.= " GROUP BY ninupdates_titles.tid, ninupdates_titles.region";
 
 $result=mysql_query($query);
-$numrows=mysql_numrows($result);
+$numrows=mysql_num_rows($result);
 $titlelist_array_numentries = $numrows;
 $regioncode = "";
 
@@ -306,7 +306,7 @@ for($i=0; $i<$titlelist_array_numentries; $i++)
 
 		$query = "SELECT MIN(ninupdates_titles.version) FROM ninupdates_titles, ninupdates_titleids WHERE ninupdates_titles.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_titleids.titleid='$titleid' && ninupdates_titles.region='$regioncode'";
 		$result=mysql_query($query);
-		if(mysql_numrows($result)>0)
+		if(mysql_num_rows($result)>0)
 		{
 			$row = mysql_fetch_row($result);
 			$titlestatus = "Changed";

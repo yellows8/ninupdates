@@ -30,7 +30,7 @@ function db_checkmaintenance($abort)
 {
 	$query="SELECT maintenanceflag FROM ninupdates_management";
 	$result=mysql_query($query);
-	$numrows=mysql_numrows($result);
+	$numrows=mysql_num_rows($result);
 	if($numrows)
 	{
 		$row = mysql_fetch_row($result);

@@ -227,7 +227,7 @@ function titlelist_dbupdate()
 	{
 		$query = "SELECT id FROM ninupdates_titleids WHERE titleid='".$newtitles[$titlei]."'";
 		$result=mysql_query($query);
-		$numrows=mysql_numrows($result);
+		$numrows=mysql_num_rows($result);
 		if($numrows==0)
 		{
 			$query = "INSERT INTO ninupdates_titleids (titleid) VALUES ('".$newtitles[$titlei]."')";
@@ -242,7 +242,7 @@ function titlelist_dbupdate()
 
 		$query = "SELECT id FROM ninupdates_titles WHERE version=".$newtitlesversions[$titlei]." && region='".$region."' && tid=$tid";
 		$result=mysql_query($query);
-		$numrows=mysql_numrows($result);
+		$numrows=mysql_num_rows($result);
 
 		if($numrows==0)
 		{
@@ -268,7 +268,7 @@ function getsystem_sysname($sys)
 	$query="SELECT sysname FROM ninupdates_consoles WHERE system='".$sys."'";
 	$result=mysql_query($query);
 
-	$numrows=mysql_numrows($result);
+	$numrows=mysql_num_rows($result);
 	if($numrows==0)
 	{
 		dbconnection_end();

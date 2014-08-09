@@ -18,7 +18,7 @@ if(isset($_REQUEST['desc']))$desc = mysql_real_escape_string($_REQUEST['desc']);
 
 $query = "SELECT id, description FROM ninupdates_titleids WHERE titleid='" . $titleid . "'";
 $result=mysql_query($query);
-$numrows=mysql_numrows($result);
+$numrows=mysql_num_rows($result);
 		
 if($numrows==0)
 {

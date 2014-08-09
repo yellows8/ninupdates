@@ -41,7 +41,7 @@ if($reportdate!="" && $system!="")
 	{
 		$query="SELECT updateversion FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 		$result=mysql_query($query);
-		$numrows=mysql_numrows($result);
+		$numrows=mysql_num_rows($result);
 		
 		if($numrows==0)
 		{
@@ -92,7 +92,7 @@ if($reportdate!="" && $system!="")
 			{
 				$query = "SELECT updateversion FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updateversion='".$setsysver."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 				$result=mysql_query($query);
-				$numrows=mysql_numrows($result);
+				$numrows=mysql_num_rows($result);
 			
 				if($numrows!=0)
 				{
@@ -123,7 +123,7 @@ if($reportdate!="")
 {
 	$query="SELECT updateversion FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 	$result=mysql_query($query);
-	$numrows=mysql_numrows($result);
+	$numrows=mysql_num_rows($result);
 	if($numrows==0)
 	{
 		$text = "$sys $reportdate report";
@@ -180,7 +180,7 @@ if($reportdate=="")
 
 	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY $orderquery";
 	$result=mysql_query($query);
-	$numrows=mysql_numrows($result);
+	$numrows=mysql_num_rows($result);
 	
 	for($i=0; $i<$numrows; $i++)
 	{
@@ -215,7 +215,7 @@ if($reportdate=="")
 
 	$query="SELECT DISTINCT ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system";
 	$result=mysql_query($query);
-	$numrows=mysql_numrows($result);
+	$numrows=mysql_num_rows($result);
 
 	for($i=0; $i<$numrows; $i++)
 	{
@@ -257,7 +257,7 @@ else
 
 	$query="SELECT ninupdates_reports.regions, ninupdates_reports.reportdaterfc, ninupdates_reports.updateversion FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
 	$result=mysql_query($query);
-	$numrows=mysql_numrows($result);
+	$numrows=mysql_num_rows($result);
 	if($numrows==0)
 	{
 		writeNormalLog("REPORT ROW NOT FOUND. RESULT: 302");

@@ -15,7 +15,7 @@ function do_systems_soap()
 
 		$query="SELECT system FROM ninupdates_consoles";
 		$result=mysql_query($query);
-		$numrows=mysql_numrows($result);
+		$numrows=mysql_num_rows($result);
 
 		for($i=0; $i<$numrows; $i++)
 		{
@@ -69,7 +69,7 @@ function dosystem($console)
 		
 		$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE  ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 		$result=mysql_query($query);
-		$numrows=mysql_numrows($result);
+		$numrows=mysql_num_rows($result);
 
 		$initialscan = 0;
 		if($numrows==0)$initialscan = 1;
@@ -79,7 +79,7 @@ function dosystem($console)
 
 		$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 		$result=mysql_query($query);
-		$numrows=mysql_numrows($result);
+		$numrows=mysql_num_rows($result);
 		if($numrows==0)
 		{
 			$query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
@@ -132,7 +132,7 @@ function initialize()
 
 	$query="SELECT deviceid FROM ninupdates_consoles WHERE system='".$system."'";
 	$result=mysql_query($query);
-	$numrows=mysql_numrows($result);
+	$numrows=mysql_num_rows($result);
 
 	if($numrows)
 	{
@@ -315,14 +315,9 @@ function compare_titlelists()
 {
 	global $system, $difflogbuf, $region, $sysupdate_systitlehashes;
 
-	if($system!="ctr")
-	{
-		return titlelist_dbupdate();
-	}
-
 	$query="SELECT ninupdates_systitlehashes.titlehash FROM ninupdates_reports, ninupdates_consoles, ninupdates_systitlehashes WHERE ninupdates_systitlehashes.reportid=ninupdates_reports.id && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' && ninupdates_systitlehashes.region='".$region."' && ninupdates_reports.log='report' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
 	$result=mysql_query($query);
-	$numrows=mysql_numrows($result);
+	$numrows=mysql_num_rows($result);
 
 	if($numrows==0)
 	{
@@ -394,7 +389,7 @@ function main($reg)
 
 	$query = "SELECT ninupdates_titles.version FROM ninupdates_titles, ninupdates_consoles WHERE ninupdates_titles.region='".$region."' && ninupdates_titles.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."'";
 	$result=mysql_query($query);
-	$numrows=mysql_numrows($result);
+	$numrows=mysql_num_rows($result);
 
 	if($numrows==0 && $newtotal_titles>0)
 	{

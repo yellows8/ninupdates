@@ -44,7 +44,7 @@ function diffinsert_main()
 
 	$query = "SELECT ninupdates_reports.curdate, ninupdates_reports.id FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$arg_difflog."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
 	$result=mysql_query($query);
-	$numrows=mysql_numrows($result);
+	$numrows=mysql_num_rows($result);
 	$reportid = 0;
 
 	if($numrows)
