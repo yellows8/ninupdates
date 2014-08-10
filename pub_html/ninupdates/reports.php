@@ -246,6 +246,8 @@ if($reportdate=="")
 }
 else
 {
+	$con.= "$sitecfg_reportupdatepage_header";
+
 	$con.= "<a href=\"reports.php\">Homepage</a> -> $report_titletext<hr><br/><br/>\n";
 
 	$con.= "<table border=\"1\">
@@ -316,6 +318,7 @@ else
 	$con.= "</table><br />\n";
 	$con.= "Request timestamp: $reportdaterfc<br /><br />\n";
 	if($updateversion=="N/A")$con.= "Set system <a href=\"reports.php?date=$reportdate&sys=$system&setver=1\">version.</a>";
+	$con.= "$sitecfg_reportupdatepage_footer";
 	$con.= "</body></html>";
 }
 

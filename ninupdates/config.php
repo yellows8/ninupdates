@@ -24,6 +24,8 @@ if(!isset($sitecfg_sshhost))$sitecfg_sshhost = "";
 if(!isset($sitecfg_logplainhttp200))$sitecfg_logplainhttp200 = 0;
 if(!isset($sitecfg_homepage_header))$sitecfg_homepage_header = "";
 if(!isset($sitecfg_homepage_footer))$sitecfg_homepage_footer = "";
+if(!isset($sitecfg_reportupdatepage_header))$sitecfg_reportupdatepage_header = "";
+if(!isset($sitecfg_reportupdatepage_footer))$sitecfg_reportupdatepage_footer = "";
 
 function appendmsg_tofile($msg, $filename)
 {
