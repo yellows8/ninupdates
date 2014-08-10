@@ -276,11 +276,11 @@ for($i=0; $i<$numrows; $i++)
 	$titlelist_array[$i][0] = $titleid;
 	if($genwiki!="" || $gencsv!="")
 	{
-		$titlelist_array[$i][1] = $regtext;
+		$titlelist_array[$i][1] = $regionid;
 	}
 	else
 	{
-		$titlelist_array[$i][1] = $regionid;
+		$titlelist_array[$i][1] = $regtext;
 	}
 	$titlelist_array[$i][2] = $desctext;
 	$titlelist_array[$i][3] = $versiontext;
