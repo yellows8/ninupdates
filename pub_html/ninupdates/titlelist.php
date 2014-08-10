@@ -351,6 +351,25 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="" && $soapquery=="")
 {
 	$con.= "<br />\n";
 	$con.= "Total titles sizes: $updatesize<br />\n";
+
+	if($region!="")
+	{
+		$hashval = "";
+
+		$query="SELECT ninupdates_systitlehashes.titlehash FROM ninupdates_reports, ninupdates_consoles, ninupdates_systitlehashes WHERE ninupdates_systitlehashes.reportid=ninupdates_reports.id && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' && ninupdates_systitlehashes.region='".$region."' && ninupdates_reports.log='report' && ninupdates_reports.reportdate='".$reportdate."'";
+		$result=mysql_query($query);
+		$numrows=mysql_num_rows($result);
+
+		if($numrows>0)
+		{
+			$row = mysql_fetch_row($result);
+			$hashval = $row[0];
+		}
+
+		if($hashval===FALSE || $hashval=="")$hashval = "N/A";
+
+		$con.= "<br/>SOAP TitleHash: $hashval<br/>\n";
+	}
 }
 
 if($genwiki=="" && $gencsv=="")$con .= "</body></html>";
