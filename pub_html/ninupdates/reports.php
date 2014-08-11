@@ -248,7 +248,7 @@ else
 {
 	$con.= "$sitecfg_reportupdatepage_header";
 
-	$con.= "<a href=\"reports.php\">Homepage</a> -> $report_titletext<hr><br/><br/>\n";
+	$con.= "$sitecfg_sitenav_header<a href=\"reports.php\">Homepage</a> -> $report_titletext<hr><br/><br/>\n";
 
 	$con.= "<table border=\"1\">
 <tr>

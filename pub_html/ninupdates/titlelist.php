@@ -122,7 +122,7 @@ else
 {
 	$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update Titlelist $text</title></head>\n<body>";
 
-	$con.= "<a href=\"reports.php\">Homepage</a> -> ";
+	$con.= "$sitecfg_sitenav_header<a href=\"reports.php\">Homepage</a> -> ";
 	if($reportdate!="")$con.= "<a href=\"reports.php?date=$reportdate&sys=$system\">$reportname report</a> -> ";
 	if($reportdate=="")$con.= "$text ";
 	if($region!="")$con.= "Region $region Titlelist";

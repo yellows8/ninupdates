@@ -15,6 +15,9 @@ $sitecfg_mysqldb_database MySQL database.
 
 $sitecfg_homepage_header Optional HTML to include near the beginning of the "reports.php"(homepage) <body>.
 $sitecfg_homepage_footer Optional HTML to include at the very end of the "reports.php"(homepage) <body>.
+$sitecfg_reportupdatepage_header Optional HTML to include near the beginning of the reports.php report update-pages <body>.
+$sitecfg_reportupdatepage_footer Optional HTML to include at the very end of the reports.php report update-pages <body>.
+$sitecfg_sitenav_header Optional HTML to include immediately before the site navigation-bar.
 */
 
 include_once("site_cfg.php");
@@ -26,6 +29,7 @@ if(!isset($sitecfg_homepage_header))$sitecfg_homepage_header = "";
 if(!isset($sitecfg_homepage_footer))$sitecfg_homepage_footer = "";
 if(!isset($sitecfg_reportupdatepage_header))$sitecfg_reportupdatepage_header = "";
 if(!isset($sitecfg_reportupdatepage_footer))$sitecfg_reportupdatepage_footer = "";
+if(!isset($sitecfg_sitenav_header))$sitecfg_sitenav_header = "";
 
 function appendmsg_tofile($msg, $filename)
 {
