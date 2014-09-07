@@ -130,7 +130,7 @@ function initialize()
 	$regionid = "";
 	$countrycode = "";
 
-	$query="SELECT deviceid FROM ninupdates_consoles WHERE system='".$system."'";
+	$query="SELECT deviceid, platformid FROM ninupdates_consoles WHERE system='".$system."'";
 	$result=mysql_query($query);
 	$numrows=mysql_num_rows($result);
 
@@ -138,6 +138,12 @@ function initialize()
 	{
 		$row = mysql_fetch_row($result);
 		$deviceid = $row[0];
+		$platformid = $row[1];
+
+		if($platformid != NULL && $platformid != "")
+		{
+			$deviceid = ($platformid << 32) | rand(0, 0xffffffff);
+		}
 	}
 	else
 	{
