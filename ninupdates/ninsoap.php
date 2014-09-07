@@ -90,7 +90,7 @@ function dosystem($console)
 			$query = "INSERT INTO ninupdates_reports (reportdate, curdate, systemid, log, regions, updateversion, reportdaterfc, initialscan) VALUES ('".$sysupdate_timestamp."','".$dbcurdate."',$systemid,'report','".$sysupdate_regions."','".$updateversion."','".$soap_timestamp."',$initialscan)";
 			$result=mysql_query($query);
 			$reportid = mysql_insert_id();
-			echo "query $query\n";
+			//echo "query $query\n";
 
 			$region = strtok($sysupdate_regions, ",");
 			while($region!==FALSE)
