@@ -233,7 +233,6 @@ function send_httprequest($url)
 
 		curl_setopt($curl_handle, CURLOPT_SSL_VERIFYPEER, 0);
 		curl_setopt($curl_handle, CURLOPT_SSL_VERIFYHOST, 0);
-		curl_setopt($curl_handle, CURLOPT_SSLVERSION, 3);
 	}
 
 	$buf = curl_exec($curl_handle);
