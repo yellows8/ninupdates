@@ -23,7 +23,7 @@ function do_systems_soap()
 				dosystem($row[0]);
 		}
 
-		$query="UPDATE ninupdates_management SET lastscan=now()";
+		$query="UPDATE ninupdates_management SET lastscan='" . date(DATE_RFC822, time()) . "'";
 		$result=mysql_query($query);
 
 		close_curl();

@@ -234,10 +234,7 @@ if($reportdate=="")
 
 	$con.= "</table><br />\n";
 
-	/*$query="SELECT lastscan FROM ninupdates_management";
-	$result=mysql_query($query);
-	$row = mysql_fetch_row($result);
-	$con.= "Last scan UTC datetime: " . $row[0] . "<br /><br />\n";*/
+	$con.= "<iframe src=\"lastscan.php\" width=512 height=64></iframe><br /><br />\n";
 
 	$con.= "RSS feed is available <a href=\"feed.php\">here.</a><br />\n";
 	$con.= "Source code is available <a href=\"https://github.com/yellows8/ninupdates\">here.</a><br />\n";
