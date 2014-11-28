@@ -237,12 +237,19 @@ function send_httprequest($url)
 
 	$buf = curl_exec($curl_handle);
 
+	$errorstr = "";
+
 	$httpstat = curl_getinfo($curl_handle, CURLINFO_HTTP_CODE);
 	if($buf===FALSE)
 	{
-		$buf = "HTTP request failed.<br>\n";
+		$errorstr = "HTTP request failed: " . curl_error ($curl_handle);
 		$httpstat = "0";
-	} else if($httpstat!="200")$buf = "HTTP error $httpstat<br>\n";
+	} else if($httpstat!="200")$errorstr = "HTTP error $httpstat: " . curl_error ($curl_handle);
+
+	if($errorstr!="")$buf = $errorstr;
+
+	$query="UPDATE ninupdates_management SET lastreqstatus='" . $errorstr . "'";
+	$result=mysql_query($query);
 
 	return $buf;
 }
@@ -371,7 +378,7 @@ function main($reg)
 	}
 	else
 	{
-		echo "HTTP error " . $httpstat . ".\n";
+		echo $ret . "\n";
 		return;
 	}
 	

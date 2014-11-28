@@ -234,7 +234,7 @@ if($reportdate=="")
 
 	$con.= "</table><br />\n";
 
-	$con.= "<iframe src=\"lastscan.php\" width=512 height=64></iframe><br /><br />\n";
+	$con.= "<iframe src=\"scanstatus.php\" width=512 height=64></iframe><br /><br />\n";
 
 	$con.= "RSS feed is available <a href=\"feed.php\">here.</a><br />\n";
 	$con.= "Source code is available <a href=\"https://github.com/yellows8/ninupdates\">here.</a><br />\n";
