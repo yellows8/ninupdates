@@ -34,7 +34,7 @@ function do_systems_soap()
 
 function dosystem($console)
 {
-	global $region, $system, $sitecfg_emailhost, $sitecfg_target_email, $sitecfg_httpbase, $sysupdate_available, $soap_timestamp, $dbcurdate, $sysupdate_regions, $sysupdate_timestamp, $sysupdate_systitlehashes;
+	global $region, $system, $sitecfg_emailhost, $sitecfg_target_email, $sitecfg_httpbase, $sitecfg_workdir, $sysupdate_available, $soap_timestamp, $dbcurdate, $sysupdate_regions, $sysupdate_timestamp, $sysupdate_systitlehashes;
 
 	$system = $console;
 	$msgme_message = "";
@@ -118,6 +118,11 @@ function dosystem($console)
 		sendircmsg($msgme_message);
 		echo "Sending email...\n";
         	if(!mail($sitecfg_target_email, "$system SOAP updates", $email_message, "From: ninsoap@$sitecfg_emailhost"))echo "Failed to send mail.\n";
+
+		echo "Writing to the lastupdates_csvurls file...\n";
+		$msg = "$sitecfg_httpbase/titlelist.php?date=".$sysupdate_timestamp."&sys=".$system."&csv=1";
+		$tmp_cmd = "echo '" . $msg . "' >> $sitecfg_workdir/lastupdates_csvurls";
+		system($tmp_cmd);
 	}
 }
 
