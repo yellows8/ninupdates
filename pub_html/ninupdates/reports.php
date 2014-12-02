@@ -165,6 +165,7 @@ if($reportdate=="")
   <th>$reportdate_columntext</th>
   <th>Update Version</th>
   <th>$system_columntext</th>
+  <th>Request timestamp</th>
 </tr>\n";
 //  <th>UTC datetime</th>
 
@@ -178,7 +179,7 @@ if($reportdate=="")
 		$orderquery = "ninupdates_reports.curdate";
 	}
 
-	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY $orderquery";
+	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate, ninupdates_reports.reportdaterfc FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY $orderquery";
 	$result=mysql_query($query);
 	$numrows=mysql_num_rows($result);
 	
@@ -189,6 +190,7 @@ if($reportdate=="")
 		$updateversion = $row[1];
 		$system = $row[2];
 		$curdate = $row[3];
+		$reportdaterfc = $row[4];
 
 		$sys = getsystem_sysname($system);
 
@@ -201,7 +203,7 @@ if($reportdate=="")
 		$con.= "<td><a href=\"".$url."\">$reportdate</a></td>\n";
 		$con.= "<td>".$updateversion."</td>\n";
 		$con.= "<td>".$sys."</td>\n";
-		//$con.= "<td>".$curdate."</td>\n";
+		$con.= "<td>".$reportdaterfc."</td>\n";
 
 		$con.= "</tr>\n";
 	}
