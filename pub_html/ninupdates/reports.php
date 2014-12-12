@@ -240,6 +240,7 @@ if($reportdate=="")
 
 	$con.= "RSS feed is available <a href=\"feed.php\">here.</a><br />\n";
 	$con.= "Source code is available <a href=\"https://github.com/yellows8/ninupdates\">here.</a><br />\n";
+	$con.= "Parsed Nintendo Zone Hotspots data is available <a href=\"3ds_nzonehotspots.php\">here.</a><br />\n";
 
 	$con.= "$sitecfg_homepage_footer</body></html>";
 }
