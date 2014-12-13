@@ -26,6 +26,8 @@ then
 			msg="${msg} ${msg_append}"
 		fi
 
+		msg="${msg}  Old: `cat ${filepath}` New: `cat ${filepath}new`"
+
 		if [ -n "$msg_filepath" ]
 		then
 			echo $msg >> $msg_filepath
