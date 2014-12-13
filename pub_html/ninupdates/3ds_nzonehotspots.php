@@ -36,7 +36,7 @@ $versionquery = "GROUP_CONCAT(DISTINCT ninupdates_titles.version ORDER BY ninupd
 $reportdatequery = "GROUP_CONCAT(DISTINCT ninupdates_reports.reportdate ORDER BY ninupdates_reports.curdate SEPARATOR ','),";
 $updateverquery = "GROUP_CONCAT(DISTINCT ninupdates_reports.updateversion ORDER BY ninupdates_reports.updateversion SEPARATOR ',')";
 
-$query = "SELECT $versionquery $reportdatequery $updateverquery FROM ninupdates_titles, ninupdates_reports WHERE ninupdates_titles.tid=$rowid && ninupdates_reports.id=ninupdates_titles.reportid";
+$query = "SELECT $versionquery $reportdatequery $updateverquery FROM ninupdates_titles, ninupdates_reports WHERE ninupdates_titles.tid=$rowid && ninupdates_titles.region='E' &&  ninupdates_reports.id=ninupdates_titles.reportid";
 $result=mysql_query($query);
 $numrows=mysql_num_rows($result);
 
