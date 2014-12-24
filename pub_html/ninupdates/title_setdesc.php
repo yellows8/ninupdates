@@ -58,6 +58,10 @@ $curdesc
 }
 else
 {
+	echo "Description changing is disabled due to abuse.";
+	writeNormalLog("ATTEMPTED TO CHANGE TITLEDESC, DENIED: $desc. RESULT: 302");
+	return;
+
 	$desc = strip_tags($desc);
 
 	while(1)
