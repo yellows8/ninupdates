@@ -13,7 +13,7 @@ function do_systems_soap()
 	{
 		init_curl();
 
-		$query="SELECT system FROM ninupdates_consoles";
+		$query="SELECT system FROM ninupdates_consoles WHERE enabled!=0 || enabled IS NULL";
 		$result=mysql_query($query);
 		$numrows=mysql_num_rows($result);
 
@@ -101,7 +101,7 @@ function dosystem($console)
 				$region = strtok(",");
 			}
 
-			$query="UPDATE ninupdates_titles SET reportid=$reportid WHERE curdate='".$dbcurdate."'";
+			$query="UPDATE ninupdates_titles SET reportid=$reportid WHERE curdate='".$dbcurdate."' && reportid=0";
 			$result=mysql_query($query);
 		}
 		else
@@ -135,7 +135,7 @@ function initialize()
 	$regionid = "";
 	$countrycode = "";
 
-	$query="SELECT deviceid, platformid FROM ninupdates_consoles WHERE system='".$system."'";
+	$query="SELECT deviceid, platformid, subplatformid FROM ninupdates_consoles WHERE system='".$system."'";
 	$result=mysql_query($query);
 	$numrows=mysql_num_rows($result);
 
@@ -144,10 +144,14 @@ function initialize()
 		$row = mysql_fetch_row($result);
 		$deviceid = $row[0];
 		$platformid = $row[1];
+		$subplatformid = $row[2];
+
+		$platformid = ($platformid << 32);
+		if($subplatformid != NULL && $subplatformid != "")$platformid |= ($subplatformid << 31);
 
 		if($platformid != NULL && $platformid != "")
 		{
-			$deviceid = ($platformid << 32) | rand(0, 0xffffffff);
+			$deviceid = $platformid | rand(0, 0x7fffffff);
 		}
 	}
 	else
@@ -259,78 +263,9 @@ function send_httprequest($url)
 	return $buf;
 }
 
-function parse_soapresp($buf)
-{
-	global $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles, $system, $region, $sysupdate_systitlehashes;
-	$title = $buf;
-	$titleid_pos = 0;
-	$titlever_pos = 0;
-	$titlesize_pos = 0;
-	$titleid = "";
-	$titlever = "";
-	$titlesize = 0;
-	$titlesizetik = "";
-	$titlesizetmd = "";
-	$logbuf="";
-
-	while(($title = strstr($title, "<TitleVersion>")))
-	{
-		$titleid_pos = strpos($title,  "<TitleId>") + 9;
-		$titlever_pos = strpos($title, "<Version>") + 9;
-		$titlever_posend = strpos($title, "</Version>");
-		$titlesize_pos = strpos($title, "<FsSize>") + 8;
-		$titlesize_posend = strpos($title, "</FsSize>");
-		$titlesizetik_pos = strpos($title, "<TicketSize>") + 12;
-		$titlesizetik_posend = strpos($title, "</TicketSize>");
-		$titlesizetmd_pos = strpos($title, "<TMDSize>") + 9;
-		$titlesizetmd_posend = strpos($title, "</TMDSize>");
-
-		if($titlesize_posend===FALSE)
-		{
-			$titlesize_pos = strpos($title, "<RawSize>") + 9;
-			$titlesize_posend = strpos($title, "</RawSize>");
-		}
-
-		if($titleid_pos!==FALSE)$titleid = substr($title, $titleid_pos, 16);
-		if($titlever_posend!==FALSE)$titlever = substr($title, $titlever_pos, $titlever_posend - $titlever_pos);
-		if($titlesize_posend!==FALSE)$titlesize = substr($title, $titlesize_pos, $titlesize_posend - $titlesize_pos);
-		if($titlesizetik_posend!==FALSE)$titlesizetik = substr($title, $titlesizetik_pos, $titlesizetik_posend - $titlesizetik_pos);
-		if($titlesizetmd_posend!==FALSE)$titlesizetmd = substr($title, $titlesizetmd_pos, $titlesizetmd_posend - $titlesizetmd_pos);
-
-		if($titlever_posend!==FALSE)$titlever = intval($titlever);
-		if($titlesize_posend!==FALSE)$titlesize = intval($titlesize);
-
-		if($titleid_pos===FALSE)$titleid="tagsmissing";
-		if($titlever_pos===FALSE || $titlever_posend===FALSE)$titlever = 0;
-		if($titlesize_pos===FALSE || $titlesize_posend===FALSE)$titlesize = 0;
-		if($titlesizetik_pos===FALSE || $titlesizetik_posend===FALSE)$titlesizetik = 0;
-		if($titlesizetmd_pos===FALSE || $titlesizetmd_posend===FALSE)$titlesizetmd = 0;
-
-		$newtitles[] = $titleid;
-		$newtitlesversions[] = $titlever;
-		$newtitles_sizes[] = $titlesize;
-		$newtitles_tiksizes[] = $titlesizetik;
-		$newtitles_tmdsizes[] = $titlesizetmd;
-
-		$newtotal_titles++;
-
-		$title = strstr($title, "</TitleVersion>");
-	}
-
-	$sysupdate_systitlehashes[$region] = "";
-
-	$titlehash_pos = strpos($buf, "<TitleHash>") + 11;
-	$titlehash_posend = strpos($buf, "</TitleHash>");
-	if($titlehash_pos!==FALSE && $titlehash_posend!==FALSE)
-	{
-		$titlehash = substr($buf, $titlehash_pos, $titlehash_posend - $titlehash_pos);
-		$sysupdate_systitlehashes[$region] = $titlehash;
-	}
-}
-
 function compare_titlelists()
 {
-	global $system, $difflogbuf, $region, $sysupdate_systitlehashes;
+	global $system, $region, $sysupdate_systitlehashes;
 
 	$query="SELECT ninupdates_systitlehashes.titlehash FROM ninupdates_reports, ninupdates_consoles, ninupdates_systitlehashes WHERE ninupdates_systitlehashes.reportid=ninupdates_reports.id && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' && ninupdates_systitlehashes.region='".$region."' && ninupdates_reports.log='report' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
 	$result=mysql_query($query);

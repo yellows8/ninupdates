@@ -212,6 +212,75 @@ function diff_titlelists($oldlog, $curdatefn)
 	return 1;
 }
 
+function parse_soapresp($buf)
+{
+	global $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles, $system, $region, $sysupdate_systitlehashes;
+	$title = $buf;
+	$titleid_pos = 0;
+	$titlever_pos = 0;
+	$titlesize_pos = 0;
+	$titleid = "";
+	$titlever = "";
+	$titlesize = 0;
+	$titlesizetik = "";
+	$titlesizetmd = "";
+	$logbuf="";
+
+	while(($title = strstr($title, "<TitleVersion>")))
+	{
+		$titleid_pos = strpos($title,  "<TitleId>") + 9;
+		$titlever_pos = strpos($title, "<Version>") + 9;
+		$titlever_posend = strpos($title, "</Version>");
+		$titlesize_pos = strpos($title, "<FsSize>") + 8;
+		$titlesize_posend = strpos($title, "</FsSize>");
+		$titlesizetik_pos = strpos($title, "<TicketSize>") + 12;
+		$titlesizetik_posend = strpos($title, "</TicketSize>");
+		$titlesizetmd_pos = strpos($title, "<TMDSize>") + 9;
+		$titlesizetmd_posend = strpos($title, "</TMDSize>");
+
+		if($titlesize_posend===FALSE)
+		{
+			$titlesize_pos = strpos($title, "<RawSize>") + 9;
+			$titlesize_posend = strpos($title, "</RawSize>");
+		}
+
+		if($titleid_pos!==FALSE)$titleid = substr($title, $titleid_pos, 16);
+		if($titlever_posend!==FALSE)$titlever = substr($title, $titlever_pos, $titlever_posend - $titlever_pos);
+		if($titlesize_posend!==FALSE)$titlesize = substr($title, $titlesize_pos, $titlesize_posend - $titlesize_pos);
+		if($titlesizetik_posend!==FALSE)$titlesizetik = substr($title, $titlesizetik_pos, $titlesizetik_posend - $titlesizetik_pos);
+		if($titlesizetmd_posend!==FALSE)$titlesizetmd = substr($title, $titlesizetmd_pos, $titlesizetmd_posend - $titlesizetmd_pos);
+
+		if($titlever_posend!==FALSE)$titlever = intval($titlever);
+		if($titlesize_posend!==FALSE)$titlesize = intval($titlesize);
+
+		if($titleid_pos===FALSE)$titleid="tagsmissing";
+		if($titlever_pos===FALSE || $titlever_posend===FALSE)$titlever = 0;
+		if($titlesize_pos===FALSE || $titlesize_posend===FALSE)$titlesize = 0;
+		if($titlesizetik_pos===FALSE || $titlesizetik_posend===FALSE)$titlesizetik = 0;
+		if($titlesizetmd_pos===FALSE || $titlesizetmd_posend===FALSE)$titlesizetmd = 0;
+
+		$newtitles[] = $titleid;
+		$newtitlesversions[] = $titlever;
+		$newtitles_sizes[] = $titlesize;
+		$newtitles_tiksizes[] = $titlesizetik;
+		$newtitles_tmdsizes[] = $titlesizetmd;
+
+		$newtotal_titles++;
+
+		$title = strstr($title, "</TitleVersion>");
+	}
+
+	$sysupdate_systitlehashes[$region] = "";
+
+	$titlehash_pos = strpos($buf, "<TitleHash>") + 11;
+	$titlehash_posend = strpos($buf, "</TitleHash>");
+	if($titlehash_pos!==FALSE && $titlehash_posend!==FALSE)
+	{
+		$titlehash = substr($buf, $titlehash_pos, $titlehash_posend - $titlehash_pos);
+		$sysupdate_systitlehashes[$region] = $titlehash;
+	}
+}
+
 function titlelist_dbupdate()
 {
 	global $dbcurdate, $system, $region, $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles;
@@ -240,7 +309,7 @@ function titlelist_dbupdate()
 			$tid = $row[0];
 		}
 
-		$query = "SELECT id FROM ninupdates_titles WHERE version=".$newtitlesversions[$titlei]." && region='".$region."' && tid=$tid";
+		$query = "SELECT id FROM ninupdates_titles WHERE version=".$newtitlesversions[$titlei]." && region='".$region."' && tid=$tid && systemid=$systemid";
 		$result=mysql_query($query);
 		$numrows=mysql_num_rows($result);
 

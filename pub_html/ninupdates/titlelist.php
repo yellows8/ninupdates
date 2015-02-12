@@ -23,6 +23,7 @@ if(isset($_REQUEST['reg']))$region = mysql_real_escape_string($_REQUEST['reg']);
 if(isset($_REQUEST['soap']))$usesoap = mysql_real_escape_string($_REQUEST['soap']);
 if(isset($_REQUEST['wiki']))$genwiki = mysql_real_escape_string($_REQUEST['wiki']);
 if(isset($_REQUEST['csv']))$gencsv = mysql_real_escape_string($_REQUEST['csv']);
+if(isset($_REQUEST['soapreply']))$soapreply = mysql_real_escape_string($_REQUEST['soapreply']);
 
 if($system=="")
 {
@@ -100,6 +101,28 @@ if($reportdate!="")
 else
 {
 	$text = $sys;
+}
+
+if($soapreply=="1" && $reportdate!="" && $region!="")
+{
+	dbconnection_end();
+
+	$path = "$sitecfg_workdir/soap$system/$region/$reportdate.html.soap";
+	$con = file_get_contents($path);
+
+	if($con!==FALSE)
+	{
+		header("Content-Type: application/xml");
+		echo $con;
+	}
+	else
+	{
+		writeNormalLog("FAILED TO OPEN SOAPREPLY FILE: $path\n");
+		echo "The SOAP reply data for this is not available.\n";
+	}
+
+	return;
+	
 }
 
 if($genwiki!="")
