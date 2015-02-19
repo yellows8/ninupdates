@@ -45,7 +45,7 @@ function sendircmsg($msg)
 	global $system;
 
 	appendmsg_tofile($msg, "msg_yls8ninupdateschan");
-	if($system=="ctr")appendmsg_tofile($msg, "msg3dsdev");
+	if($system=="ctr" || $system=="ktr")appendmsg_tofile($msg, "msg3dsdev");
 }
 
 ?>
