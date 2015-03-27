@@ -17,6 +17,7 @@ $region = "";
 $usesoap = "";
 $genwiki = "";
 $gencsv = "";
+$gentext = "";
 if(isset($_REQUEST['date']))$reportdate = mysql_real_escape_string($_REQUEST['date']);
 if(isset($_REQUEST['sys']))$system = mysql_real_escape_string($_REQUEST['sys']);
 if(isset($_REQUEST['reg']))$region = mysql_real_escape_string($_REQUEST['reg']);
@@ -24,6 +25,9 @@ if(isset($_REQUEST['soap']))$usesoap = mysql_real_escape_string($_REQUEST['soap'
 if(isset($_REQUEST['wiki']))$genwiki = mysql_real_escape_string($_REQUEST['wiki']);
 if(isset($_REQUEST['csv']))$gencsv = mysql_real_escape_string($_REQUEST['csv']);
 if(isset($_REQUEST['soapreply']))$soapreply = mysql_real_escape_string($_REQUEST['soapreply']);
+if(isset($_REQUEST['gentext']))$gentext = mysql_real_escape_string($_REQUEST['gentext']);
+
+if($usesoap!="" && $gentext!="")$gentext = "";
 
 if($system=="")
 {
@@ -153,7 +157,9 @@ else
 	if($usesoap!="")$con.= " SOAP";
 	$con.= "<hr><br/><br/>\n";
 
-	$con.= "<table border=\"1\">
+	if($gentext=="")
+	{
+		$con.= "<table border=\"1\">
 <tr>
   <th>TitleID</th>
   <th>Region</th>
@@ -161,9 +167,10 @@ else
   <th>Title versions</th>
   <th>Update versions</th>\n";
 
-	if($reportdate!="" && $usesoap=="")$con.="  <th>Title status</th>\n";
+		if($reportdate!="" && $usesoap=="")$con.="  <th>Title status</th>\n";
 
-	$con.="</tr>\n";
+		$con.="</tr>\n";
+	}
 }
 
 $titlelist_array = array();
@@ -198,6 +205,8 @@ $query.= " GROUP BY ninupdates_titles.tid, ninupdates_titles.region";
 $result=mysql_query($query);
 $numrows=mysql_num_rows($result);
 $titlelist_array_numentries = $numrows;
+$titlelist_array_updatedtitles = 0;
+$titlelist_array_newtitles = 0;
 $regioncode = "";
 
 $updatesize = 0;
@@ -312,6 +321,7 @@ for($i=0; $i<$numrows; $i++)
 	$titlelist_array[$i][6] = $regioncode;
 }
 
+$count = 0;
 for($i=0; $i<$titlelist_array_numentries; $i++)
 {
 	$titleid = $titlelist_array[$i][0];
@@ -333,9 +343,19 @@ for($i=0; $i<$titlelist_array_numentries; $i++)
 		{
 			$row = mysql_fetch_row($result);
 			$titlestatus = "Changed";
-			if($versions==$row[0])$titlestatus = "New";
+			if($versions==$row[0])
+			{
+				$titlestatus = "New";
+				$titlelist_array_newtitles++;
+			}
+			else
+			{
+				$titlelist_array_updatedtitles++;
+			}
 		}
 	}
+
+	$titlelist_array[$i][7] = $titlestatus;
 
 	if($genwiki!="")
 	{
@@ -348,7 +368,7 @@ for($i=0; $i<$titlelist_array_numentries; $i++)
 	{
 		$con.= "$titleid,$regtext,$versiontext,$updatevers\n";
 	}
-	else
+	else if($gentext=="")
 	{
 		$con.= "<tr>\n";
 		$con.= "<td>$titleid</td>\n";
@@ -361,9 +381,91 @@ for($i=0; $i<$titlelist_array_numentries; $i++)
 	}
 }
 
+if($gentext!="" && $titlelist_array_updatedtitles>0)
+{
+	$con.= "<br />The following titles were updated: ";
+
+	$count = 0;
+	for($i=0; $i<$titlelist_array_numentries; $i++)
+	{
+		$titleid = $titlelist_array[$i][0];
+		$regtext = $titlelist_array[$i][1];
+		$desctext = $titlelist_array[$i][2];
+		$versiontext = $titlelist_array[$i][3];
+		$updatevers = $titlelist_array[$i][4];
+		$versions = $titlelist_array[$i][5];
+		$regioncode = $titlelist_array[$i][6];
+		$titlestatus = $titlelist_array[$i][7];
+
+		if($titlestatus!="Changed")continue;
+
+		if($count==$titlelist_array_updatedtitles-1 && $titlelist_array_updatedtitles>1)$con.= " and ";
+		if(strstr($desctext, "N/A")!==FALSE)
+		{
+			$con.= "$titleid";
+		}
+		else
+		{
+			$con.= "$desctext";
+		}
+		if($region=="")$con.="($regtext)";
+		if($count<$titlelist_array_updatedtitles-1 && $titlelist_array_updatedtitles>1)
+		{
+			$con.= ", ";
+		}
+		else
+		{
+			$con.= ".<br />\n";
+		}
+
+		$count++;
+	}
+}
+
+if($gentext!="" && $titlelist_array_newtitles>0)
+{
+	$con.= "<br />The following new titles were added: ";
+
+	$count = 0;
+	for($i=0; $i<$titlelist_array_numentries; $i++)
+	{
+		$titleid = $titlelist_array[$i][0];
+		$regtext = $titlelist_array[$i][1];
+		$desctext = $titlelist_array[$i][2];
+		$versiontext = $titlelist_array[$i][3];
+		$updatevers = $titlelist_array[$i][4];
+		$versions = $titlelist_array[$i][5];
+		$regioncode = $titlelist_array[$i][6];
+		$titlestatus = $titlelist_array[$i][7];
+
+		if($titlestatus=="Changed")continue;
+
+		if($count==$titlelist_array_newtitles-1 && $titlelist_array_newtitles>1)$con.= " and ";
+		if(strstr($desctext, "N/A")!==FALSE)
+		{
+			$con.= "$titleid";
+		}
+		else
+		{
+			$con.= "$desctext";
+		}
+		if($region=="")$con.="($regtext)";
+		if($count<$titlelist_array_newtitles-1 && $titlelist_array_newtitles>1)
+		{
+			$con.= ", ";
+		}
+		else
+		{
+			$con.= ".<br />\n";
+		}
+
+		$count++;
+	}
+}
+
 if($genwiki=="")
 {
-	if($gencsv=="")$con.= "</table>";
+	if($gencsv=="" && $gentext=="")$con.= "</table>";
 }
 else
 {
