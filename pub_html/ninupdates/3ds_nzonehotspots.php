@@ -15,6 +15,21 @@ db_checkmaintenance(1);
 $reqversion = "";
 if(isset($_REQUEST['version']))$reqversion = mysql_real_escape_string($_REQUEST['version']);
 
+$query="SELECT id FROM ninupdates_consoles WHERE system='ctr'";
+$result=mysql_query($query);
+
+$numrows=mysql_num_rows($result);
+if($numrows==0)
+{
+	dbconnection_end();
+	header("Location: reports.php");
+	writeNormalLog("NZONE: FAILED TO FIND CTR SYSTEM. RESULT: 302");
+	exit;
+}
+
+$row = mysql_fetch_row($result);
+$system = $row[0];
+
 $query = "SELECT id FROM ninupdates_titleids WHERE titleid='000400DB00010502'";
 $result=mysql_query($query);
 $numrows=mysql_num_rows($result);
@@ -36,7 +51,7 @@ $versionquery = "GROUP_CONCAT(DISTINCT ninupdates_titles.version ORDER BY ninupd
 $reportdatequery = "GROUP_CONCAT(DISTINCT ninupdates_reports.reportdate ORDER BY ninupdates_reports.curdate SEPARATOR ','),";
 $updateverquery = "GROUP_CONCAT(DISTINCT ninupdates_reports.updateversion ORDER BY ninupdates_reports.updateversion SEPARATOR ',')";
 
-$query = "SELECT $versionquery $reportdatequery $updateverquery FROM ninupdates_titles, ninupdates_reports WHERE ninupdates_titles.tid=$rowid && ninupdates_titles.region='E' &&  ninupdates_reports.id=ninupdates_titles.reportid";
+$query = "SELECT $versionquery $reportdatequery $updateverquery FROM ninupdates_titles, ninupdates_reports WHERE ninupdates_titles.tid=$rowid && ninupdates_titles.region='E' && ninupdates_titles.systemid=$system && ninupdates_reports.id=ninupdates_titles.reportid";
 $result=mysql_query($query);
 $numrows=mysql_num_rows($result);
 
