@@ -316,6 +316,51 @@ else
 	$con.= "<td><a href=\"$url&amp;soap=1\">$reportdate</a> <a href=\"$url&amp;soap=1&amp;wiki=1\">Wiki</a> <a href=\"$url&amp;soap=1&amp;csv=1\">CSV</a></td>\n";
 
 	$con.= "</table><br />\n";
+
+	$changelog_count = 0;
+
+	$region = strtok($regions, ",");
+	while($region!==FALSE)
+	{
+		if(strlen($region)>1)break;
+
+		$query="SELECT ninupdates_officialchangelog_pages.url FROM ninupdates_officialchangelog_pages, ninupdates_consoles, ninupdates_regions WHERE ninupdates_consoles.system='".$system."' && ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id && ninupdates_officialchangelog_pages.regionid=ninupdates_regions.id && ninupdates_regions.regioncode='".$region."'";
+		$result=mysql_query($query);
+		$numrows=mysql_num_rows($result);
+		if($numrows>0)
+		{
+			$changelog_count++;
+
+			$row = mysql_fetch_row($result);
+			$pageurl = $row[0];
+
+			if($changelog_count==1)
+			{
+				$con.= "Official changelog(s):<br /><br />\n";
+				$con.= "<table border=\"1\">
+<tr>
+  <th>Region</th>
+  <th>Official page URL</th>
+</tr>\n";
+			}
+
+			$con.= "<tr>\n";
+			$con.= "<td>$region</td>\n";
+			$con.= "<td><a href=\"$pageurl\">Page link</a></td>\n";
+		}
+
+		$region = strtok(",");
+	}
+
+	if($changelog_count==0)
+	{
+		$con.= "Official changelog(s): N/A.<br /><br />\n";
+	}
+	else
+	{
+		$con.= "</table><br />\n";
+	}
+
 	$con.= "Request timestamp: $reportdaterfc<br /><br />\n";
 	if($updateversion=="N/A")$con.= "Set system <a href=\"reports.php?date=$reportdate&sys=$system&setver=1\">version.</a>";
 	$con.= "$sitecfg_reportupdatepage_footer";
