@@ -257,7 +257,7 @@ else
   <th>Titlelist</th>
 </tr>\n";
 
-	$query="SELECT ninupdates_reports.regions, ninupdates_reports.reportdaterfc, ninupdates_reports.updateversion FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
+	$query="SELECT ninupdates_reports.regions, ninupdates_reports.reportdaterfc, ninupdates_reports.updateversion, ninupdates_reports.id FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
 	$result=mysql_query($query);
 	$numrows=mysql_num_rows($result);
 	if($numrows==0)
@@ -274,6 +274,7 @@ else
 	$regions = $row[0];
 	$reportdaterfc = $row[1];
 	$updateversion = $row[2];
+	$reportid = $row[3];
 
 	if(strlen($regions)==0)
 	{
@@ -324,7 +325,7 @@ else
 	{
 		if(strlen($region)>1)break;
 
-		$query="SELECT ninupdates_officialchangelog_pages.url FROM ninupdates_officialchangelog_pages, ninupdates_consoles, ninupdates_regions WHERE ninupdates_consoles.system='".$system."' && ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id && ninupdates_officialchangelog_pages.regionid=ninupdates_regions.id && ninupdates_regions.regioncode='".$region."'";
+		$query="SELECT ninupdates_officialchangelog_pages.url, ninupdates_officialchangelog_pages.id FROM ninupdates_officialchangelog_pages, ninupdates_consoles, ninupdates_regions WHERE ninupdates_consoles.system='".$system."' && ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id && ninupdates_officialchangelog_pages.regionid=ninupdates_regions.id && ninupdates_regions.regioncode='".$region."'";
 		$result=mysql_query($query);
 		$numrows=mysql_num_rows($result);
 		if($numrows>0)
@@ -333,6 +334,7 @@ else
 
 			$row = mysql_fetch_row($result);
 			$pageurl = $row[0];
+			$pageid = $row[1];
 
 			if($changelog_count==1)
 			{
@@ -340,13 +342,29 @@ else
 				$con.= "<table border=\"1\">
 <tr>
   <th>Region</th>
-  <th>Official page URL</th>
+  <th>Page URL</th>
+  <th>Changelog text</th>
 </tr>\n";
 			}
+
+			$display_html = "";
+
+			$query = "SELECT display_html FROM ninupdates_officialchangelogs WHERE pageid=$pageid && reportid=$reportid";
+			$result=mysql_query($query);
+			$numrows=mysql_num_rows($result);
+			if($numrows>0)
+			{
+				$row = mysql_fetch_row($result);
+				$display_html = $row[0];
+			}
+
+			if($display_html===FALSE)$display_html = "";
+			if($display_html=="")$display_html = "N/A";
 
 			$con.= "<tr>\n";
 			$con.= "<td>$region</td>\n";
 			$con.= "<td><a href=\"$pageurl\">Page link</a></td>\n";
+			$con.= "<td>$display_html</td>\n";
 		}
 
 		$region = strtok(",");

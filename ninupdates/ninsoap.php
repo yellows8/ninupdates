@@ -3,7 +3,7 @@
 include_once("config.php");
 include_once("logs.php");
 include_once("db.php");
-include_once("get_sysupdateversion.php");
+include_once("get_officialchangelog.php");
 
 do_systems_soap();
 
@@ -117,28 +117,24 @@ function dosystem($console)
 
 		$pos = 0;
 		$len = strlen($sysupdate_regions);
-		$found = 0;
 
 		while($pos < $len)
 		{
 			$region = substr($sysupdate_regions, $pos, 1);
 
-			$query="SELECT ninupdates_officialchangelog_pages.url FROM ninupdates_officialchangelog_pages, ninupdates_consoles, ninupdates_regions WHERE ninupdates_consoles.system='".$system."' && ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id && ninupdates_officialchangelog_pages.regionid=ninupdates_regions.id && ninupdates_regions.regioncode='".$region."'";
+			$query="SELECT ninupdates_officialchangelog_pages.url, ninupdates_officialchangelog_pages.id FROM ninupdates_officialchangelog_pages, ninupdates_consoles, ninupdates_regions WHERE ninupdates_consoles.system='".$system."' && ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id && ninupdates_officialchangelog_pages.regionid=ninupdates_regions.id && ninupdates_regions.regioncode='".$region."'";
 			$result=mysql_query($query);
 			$numrows=mysql_num_rows($result);
 			if($numrows!=0)
 			{
 				$row = mysql_fetch_row($result);
 				$pageurl = $row[0];
+				$pageid = $row[1];
 
 				echo "Running get_ninsite_latest_sysupdatever() with system=$system and region=$region...\n";
 
-				get_ninsite_latest_sysupdatever($sysupdate_timestamp, $system, $pageurl);
-
-				$found = 1;
+				get_ninsite_changelog($sysupdate_timestamp, $system, $pageurl, $pageid);
 			}
-
-			if($found)break;
 
 			$pos++;
 			if($pos >= $len)break;
