@@ -72,6 +72,8 @@ function send_httprequest_getchangelog($url)
 
 function getofficalchangelog_writechangelog($reportdate, $pageid, $reportid, $changelog)
 {
+	global $mysqldb;
+
 	getofficalchangelog_writelog("Changelog from site, which will be written into a mysql row, for pageid=$pageid and reportid=$reportid: $changelog", 1, $reportdate);
 
 	$display_html = "";
@@ -99,49 +101,49 @@ function getofficalchangelog_writechangelog($reportdate, $pageid, $reportid, $ch
 	}
 
 	$query="SELECT id FROM ninupdates_officialchangelogs WHERE pageid=$pageid && reportid=$reportid";
-	$result=mysql_query($query);
+	$result=mysqli_query($mysqldb, $query);
 
-	$numrows=mysql_num_rows($result);
+	$numrows=mysqli_num_rows($result);
 	if($numrows>0)
 	{
 		$query="UPDATE ninupdates_officialchangelogs SET ninsite_html='".$changelog."', display_html='".$display_html."', wiki_text='".$wiki_text."' WHERE pageid=$pageid && reportid=$reportid";
-		$result=mysql_query($query);
+		$result=mysqli_query($mysqldb, $query);
 	}
 	else
 	{
 		$query = "INSERT INTO ninupdates_officialchangelogs (pageid, reportid, ninsite_html, display_html, wiki_text) VALUES ($pageid, $reportid, '".$changelog."', '".$display_html."', '".$wiki_text."')";
-		$result=mysql_query($query);
+		$result=mysqli_query($mysqldb, $query);
 	}
 }
 
 function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 {
-	global $httpstat_getchangelog;
+	global $mysqldb, $httpstat_getchangelog;
 
 	$query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
-	$result=mysql_query($query);
+	$result=mysqli_query($mysqldb, $query);
 
-	$numrows=mysql_num_rows($result);
+	$numrows=mysqli_num_rows($result);
 	if($numrows==0)
 	{
 		echo getofficalchangelog_writelog("The specified system is invalid.", 0, $reportdate);
 		return 1;
 	}
 
-	$row = mysql_fetch_row($result);
+	$row = mysqli_fetch_row($result);
 	$systemid = $row[0];
 
 	$query="SELECT updateversion, id FROM ninupdates_reports WHERE reportdate='".$reportdate."' && systemid=$systemid";
-	$result=mysql_query($query);
+	$result=mysqli_query($mysqldb, $query);
 
-	$numrows=mysql_num_rows($result);
+	$numrows=mysqli_num_rows($result);
 	if($numrows==0)
 	{
 		getofficalchangelog_writelog("The specified report was not found.", 0, $reportdate);
 		return 2;
 	}
 
-	$row = mysql_fetch_row($result);
+	$row = mysqli_fetch_row($result);
 	$updateversion = $row[0];
 	$reportid = $row[1];
 
@@ -220,27 +222,27 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 					}
 				}
 			}
-			if($changelog!==FALSE)$changelog = mysql_real_escape_string($changelog);
+			if($changelog!==FALSE)$changelog = mysqli_real_escape_string($mysqldb, $changelog);
 
 			$strdata = strtok($str, " ");
 			$strdata = strtok(" ");
 
 			if(ctype_alpha($strdata[strlen($strdata)-1]) === TRUE)$strdata = substr($strdata, 0, strlen($strdata)-1);
-			mysql_real_escape_string($strdata);
+			mysqli_real_escape_string($mysqldb, $strdata);
 			echo "Version from site: $strdata\n";
 
 			if($updateversion != $strdata)
 			{
 				$query="SELECT id FROM ninupdates_reports WHERE systemid=$systemid && updateversion='".$strdata."'";
-				$result=mysql_query($query);
+				$result=mysqli_query($mysqldb, $query);
 
-				$numrows=mysql_num_rows($result);
+				$numrows=mysqli_num_rows($result);
 
 				if($numrows==0)
 				{
 					echo "Updating report updateversion...\n";
 					$query="UPDATE ninupdates_reports SET updateversion='".$strdata."' WHERE reportdate='".$reportdate."' && systemid=$systemid";
-					$result=mysql_query($query);
+					$result=mysqli_query($mysqldb, $query);
 
 					getofficalchangelog_writelog("Set the updateversion for report=$reportdate and system=$system to: $strdata.", 1, $reportdate);
 

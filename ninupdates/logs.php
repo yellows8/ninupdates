@@ -283,49 +283,49 @@ function parse_soapresp($buf)
 
 function titlelist_dbupdate()
 {
-	global $dbcurdate, $system, $region, $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles;
+	global $mysqldb, $dbcurdate, $system, $region, $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles;
 
 	$titles_added = 0;
 
 	$query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
-	$result=mysql_query($query);
-	$row = mysql_fetch_row($result);
+	$result=mysqli_query($mysqldb, $query);
+	$row = mysqli_fetch_row($result);
 	$systemid = $row[0];
 
 	for($titlei=0; $titlei<$newtotal_titles; $titlei++)
 	{
 		$query = "SELECT id FROM ninupdates_titleids WHERE titleid='".$newtitles[$titlei]."'";
-		$result=mysql_query($query);
-		$numrows=mysql_num_rows($result);
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
 		if($numrows==0)
 		{
 			$query = "INSERT INTO ninupdates_titleids (titleid) VALUES ('".$newtitles[$titlei]."')";
-			$result=mysql_query($query);
-			$tid = mysql_insert_id();
+			$result=mysqli_query($mysqldb, $query);
+			$tid = mysqli_insert_id($mysqldb);
 		}
 		else
 		{
-			$row = mysql_fetch_row($result);
+			$row = mysqli_fetch_row($result);
 			$tid = $row[0];
 		}
 
 		$query = "SELECT id FROM ninupdates_titles WHERE version=".$newtitlesversions[$titlei]." && region='".$region."' && tid=$tid && systemid=$systemid";
-		$result=mysql_query($query);
-		$numrows=mysql_num_rows($result);
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
 
 		if($numrows==0)
 		{
 			$query = "INSERT INTO ninupdates_titles (tid, version, fssize, tmdsize, tiksize, systemid, region, curdate, reportid) VALUES ('".$tid."','".$newtitlesversions[$titlei]."','".$newtitles_sizes[$titlei]."','".$newtitles_tmdsizes[$titlei]."','".$newtitles_tiksizes[$titlei]."',$systemid,'".$region."','".$dbcurdate."',0)";
-			$result=mysql_query($query);
+			$result=mysqli_query($mysqldb, $query);
 
 			$titles_added++;
 		}
 		else
 		{
-			$row = mysql_fetch_row($result);
+			$row = mysqli_fetch_row($result);
 			$id = $row[0];
 			$query="UPDATE ninupdates_titles SET fssize='".$newtitles_sizes[$titlei]."', tmdsize='".$newtitles_tmdsizes[$titlei]."', tiksize='".$newtitles_tiksizes[$titlei]."' WHERE id=$id";
-			$result=mysql_query($query);
+			$result=mysqli_query($mysqldb, $query);
 		}
 	}
 
@@ -334,10 +334,12 @@ function titlelist_dbupdate()
 
 function getsystem_sysname($sys)
 {
-	$query="SELECT sysname FROM ninupdates_consoles WHERE system='".$sys."'";
-	$result=mysql_query($query);
+	global $mysqldb;
 
-	$numrows=mysql_num_rows($result);
+	$query="SELECT sysname FROM ninupdates_consoles WHERE system='".$sys."'";
+	$result=mysqli_query($mysqldb, $query);
+
+	$numrows=mysqli_num_rows($result);
 	if($numrows==0)
 	{
 		dbconnection_end();
@@ -346,7 +348,7 @@ function getsystem_sysname($sys)
 		exit;
 	}
 
-	$row = mysql_fetch_row($result);
+	$row = mysqli_fetch_row($result);
 	return $row[0];
 }
 

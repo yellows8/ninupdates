@@ -11,12 +11,12 @@ if($argc<7)
 
 dbconnection_start();
 
-$system = mysql_real_escape_string($argv[1]);
-$sysname = mysql_real_escape_string($argv[2]);
-$clientcertfn = mysql_real_escape_string($argv[3]);
-$clientprivfn = mysql_real_escape_string($argv[4]);
-$nushttpsurl = mysql_real_escape_string($argv[5]);
-$platformid = mysql_real_escape_string($argv[6]);
+$system = mysqli_real_escape_string($mysqldb, $argv[1]);
+$sysname = mysqli_real_escape_string($mysqldb, $argv[2]);
+$clientcertfn = mysqli_real_escape_string($mysqldb, $argv[3]);
+$clientprivfn = mysqli_real_escape_string($mysqldb, $argv[4]);
+$nushttpsurl = mysqli_real_escape_string($mysqldb, $argv[5]);
+$platformid = mysqli_real_escape_string($mysqldb, $argv[6]);
 
 $path = "$sitecfg_workdir/soap$system";
 
@@ -30,7 +30,7 @@ for($i=0; $i<strlen($regions); $i++)
 }
 
 $query = "INSERT INTO ninupdates_consoles (system, sysname, clientcertfn, clientprivfn, nushttpsurl, platformid) VALUES ('".$system."','".$sysname."','".$clientcertfn."','".$clientprivfn."','".$nushttpsurl."','".$platformid."')";
-$result=mysql_query($query);
+$result=mysqli_query($mysqldb, $query);
 
 dbconnection_end();
 

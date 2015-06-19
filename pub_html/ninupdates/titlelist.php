@@ -17,15 +17,16 @@ $region = "";
 $usesoap = "";
 $genwiki = "";
 $gencsv = "";
+$soapreply = "";
 $gentext = "";
-if(isset($_REQUEST['date']))$reportdate = mysql_real_escape_string($_REQUEST['date']);
-if(isset($_REQUEST['sys']))$system = mysql_real_escape_string($_REQUEST['sys']);
-if(isset($_REQUEST['reg']))$region = mysql_real_escape_string($_REQUEST['reg']);
-if(isset($_REQUEST['soap']))$usesoap = mysql_real_escape_string($_REQUEST['soap']);
-if(isset($_REQUEST['wiki']))$genwiki = mysql_real_escape_string($_REQUEST['wiki']);
-if(isset($_REQUEST['csv']))$gencsv = mysql_real_escape_string($_REQUEST['csv']);
-if(isset($_REQUEST['soapreply']))$soapreply = mysql_real_escape_string($_REQUEST['soapreply']);
-if(isset($_REQUEST['gentext']))$gentext = mysql_real_escape_string($_REQUEST['gentext']);
+if(isset($_REQUEST['date']))$reportdate = mysqli_real_escape_string($mysqldb, $_REQUEST['date']);
+if(isset($_REQUEST['sys']))$system = mysqli_real_escape_string($mysqldb, $_REQUEST['sys']);
+if(isset($_REQUEST['reg']))$region = mysqli_real_escape_string($mysqldb, $_REQUEST['reg']);
+if(isset($_REQUEST['soap']))$usesoap = mysqli_real_escape_string($mysqldb, $_REQUEST['soap']);
+if(isset($_REQUEST['wiki']))$genwiki = mysqli_real_escape_string($mysqldb, $_REQUEST['wiki']);
+if(isset($_REQUEST['csv']))$gencsv = mysqli_real_escape_string($mysqldb, $_REQUEST['csv']);
+if(isset($_REQUEST['soapreply']))$soapreply = mysqli_real_escape_string($mysqldb, $_REQUEST['soapreply']);
+if(isset($_REQUEST['gentext']))$gentext = mysqli_real_escape_string($mysqldb, $_REQUEST['gentext']);
 
 if($usesoap!="" && $gentext!="")$gentext = "";
 
@@ -47,15 +48,15 @@ if($genwiki=="" && $gencsv=="")
 }
 
 $query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
-$result=mysql_query($query);
-$row = mysql_fetch_row($result);
+$result=mysqli_query($mysqldb, $query);
+$row = mysqli_fetch_row($result);
 $systemid = $row[0];
 
 if($region!="")
 {
 	$query="SELECT id FROM ninupdates_regions WHERE regioncode='".$region."'";
-	$result=mysql_query($query);
-	$numrows=mysql_num_rows($result);
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
 
 	if($numrows==0)
 	{
@@ -75,8 +76,8 @@ $reportname = "";
 if($reportdate!="")
 {
 	$query="SELECT id, updateversion, curdate FROM ninupdates_reports WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_reports.systemid=$systemid && ninupdates_reports.log='report'";
-	$result=mysql_query($query);
-	$numrows=mysql_num_rows($result);
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
 
 	if($numrows==0)
 	{
@@ -87,7 +88,7 @@ if($reportdate!="")
 	}
 	else
 	{
-		$row = mysql_fetch_row($result);
+		$row = mysqli_fetch_row($result);
 		if($row[1]=="N/A")
 		{
 			$text = "$sys $reportdate";
@@ -202,8 +203,8 @@ if($regionquery!="")$query.= $regionquery;
 
 $query.= " GROUP BY ninupdates_titles.tid, ninupdates_titles.region";
 
-$result=mysql_query($query);
-$numrows=mysql_num_rows($result);
+$result=mysqli_query($mysqldb, $query);
+$numrows=mysqli_num_rows($result);
 $titlelist_array_numentries = $numrows;
 $titlelist_array_updatedtitles = 0;
 $titlelist_array_newtitles = 0;
@@ -212,7 +213,7 @@ $regioncode = "";
 $updatesize = 0;
 for($i=0; $i<$numrows; $i++)
 {
-	$row = mysql_fetch_row($result);
+	$row = mysqli_fetch_row($result);
 	$titleid = $row[0];
 	$desctext = $row[1];
 	$versions = $row[2];
@@ -338,10 +339,10 @@ for($i=0; $i<$titlelist_array_numentries; $i++)
 		$titlestatus = "N/A";
 
 		$query = "SELECT MIN(ninupdates_titles.version) FROM ninupdates_titles, ninupdates_titleids WHERE ninupdates_titles.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_titleids.titleid='$titleid' && ninupdates_titles.region='$regioncode'";
-		$result=mysql_query($query);
-		if(mysql_num_rows($result)>0)
+		$result=mysqli_query($mysqldb, $query);
+		if(mysqli_num_rows($result)>0)
 		{
-			$row = mysql_fetch_row($result);
+			$row = mysqli_fetch_row($result);
 			$titlestatus = "Changed";
 			if($versions==$row[0])
 			{
@@ -482,12 +483,12 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="" && $soapquery=="")
 		$hashval = "";
 
 		$query="SELECT ninupdates_systitlehashes.titlehash FROM ninupdates_reports, ninupdates_consoles, ninupdates_systitlehashes WHERE ninupdates_systitlehashes.reportid=ninupdates_reports.id && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' && ninupdates_systitlehashes.region='".$region."' && ninupdates_reports.log='report' && ninupdates_reports.reportdate='".$reportdate."'";
-		$result=mysql_query($query);
-		$numrows=mysql_num_rows($result);
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
 
 		if($numrows>0)
 		{
-			$row = mysql_fetch_row($result);
+			$row = mysqli_fetch_row($result);
 			$hashval = $row[0];
 		}
 

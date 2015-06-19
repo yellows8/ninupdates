@@ -16,11 +16,11 @@ $system = "";
 $setver = "";
 $setsysver = "";
 $order = "";
-if(isset($_REQUEST['date']))$reportdate = mysql_real_escape_string($_REQUEST['date']);
-if(isset($_REQUEST['sys']))$system = mysql_real_escape_string($_REQUEST['sys']);
-if(isset($_REQUEST['setver']))$setver = mysql_real_escape_string($_REQUEST['setver']);
-if(isset($_REQUEST['setsysver']))$setsysver = mysql_real_escape_string($_POST['setsysver']);
-if(isset($_REQUEST['order']))$order = mysql_real_escape_string($_REQUEST['order']);
+if(isset($_REQUEST['date']))$reportdate = mysqli_real_escape_string($mysqldb, $_REQUEST['date']);
+if(isset($_REQUEST['sys']))$system = mysqli_real_escape_string($mysqldb, $_REQUEST['sys']);
+if(isset($_REQUEST['setver']))$setver = mysqli_real_escape_string($mysqldb, $_REQUEST['setver']);
+if(isset($_REQUEST['setsysver']))$setsysver = mysqli_real_escape_string($mysqldb, $_POST['setsysver']);
+if(isset($_REQUEST['order']))$order = mysqli_real_escape_string($mysqldb, $_REQUEST['order']);
 
 if(($reportdate!="" && $system=="") || ($system!="" && $reportdate==""))
 {
@@ -40,8 +40,8 @@ if($reportdate!="" && $system!="")
 	if($setver=="1" || $setsysver!="")
 	{
 		$query="SELECT updateversion FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
-		$result=mysql_query($query);
-		$numrows=mysql_num_rows($result);
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
 		
 		if($numrows==0)
 		{
@@ -53,7 +53,7 @@ if($reportdate!="" && $system!="")
 			return;
 		}		
 
-		$row = mysql_fetch_row($result);
+		$row = mysqli_fetch_row($result);
 		/*if($row[0]!="N/A")
 		{
 			dbconnection_end();
@@ -91,8 +91,8 @@ if($reportdate!="" && $system!="")
 			if($setsysver!="N/A")
 			{
 				$query = "SELECT updateversion FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updateversion='".$setsysver."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
-				$result=mysql_query($query);
-				$numrows=mysql_num_rows($result);
+				$result=mysqli_query($mysqldb, $query);
+				$numrows=mysqli_num_rows($result);
 			
 				if($numrows!=0)
 				{
@@ -106,7 +106,7 @@ if($reportdate!="" && $system!="")
 			}
 
 			$query = "UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.updateversion='".$setsysver."' WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
-			$result=mysql_query($query);
+			$result=mysqli_query($mysqldb, $query);
 			dbconnection_end();
 
 			header("Location: reports.php?date=".$reportdate."&sys=".$system);
@@ -122,15 +122,15 @@ $report_titletext = "";
 if($reportdate!="")
 {
 	$query="SELECT updateversion FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
-	$result=mysql_query($query);
-	$numrows=mysql_num_rows($result);
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
 	if($numrows==0)
 	{
 		$text = "$sys $reportdate report";
 	}
 	else
 	{
-		$row = mysql_fetch_row($result);
+		$row = mysqli_fetch_row($result);
 		if($row[0]=="N/A")
 		{
 			$text = "$sys $reportdate report";
@@ -180,12 +180,12 @@ if($reportdate=="")
 	}
 
 	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate, ninupdates_reports.reportdaterfc FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY $orderquery";
-	$result=mysql_query($query);
-	$numrows=mysql_num_rows($result);
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
 	
 	for($i=0; $i<$numrows; $i++)
 	{
-		$row = mysql_fetch_row($result);
+		$row = mysqli_fetch_row($result);
 		$reportdate = $row[0];
 		$updateversion = $row[1];
 		$system = $row[2];
@@ -216,12 +216,12 @@ if($reportdate=="")
 </tr>\n";
 
 	$query="SELECT DISTINCT ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system";
-	$result=mysql_query($query);
-	$numrows=mysql_num_rows($result);
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
 
 	for($i=0; $i<$numrows; $i++)
 	{
-		$row = mysql_fetch_row($result);
+		$row = mysqli_fetch_row($result);
 		$system = $row[0];
 
 		$sys = getsystem_sysname($system);
@@ -258,8 +258,8 @@ else
 </tr>\n";
 
 	$query="SELECT ninupdates_reports.regions, ninupdates_reports.reportdaterfc, ninupdates_reports.updateversion, ninupdates_reports.id FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
-	$result=mysql_query($query);
-	$numrows=mysql_num_rows($result);
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
 	if($numrows==0)
 	{
 		writeNormalLog("REPORT ROW NOT FOUND. RESULT: 302");
@@ -270,7 +270,7 @@ else
 		return;
 	}
 
-	$row = mysql_fetch_row($result);
+	$row = mysqli_fetch_row($result);
 	$regions = $row[0];
 	$reportdaterfc = $row[1];
 	$updateversion = $row[2];
@@ -326,13 +326,13 @@ else
 		if(strlen($region)>1)break;
 
 		$query="SELECT ninupdates_officialchangelog_pages.url, ninupdates_officialchangelog_pages.id FROM ninupdates_officialchangelog_pages, ninupdates_consoles, ninupdates_regions WHERE ninupdates_consoles.system='".$system."' && ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id && ninupdates_officialchangelog_pages.regionid=ninupdates_regions.id && ninupdates_regions.regioncode='".$region."'";
-		$result=mysql_query($query);
-		$numrows=mysql_num_rows($result);
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
 		if($numrows>0)
 		{
 			$changelog_count++;
 
-			$row = mysql_fetch_row($result);
+			$row = mysqli_fetch_row($result);
 			$pageurl = $row[0];
 			$pageid = $row[1];
 
@@ -350,11 +350,11 @@ else
 			$display_html = "";
 
 			$query = "SELECT display_html FROM ninupdates_officialchangelogs WHERE pageid=$pageid && reportid=$reportid";
-			$result=mysql_query($query);
-			$numrows=mysql_num_rows($result);
+			$result=mysqli_query($mysqldb, $query);
+			$numrows=mysqli_num_rows($result);
 			if($numrows>0)
 			{
-				$row = mysql_fetch_row($result);
+				$row = mysqli_fetch_row($result);
 				$display_html = $row[0];
 			}
 

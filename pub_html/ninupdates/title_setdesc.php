@@ -13,12 +13,12 @@ db_checkmaintenance(1);
 
 $titleid = "";
 $desc = "";
-if(isset($_REQUEST['titleid']))$titleid = mysql_real_escape_string($_REQUEST['titleid']);
-if(isset($_REQUEST['desc']))$desc = mysql_real_escape_string($_REQUEST['desc']);
+if(isset($_REQUEST['titleid']))$titleid = mysqli_real_escape_string($mysqldb, $_REQUEST['titleid']);
+if(isset($_REQUEST['desc']))$desc = mysqli_real_escape_string($mysqldb, $_REQUEST['desc']);
 
 $query = "SELECT id, description FROM ninupdates_titleids WHERE titleid='" . $titleid . "'";
-$result=mysql_query($query);
-$numrows=mysql_num_rows($result);
+$result=mysqli_query($mysqldb, $query);
+$numrows=mysqli_num_rows($result);
 		
 if($numrows==0)
 {
@@ -30,7 +30,7 @@ if($numrows==0)
 	return;
 }
 
-$row = mysql_fetch_row($result);
+$row = mysqli_fetch_row($result);
 $rowid = $row[0];
 $curdesc = $row[1];
 
@@ -58,7 +58,7 @@ $curdesc
 }
 else
 {
-	echo "Description changing is disabled due to abuse.";
+	echo "Description changing is disabled due to abuse.\n";
 	writeNormalLog("ATTEMPTED TO CHANGE TITLEDESC, DENIED: $desc. RESULT: 302");
 	return;
 
@@ -72,7 +72,7 @@ else
 	}
 
 	$query = "UPDATE ninupdates_titleids SET description='".$desc."' WHERE id=$rowid";
-	$result=mysql_query($query);
+	$result=mysqli_query($mysqldb, $query);
 	dbconnection_end();
 
 	header("Location: reports.php");

@@ -14,9 +14,9 @@ db_checkmaintenance(1);
 header("Content-Type: text/xml;charset=iso-8859-1");
 
 $query="SELECT ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY curdate DESC LIMIT 1";
-$result=mysql_query($query);
-$numrows=mysql_num_rows($result);
-$row = mysql_fetch_row($result);
+$result=mysqli_query($mysqldb, $query);
+$numrows=mysqli_num_rows($result);
+$row = mysqli_fetch_row($result);
 $curdate = gmdate(DATE_RSS, strtotime($row[0]));
 
 $con = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\" ?>
@@ -33,12 +33,12 @@ $con = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\" ?>
     ";
 
 $query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY curdate DESC LIMIT 4";
-$result=mysql_query($query);
-$numrows=mysql_num_rows($result);
+$result=mysqli_query($mysqldb, $query);
+$numrows=mysqli_num_rows($result);
 
 for($i=0; $i<$numrows; $i++)
 {
-	$row = mysql_fetch_row($result);
+	$row = mysqli_fetch_row($result);
 	$reportdate = $row[0];
 	$updateversion = $row[1];
 	$system = $row[2];

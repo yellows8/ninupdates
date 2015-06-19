@@ -12,9 +12,9 @@ if($argc<5)
 dbconnection_start();
 
 $soapdata = file_get_contents($argv[1]);
-$system = mysql_real_escape_string($argv[2]);
-$reportdate = mysql_real_escape_string($argv[3]);
-$region = mysql_real_escape_string($argv[4]);
+$system = mysqli_real_escape_string($mysqldb, $argv[2]);
+$reportdate = mysqli_real_escape_string($mysqldb, $argv[3]);
+$region = mysqli_real_escape_string($mysqldb, $argv[4]);
 
 if($soapdata===FALSE)
 {
@@ -24,9 +24,9 @@ if($soapdata===FALSE)
 }
 
 $query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
-$result=mysql_query($query);
+$result=mysqli_query($mysqldb, $query);
 
-$numrows=mysql_num_rows($result);
+$numrows=mysqli_num_rows($result);
 if($numrows==0)
 {
 	dbconnection_end();
@@ -38,9 +38,9 @@ $row = mysql_fetch_row($result);
 $systemid = $row[0];
 
 $query="SELECT id, curdate FROM ninupdates_reports WHERE systemid='".$systemid."' && reportdate='".$reportdate."'";
-$result=mysql_query($query);
+$result=mysqli_query($mysqldb, $query);
 
-$numrows=mysql_num_rows($result);
+$numrows=mysqli_num_rows($result);
 if($numrows==0)
 {
 	dbconnection_end();
@@ -48,7 +48,7 @@ if($numrows==0)
 	exit;
 }
 
-$row = mysql_fetch_row($result);
+$row = mysqli_fetch_row($result);
 $reportid = $row[0];
 $dbcurdate = $row[1];
 
@@ -63,7 +63,7 @@ echo "Total titles added by titlelist_dbupdate(): $tmpval\n";
 if($tmpval)
 {
 	$query="UPDATE ninupdates_titles SET reportid=$reportid WHERE curdate='".$dbcurdate."' && reportid=0 && systemid=$systemid && region='".$region."'";
-	$result=mysql_query($query);
+	$result=mysqli_query($mysqldb, $query);
 }
 
 dbconnection_end();

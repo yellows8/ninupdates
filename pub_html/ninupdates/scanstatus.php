@@ -11,8 +11,8 @@ $con = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http:
 $con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update Last Scan</title></head><body>\n";
 
 $query="SELECT lastscan, lastreqstatus FROM ninupdates_management";
-$result=mysql_query($query);
-$row = mysql_fetch_row($result);
+$result=mysqli_query($mysqldb, $query);
+$row = mysqli_fetch_row($result);
 
 $status = $row[1];
 if($status=="")$status = "OK";

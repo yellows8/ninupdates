@@ -40,32 +40,32 @@ dbconnection_end();
 
 function diffinsert_main()
 {
-	global $arg_difflog, $arg_diffregion, $system;
+	global $mysqldb, $arg_difflog, $arg_diffregion, $system;
 
 	$query = "SELECT ninupdates_reports.curdate, ninupdates_reports.id FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$arg_difflog."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
-	$result=mysql_query($query);
-	$numrows=mysql_num_rows($result);
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
 	$reportid = 0;
 
 	if($numrows)
 	{
-		$row = mysql_fetch_row($result);
+		$row = mysqli_fetch_row($result);
 		$dbcurdate = $row[0];
 		$reportid = $row[1];
 	}
 	else
 	{
 		$query = "SELECT now()";
-		$result=mysql_query($query);
-		$row = mysql_fetch_row($result);
+		$result=mysqli_query($mysqldb, $query);
+		$row = mysqli_fetch_row($result);
 		$dbcurdate = $row[0];
 	}
 
 	if($arg_diffregion=="")
 	{
 		$query="SELECT regions FROM ninupdates_consoles WHERE system='".$system."'";
-		$result=mysql_query($query);
-		$row = mysql_fetch_row($result);
+		$result=mysqli_query($mysqldb, $query);
+		$row = mysqli_fetch_row($result);
 		$regions = $row[0];
 
 		for($i=0; $i<strlen($regions); $i++)
@@ -118,7 +118,7 @@ function difflogshtml()
 
 function diffinsert($reg)
 {
-	global $region, $system, $arg_difflog, $sitecfg_workdir, $reportid, $dbcurdate;
+	global $mysqldb, $region, $system, $arg_difflog, $sitecfg_workdir, $reportid, $dbcurdate;
 	$region = $reg;
 
 	echo "region $region\n";
@@ -136,7 +136,7 @@ function diffinsert($reg)
 	if($total)
 	{
 		$query="UPDATE ninupdates_titles SET reportid=$reportid WHERE curdate='".$dbcurdate."'";
-		$result=mysql_query($query);
+		$result=mysqli_query($mysqldb, $query);
 	}
 	echo "inserted $total new titles into the db.\n";
 }
