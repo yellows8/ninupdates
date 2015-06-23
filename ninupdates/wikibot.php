@@ -181,7 +181,8 @@ function wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timesta
 	}
 
 	$new_page = substr($page, 0, $tableposend) . $table_entry . substr($page, $tableposend, strlen($page) - $tableposend);
-	echo "Home Menu new page: $new_page\n";
+
+	echo "New entry added to the Home Menu sysupdates table:\n$table_entry\n";
 
 	/*
 	if($wikibot_loggedin == 0)
