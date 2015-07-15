@@ -4,11 +4,40 @@ include_once("config.php");
 include_once("logs.php");
 include_once("db.php");
 
+include_once("Wikimate/globals.php");
+
+include_once("wikibot_config.php");
+/*
+The above file must contain the following settings:
+$wikibot_user Account username for the wikibot.
+$wikibot_pass Account password for the wikibot.
+*/
+
 //This is currently experimental: atm this must be run from the cmd-line.
 
-$settings['serverAuth'] = "";//Workaround for the below include, since it checks for this without using isset().
+function wikibot_writelog($str, $type, $reportdate)
+{
+	global $sitecfg_workdir;
 
-include_once("MediaWiki_Api/MediaWiki_Api_functions.php");//Probably not the final API which will be used by this wikibot.
+	if($type==0)echo "Writing the following to the wikibot_error.log: $str\n";
+	if($type==2)echo "$str\n";
+
+	$path = "";
+	if($type==0)$path = "$sitecfg_workdir/debuglogs/wikibot_error.log";
+	if($type==1 || $type==2)$path = "$sitecfg_workdir/debuglogs/wikibot_status.log";
+
+	$f = fopen($path, "a");
+	if($f===FALSE)
+	{
+		echo "Failed to open: $path.\n";
+		return 1;
+	}
+
+	fprintf($f, "%s reportdate=%s: %s\n", date("m-d-y_h-i-s"), $reportdate, $str);
+	fclose($f);
+
+	return 0;
+}
 
 function wikibot_updatenewspages($api, $updateversion, $reportdate, $timestamp, $newspage, $newsarchivepage)
 {
@@ -18,14 +47,16 @@ function wikibot_updatenewspages($api, $updateversion, $reportdate, $timestamp, 
 
 	$insertstring = "*'''$sysupdate_date''' Nintendo released system update [[$updateversion]].\n";
 
-	echo "insertstring: $insertstring";
+	wikibot_writelog("insertstring: $insertstring", 1, $reportdate);
 
 	$locatestr = "</noinclude>\n";
 
-	$startpos_news = strpos($newspage, $locatestr);
+	$newspage_text = $newspage->getText();
+
+	$startpos_news = strpos($newspage_text, $locatestr);
 	if($startpos_news===FALSE)
 	{
-		echo "Failed to locate the first news entry on the wiki news page.\n";
+		wikibot_writelog("Failed to locate the first news entry on the wiki news page.", 0, $reportdate);
 		return 2;
 	}
 
@@ -33,8 +64,8 @@ function wikibot_updatenewspages($api, $updateversion, $reportdate, $timestamp, 
 
 	$newline_needed = 1;
 
-	$archiveline_pos = strlen($newspage)-1;//Locate the last line in the news-page.
-	if($newspage[$archiveline_pos]=="\n")
+	$archiveline_pos = strlen($newspage_text)-1;//Locate the last line in the news-page.
+	if($newspage_text[$archiveline_pos]=="\n")
 	{
 		$newline_needed = 0;
 		$pos--;
@@ -42,7 +73,7 @@ function wikibot_updatenewspages($api, $updateversion, $reportdate, $timestamp, 
 
 	while($archiveline_pos>0)
 	{
-		if($newspage[$archiveline_pos]=="\n")
+		if($newspage_text[$archiveline_pos]=="\n")
 		{
 			$archiveline_pos++;
 			break;
@@ -53,72 +84,79 @@ function wikibot_updatenewspages($api, $updateversion, $reportdate, $timestamp, 
 
 	if($archiveline_pos==0)
 	{
-		echo "Failed to locate the last line in the news-page.\n";
+		wikibot_writelog("Failed to locate the last line in the news-page.", 0, $reportdate);
 		return 3;
 	}
 
-	$newspage_new = substr($newspage, 0, $startpos_news) . $insertstring . substr($newspage, $startpos_news, $archiveline_pos-$startpos_news);
+	$newspage_new = substr($newspage_text, 0, $startpos_news) . $insertstring . substr($newspage_text, $startpos_news, $archiveline_pos-$startpos_news);
 
-	$archiveline = substr($newspage, $archiveline_pos, strlen($newspage)-$archiveline_pos);//Extract the last line from the news-page.
+	$archiveline = substr($newspage_text, $archiveline_pos, strlen($newspage_text)-$archiveline_pos);//Extract the last line from the news-page.
 	if($newline_needed)$archiveline.= "\n";
 
-	$newsarchivepage_new = $archiveline . $newsarchivepage;
+	$newsarchivepage_new = $archiveline . $newsarchivepage->getText();
 
-	echo "New news-page: $newspage_new\n";
-	echo "New news-archive-page: $newsarchivepage_new\n";
+	wikibot_writelog("New news-page: $newspage_new", 1, $reportdate);
+	wikibot_writelog("New news-archive-page: $newsarchivepage_new", 1, $reportdate);
 
-	/*
-	if($wikibot_loggedin == 0)
+	if($wikibot_loggedin == 1)
 	{
-		$api->login($wikibot_user, $wikibot_pass);//This will just execute die() if it fails, so checking the retval here is pointless.
-		$wikibot_loggedin = 1;
+		wikibot_writelog("Sending news pages edit requests...", 2, $reportdate);
+
+		if($newspage->setText($newspage_new)===FALSE)
+		{
+			wikibot_writelog("The http request for editing the news-page failed.", 0, $reportdate);
+			return 4;
+		}
+
+		if($newsarchivepage->setText($newsarchivepage_new)===FALSE)
+		{
+			wikibot_writelog("The http request for editing the news-archive-page failed.", 0, $reportdate);
+			return 4;
+		}
+
+		wikibot_writelog("The news pages edit requests were successful.", 2, $reportdate);
 	}
-
-	if(editPage($wiki_newspagetitle, $newspage_new, false, false, false)===null)
-	{
-		echo "The http request for editing the news-page failed.\n";
-		return 4;
-	}
-
-	if(editPage($wiki_newsarchivepagetitle, $newsarchivepage_new, false, false, false)===null)
-	{
-		echo "The http request for editing the news-page failed.\n";
-		return 4;
-	}*/
 
 	return 0;
 }
 
 function wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timestamp, $page, $wiki_homemenutitle)
 {
-	global $wikibot_loggedin, $wikibot_user, $wikibot_pass;
+	global $wikibot_loggedin;
 
-	if(strstr($page, $updateversion)!==FALSE)
+	$page_text = $page->getText();
+
+	if(strstr($page_text, $updateversion)!==FALSE)
 	{
-		echo "This updateversion is already listed on the home-menu page.\n";
+		wikibot_writelog("This updateversion is already listed on the home-menu page.", 2, $reportdate);
 		return 0;
 	}
+
+	//echo "Updatever not found on home-menu page, this should not happen.\n";
+	//return 0;
+
+	echo "Home Menu page:\n$page_text\n";
 
 	echo "Updating home-menu page...\n";
 
 	$str = "=== System Versions List ===\n{| class=\"wikitable\"\n|-\n";
 
-	$pos = strpos($page, $str);
+	$pos = strpos($page_text, $str);
 	if($pos===FALSE)
 	{
-		echo "Failed to locate the system-versions table.\n";
+		wikibot_writelog("Failed to locate the system-versions table.", 0, $reportdate);
 		return 2;
 	}
 	$pos+= strlen($str);
 
-	$tableposend = strpos($page, "|}", $pos);
+	$tableposend = strpos($page_text, "|}", $pos);
 	if($tableposend===FALSE)
 	{
-		echo "Failed to locate the system-versions table end.\n";
+		wikibot_writelog("Failed to locate the system-versions table end.", 0, $reportdate);
 		return 2;
 	}
 
-	$tabletext = substr($page, $pos, ($tableposend+2)-$pos);
+	$tabletext = substr($page_text, $pos, ($tableposend+2)-$pos);
 	$tablelen = ($tableposend+2)-$pos;
 
 	$table_entry = "|-\n";
@@ -128,7 +166,7 @@ function wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timesta
 	$posend = strpos($tabletext, "|-\n");
 	if($posend===FALSE)
 	{
-		echo "Failed to locate the system-versions table-headers end.\n";
+		wikibot_writelog("Failed to locate the system-versions table-headers end.", 0, $reportdate);
 		return 2;
 	}
 
@@ -136,7 +174,7 @@ function wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timesta
 	{
 		if(substr($tabletext, $pos, 2) !== "! ")
 		{
-			echo "Invalid system-version table-header line.\n";
+			wikibot_writelog("Invalid system-version table-header line.", 0, $reportdate);
 			return 2;
 		}
 
@@ -145,7 +183,7 @@ function wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timesta
 
 		if($line_end===FALSE)
 		{
-			echo "Invalid system-version table-header line: missing newline.\n";
+			wikibot_writelog("Invalid system-version table-header line: missing newline.", 0, $reportdate);
 			return 2;
 		}
 
@@ -180,38 +218,42 @@ function wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timesta
 		$table_entry.= "\n";
 	}
 
-	$new_page = substr($page, 0, $tableposend) . $table_entry . substr($page, $tableposend, strlen($page) - $tableposend);
+	$new_page = substr($page_text, 0, $tableposend) . $table_entry . substr($page_text, $tableposend, strlen($page_text) - $tableposend);
 
-	echo "New entry added to the Home Menu sysupdates table:\n$table_entry\n";
+	wikibot_writelog("New entry added to the Home Menu sysupdates table:\n$table_entry", 1, $reportdate);
 
-	/*
-	if($wikibot_loggedin == 0)
+	if($wikibot_loggedin == 1)
 	{
-		$api->login($wikibot_user, $wikibot_pass);//This will just execute die() if it fails, so checking the retval here is pointless.
-		$wikibot_loggedin = 1;
+		wikibot_writelog("Sending home-menu page edit request...", 2, $reportdate);
+
+		if($page->setText($new_page)===FALSE)
+		{
+			wikibot_writelog("The http request for editing the Home Menu page failed.", 0, $reportdate);
+			return 4;
+		}
+
+		wikibot_writelog("The home-menu page edit request was successful.", 2, $reportdate);
 	}
 
-	if(editPage($wiki_homemenutitle, $new_page, false, false, false)===null)
-	{
-		echo "The http request for editing the Home Menu page failed.\n";
-		return 4;
-	}*/
+	echo "Finished updating the Home Menu page.\n";
 
 	return 0;
 }
 
-function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $page_text)
+function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $page)
 {
-	global $mysqldb, $system;
+	global $mysqldb, $system, $wikibot_loggedin;
 
-	$page_exists = 1;
-	if($page_text===FALSE || $page_text=="")
+	$page_text = "";
+
+	if($page->exists()==TRUE)
 	{
-		$page_exists = 0;
-		$page_text = "";
+		wikibot_writelog("Sysupdate page already exists, skipping editing.", 2, $reportdate);
+
+		return 0;
 	}
 
-	if($page_exists)return 0;
+	wikibot_writelog("Sysupdate page doesn't exist, generating a page...", 2, $reportdate);
 
 	$query="SELECT ninupdates_reports.regions, ninupdates_reports.id FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
 	$result=mysqli_query($mysqldb, $query);
@@ -219,7 +261,7 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 
 	if($numrows==0)
 	{
-		echo "wikibot_edit_updatepage(): Failed to get regions field from the report row.\n";
+		wikibot_writelog("wikibot_edit_updatepage(): Failed to get regions field from the report row.", 0, $reportdate);
 		return 1;
 	}
 
@@ -245,7 +287,7 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 
 		if($numrows==0)
 		{
-			echo "wikibot_edit_updatepage(): Failed to load the regionid.\n";
+			wikibot_writelog("wikibot_edit_updatepage(): Failed to load the regionid.", 0, $reportdate);
 			return 2;
 		}
 
@@ -306,30 +348,43 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 	$page_text.= "$changelog_text\n";
 
 	$page_text.= "==System Titles==\n";
+	$page_text.= "<fill this in (manually) later>\n";
 	$page_text.= "\n";
 
 	$page_text.= "==See Also==\n";
-	$page_text.= "System update reports:\n";
+	$page_text.= "System update report(s):\n";
 	$page_text.= "* [http://yls8.mtheall.com/ninupdates/reports.php?date=$reportdate&sys=$system]\n";
 	$page_text.= "\n";
 
-	echo "New sysupdate page:\n$page_text\n";
+	wikibot_writelog("New sysupdate page:\n$page_text", 1, $reportdate);
+
+	if($wikibot_loggedin == 1)
+	{
+		wikibot_writelog("Sending sysupdate page edit request...", 2, $reportdate);
+
+		if($page->setText($page_text)===FALSE)
+		{
+			wikibot_writelog("The http request for editing the sysupdate page failed.", 0, $reportdate);
+			return 4;
+		}
+		
+		$text = "Sysupdate page edit request was successful.";
+		echo "$text\n";
+		wikibot_writelog($text, 1, $reportdate);
+	}
 
 	return 0;
 }
 
 function runwikibot_newsysupdate($updateversion, $reportdate)
 {
-	global $wikibot_user, $wikibot_pass, $wikibot_loggedin;
+	global $wikibot_loggedin, $wikibot_user, $wikibot_pass;
 
-	//All of these hard-coded config values including the password one are temporary, later these will be moved into proper config elsewhere.
+	//All of these hard-coded config values are temporary, later these will be moved into proper config elsewhere.
 	$wiki_apibaseurl = "http://3dbrew.org/w";
 	$wiki_newspagetitle = "News";
 	$wiki_newsarchivepagetitle = "News/Archive";
 	$wiki_homemenutitle = "Home_Menu";
-
-	$wikibot_user = "Yls8bot";//Not a real account/password at the time of writing.
-	$wikibot_pass = "Yls8bot_pass";
 
 	$wikibot_loggedin = 0;
 
@@ -341,70 +396,114 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 	if(!isset($wiki_homemenutitle))$wiki_homemenutitle = "";
 
-	$api = new MediaWikiApi($wiki_apibaseurl);
-
-	$newspage = $api->readPage($wiki_newspagetitle);
-	$newsarchivepage = $api->readPage($wiki_newsarchivepagetitle);
-
-	if($newspage === FALSE || $newspage=="")
+	try
 	{
-		echo "Failed to get the news wiki page.";
+		$api = new Wikimate($wiki_apibaseurl . "/api.php");
+
+		if(!isset($wikibot_user) || !isset($wikibot_pass))
+		{
+			wikibot_writelog("Wikibot account config isn't setup, skipping login(edited pages will not be uploaded).", 0, $reportdate);
+		}
+		else
+		{
+			if($api->login($wikibot_user, $wikibot_pass)===TRUE)
+			{
+				echo "Successfully logged into the wiki.\n";
+				wikibot_writelog("Successfully logged into the wiki.", 1, $reportdate);
+				$wikibot_loggedin = 1;
+			}
+			else
+			{
+				$error = $api->getError();
+				wikibot_writelog("Wiki login failed: ".$error['login'], 0, $reportdate);
+			}
+		}
+	}
+
+	catch(Exception $e)
+	{
+		wikibot_writelog("Wikimate error: " . $e->getMessage(), 0, $reportdate);
+		return 7;
+	}
+
+	if($wikibot_loggedin == 1)
+	{
+		$text = "Remote page editing is enabled.";
+	}
+	else
+	{
+		$text = "Remote page editing is disabled.";
+	}
+
+	wikibot_writelog($text, 2, $reportdate);
+
+	$newspage = $api->getPage($wiki_newspagetitle);
+	$newsarchivepage = $api->getPage($wiki_newsarchivepagetitle);
+
+	if($newspage === FALSE || $newspage->exists()==FALSE)
+	{
+		wikibot_writelog("Failed to get the news wiki page.", 0, $reportdate);
 		return 1;
 	}
 
-	if($newsarchivepage === FALSE || $newsarchivepage=="")
+	if($newsarchivepage === FALSE || $newsarchivepage->exists()==FALSE)
 	{
-		echo "Failed to get the news-archive wiki page.";
+		wikibot_writelog("Failed to get the news-archive wiki page.", 0, $reportdate);
 		return 1;
 	}
 
-	echo "News page:\n$newspage\n";
-	echo "News archive page:\n$newsarchivepage\n";
+	$newspage_text = $newspage->getText();
+	$newsarchivepage_text = $newsarchivepage->getText();
+
+	wikibot_writelog("News page:\n$newspage_text", 1, $reportdate);
+	wikibot_writelog("News archive page:\n$newsarchivepage_text", 1, $reportdate);
 
 	$updatelisted = 0;
-	if(strstr($newspage, $updateversion)!==FALSE)
+	if(strstr($newspage_text, $updateversion)!==FALSE)
 	{
 		$updatelisted = 1;
 	}
-	else if(strstr($newsarchivepage, $updateversion)!==FALSE)
+	else if(strstr($newsarchivepage_text, $updateversion)!==FALSE)
 	{
 		$updatelisted = 2;
 	}
 
-	echo "updatelisted: $updatelisted\n";
-
 	if($updatelisted)
 	{
-		echo "This updatever is already listed on the wiki.\n";
+		wikibot_writelog("This updatever is already listed on the wiki news.", 2, $reportdate);
 	}
 	else
 	{
 		wikibot_updatenewspages($api, $updateversion, $reportdate, $timestamp, $newspage, $newsarchivepage);
 	}
 
-	if($wiki_homemenutitle!="")$homemenu_page = $api->readPage($wiki_homemenutitle);
-
-	$sysupdate_page = $api->readPage($updateversion);
-
-	if($homemenu_page===FALSE || $homemenu_page=="")
+	if($wiki_homemenutitle!="")
 	{
-		echo "Failed to get the home-menu page.\n";
+		$homemenu_page = $api->getPage($wiki_homemenutitle);
+		if($homemenu_page===FALSE || $homemenu_page->exists()==FALSE)
+		{
+			wikibot_writelog("Failed to get the home-menu page.", 0, $reportdate);
+		}
+		else
+		{
+			wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timestamp, $homemenu_page, $wiki_homemenutitle);
+		}
+	}
+
+	$sysupdate_page = $api->getPage($updateversion);
+
+	if($sysupdate_page===FALSE || $sysupdate_page->exists()==FALSE)
+	{
+		wikibot_writelog("The sysupdate page doesn't exist.", 1, $reportdate);
 	}
 	else
 	{
-		wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timestamp, $homemenu_page, $wiki_homemenutitle);
+		wikibot_writelog("Sysupdate page:\n".$sysupdate_page->getText(), 1, $reportdate);
 	}
 
-	if($sysupdate_page===FALSE || $sysupdate_page=="")
-	{
-		echo "The sysupdate page doesn't exist.\n";
-	}
-	else
-	{
-		echo "Sysupdate page: \n$sysupdate_page\n";
-	}
+	if($sysupdate_page!==FALSE)wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $sysupdate_page);
 
-	wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $sysupdate_page);
+	echo "Wikibot run finished.\n";
 
 	return 0;
 }
