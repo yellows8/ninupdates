@@ -379,6 +379,11 @@ else
 		$con.= "</table><br />\n";
 	}
 
+	if(file_exists("$sitecfg_workdir/updatedetails/$system/$reportdate")===TRUE)
+	{
+		$con.= "Update details are available <a href=\"updatedetails.php?date=$reportdate&sys=$system\">here</a>.<br/>\n<br/>\n";
+	}
+
 	$con.= "Request timestamp: $reportdaterfc<br /><br />\n";
 	if($updateversion=="N/A")$con.= "Set system <a href=\"reports.php?date=$reportdate&sys=$system&setver=1\">version.</a>";
 	$con.= "$sitecfg_reportupdatepage_footer";
