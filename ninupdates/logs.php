@@ -214,7 +214,7 @@ function diff_titlelists($oldlog, $curdatefn)
 
 function parse_soapresp($buf)
 {
-	global $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles, $system, $region, $sysupdate_systitlehashes;
+	global $mysqldb, $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles, $system, $region, $sysupdate_systitlehashes;
 	$title = $buf;
 	$titleid_pos = 0;
 	$titlever_pos = 0;
@@ -259,11 +259,11 @@ function parse_soapresp($buf)
 		if($titlesizetik_pos===FALSE || $titlesizetik_posend===FALSE)$titlesizetik = 0;
 		if($titlesizetmd_pos===FALSE || $titlesizetmd_posend===FALSE)$titlesizetmd = 0;
 
-		$newtitles[] = $titleid;
-		$newtitlesversions[] = $titlever;
-		$newtitles_sizes[] = $titlesize;
-		$newtitles_tiksizes[] = $titlesizetik;
-		$newtitles_tmdsizes[] = $titlesizetmd;
+		$newtitles[] = mysqli_real_escape_string($mysqldb, $titleid);
+		$newtitlesversions[] = mysqli_real_escape_string($mysqldb, $titlever);
+		$newtitles_sizes[] = mysqli_real_escape_string($mysqldb, $titlesize);
+		$newtitles_tiksizes[] = mysqli_real_escape_string($mysqldb, $titlesizetik);
+		$newtitles_tmdsizes[] = mysqli_real_escape_string($mysqldb, $titlesizetmd);
 
 		$newtotal_titles++;
 
@@ -277,7 +277,7 @@ function parse_soapresp($buf)
 	if($titlehash_pos!==FALSE && $titlehash_posend!==FALSE)
 	{
 		$titlehash = substr($buf, $titlehash_pos, $titlehash_posend - $titlehash_pos);
-		$sysupdate_systitlehashes[$region] = $titlehash;
+		$sysupdate_systitlehashes[$region] = mysqli_real_escape_string($mysqldb, $titlehash);
 	}
 }
 
