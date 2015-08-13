@@ -302,7 +302,7 @@ function compare_titlelists()
 
 	if($numrows==0)
 	{
-		echo "System $system Region $region: Titlehash is missing.\n";
+		//echo "System $system Region $region: Titlehash is missing.\n";
 		return titlelist_dbupdate();
 	}
 	else
