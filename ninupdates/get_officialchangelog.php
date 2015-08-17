@@ -241,7 +241,7 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 				if($numrows==0)
 				{
 					echo "Updating report updateversion...\n";
-					$query="UPDATE ninupdates_reports SET updateversion='".$strdata."' WHERE reportdate='".$reportdate."' && systemid=$systemid";
+					$query="UPDATE ninupdates_reports SET updateversion='".$strdata."', updatever_autoset=1 WHERE reportdate='".$reportdate."' && systemid=$systemid";
 					$result=mysqli_query($mysqldb, $query);
 
 					getofficalchangelog_writelog("Set the updateversion for report=$reportdate and system=$system to: $strdata.", 1, $reportdate);

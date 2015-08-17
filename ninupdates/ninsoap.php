@@ -9,7 +9,7 @@ do_systems_soap();
 
 function do_systems_soap()
 {
-	global $mysqldb;
+	global $mysqldb, $sitecfg_workdir;
 
 	dbconnection_start();
 	if(!db_checkmaintenance(0))
@@ -30,6 +30,33 @@ function do_systems_soap()
 		$result=mysqli_query($mysqldb, $query);
 
 		close_curl();
+
+		$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE updatever_autoset=1 && wikibot_runfinished=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+
+		if($numrows>0)
+		{
+			echo "Scheduling wikibot task(s) for $numrows reports...\n";
+
+			for($i=0; $i<$numrows; $i++)
+			{
+				$row = mysqli_fetch_row($result);
+				$reportdate = $row[0];
+				$updatever = $row[1];
+				$system = $row[2];
+
+				if($system=="ctr" || $system=="ktr")//TODO: Remove this once the wikibot code itself handles this.
+				{
+					echo "Scheduling a wikibot run for $reportdate-$system...\n";
+					system("echo \"php $sitecfg_workdir/wikibot.php $updatever $reportdate $system > /home/yellows8/ninupdates/wikibot_out/$reportdate-$system 2>&1\" | at \"now + 1 minute\"");
+				}
+				else
+				{
+					echo "Skipping wikibot scheduling for $reportdate-$system since it isn't for 3DS systems.\n";
+				}
+			}
+		}
 
 		dbconnection_end();
 	}
@@ -70,7 +97,7 @@ function dosystem($console)
 		$msgme_message = "$sitecfg_httpbase/reports.php?date=".$sysupdate_timestamp."&sys=".$system;
 		$email_message = "$msgme_message";
 		
-		$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE  ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
+		$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 
@@ -90,7 +117,7 @@ function dosystem($console)
 			$row = mysqli_fetch_row($result);
 			$systemid = $row[0];
 
-			$query = "INSERT INTO ninupdates_reports (reportdate, curdate, systemid, log, regions, updateversion, reportdaterfc, initialscan) VALUES ('".$sysupdate_timestamp."','".$dbcurdate."',$systemid,'report','".$sysupdate_regions."','".$updateversion."','".$soap_timestamp."',$initialscan)";
+			$query = "INSERT INTO ninupdates_reports (reportdate, curdate, systemid, log, regions, updateversion, reportdaterfc, initialscan, updatever_autoset, wikibot_runfinished) VALUES ('".$sysupdate_timestamp."','".$dbcurdate."',$systemid,'report','".$sysupdate_regions."','".$updateversion."','".$soap_timestamp."',$initialscan,0,0)";
 			$result=mysqli_query($mysqldb, $query);
 			$reportid = mysqli_insert_id($mysqldb);
 

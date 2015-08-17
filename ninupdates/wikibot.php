@@ -378,7 +378,7 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 
 function runwikibot_newsysupdate($updateversion, $reportdate)
 {
-	global $wikibot_loggedin, $wikibot_user, $wikibot_pass;
+	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $system;
 
 	//All of these hard-coded config values are temporary, later these will be moved into proper config elsewhere.
 	$wiki_apibaseurl = "http://3dbrew.org/w";
@@ -502,6 +502,10 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	}
 
 	if($sysupdate_page!==FALSE)wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $sysupdate_page);
+
+	echo "Updating the report's wikibot_runfinished field...\n";
+	$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikibot_runfinished=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
+	$result=mysqli_query($mysqldb, $query);
 
 	echo "Wikibot run finished.\n";
 
