@@ -20,10 +20,10 @@ $result=mysqli_query($mysqldb, $query);
 $row = mysqli_fetch_row($result);
 
 $lastscan = $row[0];
-echo "The last scan was finished at: $lastscan.\n";
+echo "The last scan was finished at: \"$lastscan\".\n";
 
 echo "Running fresh ninsoap scan...\n";
-system("php /home/yellows8/ninupdates/ninsoap.php > $sitecfg_workdir/ninsoap_ircbottmp");
+system("php $sitecfg_workdir/ninsoap.php > $sitecfg_workdir/ninsoap_ircbottmp");
 echo "Total detected title-listing changes for each of the scanned platforms: ";
 system("grep -c \"System update available for regions\" $sitecfg_workdir/ninsoap_ircbottmp");
 echo "Scan finished.\n";
