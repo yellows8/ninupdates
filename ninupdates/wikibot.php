@@ -242,7 +242,7 @@ function wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timesta
 
 function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $page)
 {
-	global $mysqldb, $system, $wikibot_loggedin;
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
 
 	$page_text = "";
 
@@ -258,9 +258,9 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 
 	wikibot_writelog("Sysupdate page doesn't exist, generating a page...", 2, $reportdate);
 
-	$query="SELECT ninupdates_reports.regions, ninupdates_reports.id FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
-	$result=mysqli_query($mysqldb, $query);
-	$numrows=mysqli_num_rows($result);
+	$query="SELECT ninupdates_reports.regions, ninupdates_reports.id, ninupdates_consoles.sysname, ninupdates_consoles.system, ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updateversion='".$updateversion."' && ninupdates_reports.systemid=ninupdates_consoles.id";
+	$result_systems=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result_systems);
 
 	if($numrows==0)
 	{
@@ -268,84 +268,110 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 		return 1;
 	}
 
-	$row = mysqli_fetch_row($result);
-	$regions = $row[0];
-	$reportid = $row[1];
-
 	$regions_list = "";
 	$changelog_count = 0;
 
 	$changelog_text = "";
 
-	$region = strtok($regions, ",");
-	while($region!==FALSE)
+	$sysnames_list = "";
+	$total_systems = $numrows;
+
+	$reportlinks_list = "";
+
+	for($system_index=0; $system_index<$total_systems; $system_index++)
 	{
-		if(strlen($region)>1)break;
+		$row = mysqli_fetch_row($result_systems);
+		$regions = $row[0];
+		$reportid = $row[1];
+		$cursysname = $row[2];
+		$cursystem = $row[3];
+		$curreportdate = $row[4];
 
-		$region_next = strtok(",");
+		if($system_index>0)$sysnames_list.= "+";
+		$sysnames_list.= $cursysname;
 
-		$query="SELECT regionid FROM ninupdates_regions WHERE regioncode='".$region."'";
-		$result=mysqli_query($mysqldb, $query);
-		$numrows=mysqli_num_rows($result);
+		if($system_index>0)$regions_list.=" ";
+		$regions_list.= "This $cursysname update was released for the following regions: ";
 
-		if($numrows==0)
+		$reportlinks_list.= "* [$sitecfg_httpbase/reports.php?date=$curreportdate&sys=$cursystem]\n";
+
+		$regions_count = 0;
+		$region = strtok($regions, ",");
+		while($region!==FALSE)
 		{
-			wikibot_writelog("wikibot_edit_updatepage(): Failed to load the regionid.", 0, $reportdate);
-			return 2;
-		}
+			if(strlen($region)>1)break;
 
-		$row = mysqli_fetch_row($result);
-		$regionid = $row[0];
+			$region_next = strtok(",");
 
-		if(strlen($regions_list)==0)
-		{
-			$regions_list.= $regionid;
-		}
-		else
-		{
-			if($region_next!==FALSE)
+			$query="SELECT regionid FROM ninupdates_regions WHERE regioncode='".$region."'";
+			$result=mysqli_query($mysqldb, $query);
+			$numrows=mysqli_num_rows($result);
+
+			if($numrows==0)
 			{
-				$regions_list.= ", " . $regionid;
+				wikibot_writelog("wikibot_edit_updatepage(): Failed to load the regionid.", 0, $reportdate);
+				return 2;
+			}
+
+			$row = mysqli_fetch_row($result);
+			$regionid = $row[0];
+
+			if($regions_count==0)
+			{
+				$regions_list.= $regionid;
 			}
 			else
 			{
-				$regions_list.= ", and " . $regionid;
+				if($region_next!==FALSE)
+				{
+					$regions_list.= ", " . $regionid;
+				}
+				else
+				{
+					$regions_list.= ", and " . $regionid;
+				}
 			}
-		}
 
-		$query="SELECT ninupdates_officialchangelog_pages.url, ninupdates_officialchangelog_pages.id FROM ninupdates_officialchangelog_pages, ninupdates_consoles, ninupdates_regions WHERE ninupdates_consoles.system='".$system."' && ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id && ninupdates_officialchangelog_pages.regionid=ninupdates_regions.id && ninupdates_regions.regioncode='".$region."'";
-		$result=mysqli_query($mysqldb, $query);
-		$numrows=mysqli_num_rows($result);
-		if($numrows>0)
-		{
-			$changelog_count++;
-
-			$row = mysqli_fetch_row($result);
-			$pageurl = $row[0];
-			$pageid = $row[1];
-
-			$wiki_text = "";
-
-			$query = "SELECT wiki_text FROM ninupdates_officialchangelogs WHERE pageid=$pageid && reportid=$reportid";
-			$result=mysqli_query($mysqldb, $query);
-			$numrows=mysqli_num_rows($result);
-			if($numrows>0)
+			if($system_index==0)//Normally when there's multiple systems' reports with the same updateversion, the changelog is loaded from the same page anyway.
 			{
-				$row = mysqli_fetch_row($result);
-				$wiki_text = $row[0];
+				$query="SELECT ninupdates_officialchangelog_pages.url, ninupdates_officialchangelog_pages.id FROM ninupdates_officialchangelog_pages, ninupdates_consoles, ninupdates_regions WHERE ninupdates_consoles.system='".$cursystem."' && ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id && ninupdates_officialchangelog_pages.regionid=ninupdates_regions.id && ninupdates_regions.regioncode='".$region."'";
+				$result=mysqli_query($mysqldb, $query);
+				$numrows=mysqli_num_rows($result);
+				if($numrows>0)
+				{
+					$changelog_count++;
+
+					$row = mysqli_fetch_row($result);
+					$pageurl = $row[0];
+					$pageid = $row[1];
+
+					$wiki_text = "";
+
+					$query = "SELECT wiki_text FROM ninupdates_officialchangelogs WHERE pageid=$pageid && reportid=$reportid";
+					$result=mysqli_query($mysqldb, $query);
+					$numrows=mysqli_num_rows($result);
+					if($numrows>0)
+					{
+						$row = mysqli_fetch_row($result);
+						$wiki_text = $row[0];
+					}
+
+					if($wiki_text===FALSE)$wiki_text = "";
+					if($wiki_text=="")$wiki_text = "* N/A, see the official page for the actual changelog.\n";
+
+					$changelog_text.= "[$pageurl Official] $regionid change-log:\n$wiki_text";
+				}
 			}
 
-			if($wiki_text===FALSE)$wiki_text = "";
-			if($wiki_text=="")$wiki_text = "* N/A, see the official page for the actual changelog.\n";
-
-			$changelog_text.= "[$pageurl Official] $regionid change-log:\n$wiki_text";
+			$regions_count++;
+			$region = $region_next;
 		}
 
-		$region = $region_next;
+		$regions_list.= ".";
 	}
 
-	$page_text.= "The ".getsystem_sysname($system)." $updateversion system update was released on ".date("F j, Y", $timestamp)." for the following regions: $regions_list.\n\n";
-	$page_text.= "Security flaws fixed: <fill this in manually later>.\n\n";
+	$page_text.= "The $sysnames_list $updateversion system update was released on ".date("F j, Y", $timestamp).". $regions_list\n\n";
+	$page_text.= "Security flaws fixed: <fill this in manually later, see the updatedetails page from the ninupdates-report page(s) once available for now>.\n\n";
 
 	$page_text.= "==Change-log==\n";
 	$page_text.= "$changelog_text\n";
@@ -356,7 +382,7 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 
 	$page_text.= "==See Also==\n";
 	$page_text.= "System update report(s):\n";
-	$page_text.= "* [http://yls8.mtheall.com/ninupdates/reports.php?date=$reportdate&sys=$system]\n";
+	$page_text.= $reportlinks_list;
 	$page_text.= "\n";
 
 	wikibot_writelog("New sysupdate page:\n$page_text", 1, $reportdate);
@@ -539,7 +565,7 @@ $wikibot_scheduledtask = 0;
 
 if($argc<3)
 {
-	if($argc != 2 && $argv[1]!=="scheduled")
+	if($argc != 2 || $argv[1]!=="scheduled")
 	{
 		echo "Usage:\nphp wikibot.php <updateversion> <reportdate> <system>\n";
 		return 0;
