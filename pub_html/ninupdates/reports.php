@@ -99,13 +99,13 @@ if($reportdate!="" && $system!="")
 					dbconnection_end();
 
 					header("Location: reports.php");
-					writeNormalLog("THE SPECIFIED SYSVER ALREADY EXISTS FOR ANOTHER REPORT UNDER THE SPECIFIED SYSTEM. RESULT: 302");
+					writeNormalLog("THE SPECIFIED SYSVER ALREADY EXISTS FOR A REPORT UNDER THE SPECIFIED SYSTEM. RESULT: 302");
 
 					return;
 				}
 			}
 
-			$query = "UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.updateversion='".$setsysver."' WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
+			$query = "UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.updateversion='".$setsysver."', ninupdates_reports.wikipage_exists=0 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 			$result=mysqli_query($mysqldb, $query);
 			dbconnection_end();
 
@@ -257,7 +257,7 @@ else
   <th>Titlelist</th>
 </tr>\n";
 
-	$query="SELECT ninupdates_reports.regions, ninupdates_reports.reportdaterfc, ninupdates_reports.updateversion, ninupdates_reports.id FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
+	$query="SELECT ninupdates_reports.regions, ninupdates_reports.reportdaterfc, ninupdates_reports.updateversion, ninupdates_reports.id, ninupdates_reports.wikipage_exists FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 	if($numrows==0)
@@ -275,6 +275,7 @@ else
 	$reportdaterfc = $row[1];
 	$updateversion = $row[2];
 	$reportid = $row[3];
+	$wikipage_exists = $row[4];
 
 	if(strlen($regions)==0)
 	{
@@ -382,6 +383,21 @@ else
 	if(file_exists("$sitecfg_workdir/updatedetails/$system/$reportdate")===TRUE)
 	{
 		$con.= "Update details are available <a href=\"updatedetails.php?date=$reportdate&sys=$system\">here</a>.<br/>\n<br/>\n";
+	}
+
+	if($wikipage_exists==="1")
+	{
+		$query="SELECT ninupdates_wikiconfig.serverbaseurl FROM ninupdates_wikiconfig, ninupdates_consoles WHERE ninupdates_wikiconfig.id=ninupdates_consoles.wikicfgid && ninupdates_consoles.system='".$system."'";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+
+		if($numrows>0)
+		{
+			$row = mysqli_fetch_row($result);
+			$wiki_serverbaseurl = $row[0];
+
+			$con.= "The wiki page is available <a href=\"".$wiki_serverbaseurl."wiki/$updateversion\">here</a>.<br/>\n<br/>\n";
+		}
 	}
 
 	$con.= "Request timestamp: $reportdaterfc<br /><br />\n";

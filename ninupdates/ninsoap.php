@@ -31,30 +31,22 @@ function do_systems_soap()
 
 		close_curl();
 
-		$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE updatever_autoset=1 && wikibot_runfinished=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
+		$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updatever_autoset=1 && ninupdates_reports.wikibot_runfinished=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 
 		if($numrows>0)
 		{
-			echo "Scheduling wikibot task(s) for $numrows reports...\n";
+			$row = mysqli_fetch_row($result);
+			$count = $row[0];
 
-			for($i=0; $i<$numrows; $i++)
+			if($count>0)
 			{
-				$row = mysqli_fetch_row($result);
-				$reportdate = $row[0];
-				$updatever = $row[1];
-				$system = $row[2];
+				echo "Scheduling a wikibot task for processing $count reports...\n";
 
-				if($system=="ctr" || $system=="ktr")//TODO: Remove this once the wikibot code itself handles this.
-				{
-					echo "Scheduling a wikibot run for $reportdate-$system...\n";
-					system("echo \"php $sitecfg_workdir/wikibot.php $updatever $reportdate $system > /home/yellows8/ninupdates/wikibot_out/$reportdate-$system 2>&1\" | at \"now + 1 minute\"");
-				}
-				else
-				{
-					echo "Skipping wikibot scheduling for $reportdate-$system since it isn't for 3DS systems.\n";
-				}
+				$wikibot_timestamp = date("m-d-y_h-i-s");
+
+				system("echo \"php $sitecfg_workdir/wikibot.php scheduled > /home/yellows8/ninupdates/wikibot_out/$wikibot_timestamp 2>&1\" | at \"now + 1 minute\"");
 			}
 		}
 

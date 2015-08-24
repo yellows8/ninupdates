@@ -250,6 +250,9 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 	{
 		wikibot_writelog("Sysupdate page already exists, skipping editing.", 2, $reportdate);
 
+		$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikipage_exists=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
+		$result=mysqli_query($mysqldb, $query);
+
 		return 0;
 	}
 
@@ -367,7 +370,10 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 			wikibot_writelog("The http request for editing the sysupdate page failed.", 0, $reportdate);
 			return 4;
 		}
-		
+
+		$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikipage_exists=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
+		$result=mysqli_query($mysqldb, $query);
+
 		$text = "Sysupdate page edit request was successful.";
 		echo "$text\n";
 		wikibot_writelog($text, 1, $reportdate);
@@ -380,13 +386,30 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 {
 	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $system;
 
-	//All of these hard-coded config values are temporary, later these will be moved into proper config elsewhere.
-	$wiki_apibaseurl = "http://3dbrew.org/w";
-	$wiki_newspagetitle = "News";
-	$wiki_newsarchivepagetitle = "News/Archive";
-	$wiki_homemenutitle = "Home_Menu";
-
 	$wikibot_loggedin = 0;
+
+	$query="SELECT ninupdates_wikiconfig.serverbaseurl, ninupdates_wikiconfig.apiprefixuri, ninupdates_wikiconfig.news_pagetitle, ninupdates_wikiconfig.newsarchive_pagetitle, ninupdates_wikiconfig.homemenu_pagetitle FROM ninupdates_wikiconfig, ninupdates_consoles WHERE ninupdates_wikiconfig.wikibot_enabled=1 && ninupdates_wikiconfig.id=ninupdates_consoles.wikicfgid && ninupdates_consoles.system='".$system."'";
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
+
+	if($numrows==0)
+	{
+		echo "Wiki config is not available for this system($system), or wikibot processing is disabled for this wiki, skipping wikibot processing for it.\n";
+
+		$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikibot_runfinished=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
+		$result=mysqli_query($mysqldb, $query);
+
+		return 0;
+	}
+
+	$row = mysqli_fetch_row($result);
+	$serverbaseurl = $row[0];
+	$apiprefixuri = $row[1];
+	$wiki_newspagetitle = $row[2];
+	$wiki_newsarchivepagetitle = $row[3];
+	$wiki_homemenutitle = $row[4];
+
+	$wiki_apibaseurl = $serverbaseurl . $apiprefixuri;
 
 	$month = (int)substr($reportdate, 0*3, 2);
 	$day = (int)substr($reportdate, 1*3, 2);
@@ -512,19 +535,56 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	return 0;
 }
 
+$wikibot_scheduledtask = 0;
+
 if($argc<3)
 {
-	echo "Usage:\nphp wikibot.php <updateversion> <reportdate> <system>\n";
-	return 0;
+	if($argc != 2 && $argv[1]!=="scheduled")
+	{
+		echo "Usage:\nphp wikibot.php <updateversion> <reportdate> <system>\n";
+		return 0;
+	}
+	else
+	{
+		$wikibot_scheduledtask = 1;
+	}
 }
 
 dbconnection_start();
 
-$updateversion = mysqli_real_escape_string($mysqldb, $argv[1]);
-$reportdate = mysqli_real_escape_string($mysqldb, $argv[2]);
-$system = mysqli_real_escape_string($mysqldb, $argv[3]);
+if($wikibot_scheduledtask == 0)
+{
+	$updateversion = mysqli_real_escape_string($mysqldb, $argv[1]);
+	$reportdate = mysqli_real_escape_string($mysqldb, $argv[2]);
+	$system = mysqli_real_escape_string($mysqldb, $argv[3]);
 
-runwikibot_newsysupdate($updateversion, $reportdate);
+	runwikibot_newsysupdate($updateversion, $reportdate);
+}
+else
+{
+	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE updatever_autoset=1 && wikibot_runfinished=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
+
+	echo "Doing a scheduled wikibot run for $numrows reports...\n";
+
+	for($i=0; $i<$numrows; $i++)
+	{
+		$row = mysqli_fetch_row($result);
+		$reportdate = $row[0];
+		$updateversion = $row[1];
+		$system = $row[2];
+
+		echo "Starting wikibot processing with the following report: $reportdate-$system, updateversion=$updateversion.";
+		echo "\n";
+
+		runwikibot_newsysupdate($updateversion, $reportdate);
+
+		echo "Wikibot processing for this report finished.\n";
+
+		if($i != $numrows-1)echo "\n";
+	}
+}
 
 dbconnection_end();
 
