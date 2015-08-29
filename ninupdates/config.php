@@ -18,6 +18,8 @@ $sitecfg_homepage_footer Optional HTML to include at the very end of the "report
 $sitecfg_reportupdatepage_header Optional HTML to include near the beginning of the reports.php report update-pages <body>.
 $sitecfg_reportupdatepage_footer Optional HTML to include at the very end of the reports.php report update-pages <body>.
 $sitecfg_sitenav_header Optional HTML to include immediately before the site navigation-bar.
+
+$sitecfg_postproc_cmd This is the command which will be executed by postproc.php, if this is set. The full command passed to system() is: "$sitecfg_postproc_cmd $reportdate $system".
 */
 
 include_once("site_cfg.php");

@@ -42,11 +42,48 @@ function do_systems_soap()
 
 			if($count>0)
 			{
-				echo "Scheduling a wikibot task for processing $count reports...\n";
+				echo "Starting a wikibot task for processing $count report(s)...\n";
 
 				$wikibot_timestamp = date("m-d-y_h-i-s");
 
-				system("echo \"php $sitecfg_workdir/wikibot.php scheduled > /home/yellows8/ninupdates/wikibot_out/$wikibot_timestamp 2>&1\" | at \"now + 1 minute\"");
+				system("php $sitecfg_workdir/wikibot.php scheduled > $sitecfg_workdir/wikibot_out/$wikibot_timestamp 2>&1 &");
+			}
+		}
+
+		$query="SELECT ninupdates_reports.reportdate, ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.postproc_runfinished=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+
+		if($numrows>0)
+		{
+			echo "Starting post-processing tasks for processing $numrows report(s)...\n";
+
+			$postproc_timestamp = date("m-d-y_h-i-s");
+
+			for($i=0; $i<$numrows; $i++)
+			{
+				$row = mysqli_fetch_row($result);
+				$reportdate = $row[0];
+				$sys = $row[1];
+
+				$maincmd_str = "php $sitecfg_workdir/postproc.php $reportdate $sys";
+
+				$cmdout = system("ps aux | grep -c \"$maincmd_str\"");
+				$proc_running = 0;
+				if(is_numeric($cmdout))
+				{
+					if($cmdout > 2)$proc_running = 1;
+				}
+
+				if($proc_running==0)
+				{
+					echo "Starting postproc task for $reportdate-$sys...\n";
+					system("$maincmd_str > $sitecfg_workdir/postproc_out/$postproc_timestamp 2>&1 &");
+				}
+				else
+				{
+					echo "The postproc task for $reportdate-$sys wasn't finished but the process is still running, skipping process creation for it.\n";
+				}
 			}
 		}
 
@@ -109,7 +146,7 @@ function dosystem($console)
 			$row = mysqli_fetch_row($result);
 			$systemid = $row[0];
 
-			$query = "INSERT INTO ninupdates_reports (reportdate, curdate, systemid, log, regions, updateversion, reportdaterfc, initialscan, updatever_autoset, wikibot_runfinished) VALUES ('".$sysupdate_timestamp."','".$dbcurdate."',$systemid,'report','".$sysupdate_regions."','".$updateversion."','".$soap_timestamp."',$initialscan,0,0)";
+			$query = "INSERT INTO ninupdates_reports (reportdate, curdate, systemid, log, regions, updateversion, reportdaterfc, initialscan, updatever_autoset, wikibot_runfinished, postproc_runfinished) VALUES ('".$sysupdate_timestamp."','".$dbcurdate."',$systemid,'report','".$sysupdate_regions."','".$updateversion."','".$soap_timestamp."',$initialscan,0,0,0)";
 			$result=mysqli_query($mysqldb, $query);
 			$reportid = mysqli_insert_id($mysqldb);
 
