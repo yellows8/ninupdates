@@ -31,6 +31,25 @@ function do_systems_soap()
 
 		close_curl();
 
+		$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updatever_autoset=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+
+		if($numrows>0)
+		{
+			$row = mysqli_fetch_row($result);
+			$count = $row[0];
+
+			if($count>0)
+			{
+				echo "Starting a get_officialchangelog task for processing $count report(s)...\n";
+
+				$get_officialchangelog_timestamp = date("m-d-y_h-i-s");
+
+				system("php $sitecfg_workdir/get_officialchangelog_cli.php > $sitecfg_workdir/get_officialchangelog_scheduled_out/$get_officialchangelog_timestamp 2>&1 &");
+			}
+		}
+
 		$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updatever_autoset=1 && ninupdates_reports.wikibot_runfinished=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
@@ -171,33 +190,6 @@ function dosystem($console)
 
 		if($initialscan==0)echo "System $system: System update available for regions $sysupdate_regions.\n";
 		if($initialscan)echo "System $system: Initial scan successful for regions $sysupdate_regions.\n";
-
-		$pos = 0;
-		$len = strlen($sysupdate_regions);
-
-		while($pos < $len)
-		{
-			$region = substr($sysupdate_regions, $pos, 1);
-
-			$query="SELECT ninupdates_officialchangelog_pages.url, ninupdates_officialchangelog_pages.id FROM ninupdates_officialchangelog_pages, ninupdates_consoles, ninupdates_regions WHERE ninupdates_consoles.system='".$system."' && ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id && ninupdates_officialchangelog_pages.regionid=ninupdates_regions.id && ninupdates_regions.regioncode='".$region."'";
-			$result=mysqli_query($mysqldb, $query);
-			$numrows=mysqli_num_rows($result);
-			if($numrows!=0)
-			{
-				$row = mysqli_fetch_row($result);
-				$pageurl = $row[0];
-				$pageid = $row[1];
-
-				echo "Running get_ninsite_latest_sysupdatever() with system=$system and region=$region...\n";
-
-				get_ninsite_changelog($sysupdate_timestamp, $system, $pageurl, $pageid);
-			}
-
-			$pos++;
-			if($pos >= $len)break;
-
-			if($sysupdate_regions[$pos]==',')$pos++;
-		}
 
 		echo "\nSending IRC msg...\n";
 		sendircmsg($msgme_message);
