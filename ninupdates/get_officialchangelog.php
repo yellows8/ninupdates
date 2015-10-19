@@ -61,7 +61,7 @@ function send_httprequest_getchangelog($url)
 	$httpstat_getchangelog = curl_getinfo($curl_handle_getchangelog, CURLINFO_HTTP_CODE);
 	if($buf===FALSE)
 	{
-		$errorstr = "HTTP request failed: " . curl_error ($curl_handle);
+		$errorstr = "HTTP request failed: " . curl_error ($curl_handle_getchangelog);
 		$httpstat_getchangelog = "0";
 	} else if($httpstat_getchangelog!="200")$errorstr = "HTTP error $httpstat_getchangelog: " . curl_error ($curl_handle_getchangelog);
 

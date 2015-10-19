@@ -29,7 +29,7 @@ for($i=0; $i<strlen($regions); $i++)
 	mkdir("$path/" . substr($regions, $i, 1), 0760);
 }
 
-$query = "INSERT INTO ninupdates_consoles (system, sysname, clientcertfn, clientprivfn, nushttpsurl, platformid) VALUES ('".$system."','".$sysname."','".$clientcertfn."','".$clientprivfn."','".$nushttpsurl."','".$platformid."')";
+$query = "INSERT INTO ninupdates_consoles (system, sysname, clientcertfn, clientprivfn, nushttpsurl, platformid, regions) VALUES ('".$system."','".$sysname."','".$clientcertfn."','".$clientprivfn."','".$nushttpsurl."','".$platformid."','".$regions."')";
 $result=mysqli_query($mysqldb, $query);
 
 dbconnection_end();
