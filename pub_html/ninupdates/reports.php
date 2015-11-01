@@ -39,7 +39,16 @@ if($reportdate!="" && $system!="")
 {
 	if($setver=="1" || $setsysver!="")
 	{
-		$query="SELECT updateversion FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
+		$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update $sys $reportdate Set System Version</title></head><body>
+Manually setting the update-version is disabled since that's supposed to be done automatically, doing it manually would also disable other things which are supposed to be done automatically.</body></html>";
+
+		dbconnection_end();
+		if($sitecfg_logplainhttp200!=0)writeNormalLog("RESULT: 200");
+		echo $con;
+
+		return;
+
+		/*$query="SELECT updateversion FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 		
@@ -53,7 +62,7 @@ if($reportdate!="" && $system!="")
 			return;
 		}		
 
-		$row = mysqli_fetch_row($result);
+		$row = mysqli_fetch_row($result);*/
 		/*if($row[0]!="N/A")
 		{
 			dbconnection_end();
@@ -64,7 +73,7 @@ if($reportdate!="" && $system!="")
 			return;
 		}*/
 
-		if($setver=="1")
+		/*if($setver=="1")
 		{
 			$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update $sys $reportdate Set System Version</title></head><body>
 <form method=\"post\" action=\"reports.php?date=$reportdate&amp;sys=$system\" enctype=\"multipart/form-data\">
@@ -75,8 +84,8 @@ if($reportdate!="" && $system!="")
 			echo $con;
 
 			return;
-		}
-		else if($setsysver!="")
+		}*/
+		/*else if($setsysver!="")
 		{
 			$setsysver = strip_tags($setsysver);
 
@@ -113,7 +122,7 @@ if($reportdate!="" && $system!="")
 			writeNormalLog("CHANGED SYSVER TO $setsysver. RESULT: 302");
 
 			return;
-		}
+		}*/
 	}
 }
 
@@ -196,7 +205,7 @@ if($reportdate=="")
 
 		$url = "reports.php?date=$reportdate&amp;sys=$system";
 
-		if($updateversion=="N/A")$updateversion = "<a href=\"$url&setver=1\">N/A</a>";
+		//if($updateversion=="N/A")$updateversion = "<a href=\"$url&setver=1\">N/A</a>";
 
 		$con.= "<tr>\n";
 
@@ -401,7 +410,7 @@ else
 	}
 
 	$con.= "Request timestamp: $reportdaterfc<br /><br />\n";
-	if($updateversion=="N/A")$con.= "Set system <a href=\"reports.php?date=$reportdate&sys=$system&setver=1\">version.</a>";
+	//if($updateversion=="N/A")$con.= "Set system <a href=\"reports.php?date=$reportdate&sys=$system&setver=1\">version.</a>";
 	$con.= "$sitecfg_reportupdatepage_footer";
 	$con.= "</body></html>";
 }
