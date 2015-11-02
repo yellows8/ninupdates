@@ -16,6 +16,16 @@ function do_systems_soap()
 	{
 		init_curl();
 
+		$query="SELECT lastreqstatus FROM ninupdates_management";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+		$lastreqstatus = "";
+		if($numrows>0)
+		{
+			$row = mysqli_fetch_row($result);
+			$lastreqstatus = $row[0];
+		}
+
 		$query="SELECT system FROM ninupdates_consoles WHERE enabled!=0 || enabled IS NULL";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
@@ -28,6 +38,24 @@ function do_systems_soap()
 
 		$query="UPDATE ninupdates_management SET lastscan='" . date(DATE_RFC822, time()) . "'";
 		$result=mysqli_query($mysqldb, $query);
+
+		$query="SELECT lastreqstatus FROM ninupdates_management";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+		if($numrows>0)
+		{
+			$row = mysqli_fetch_row($result);
+			$lastreqstatus_new = $row[0];
+
+			if($lastreqstatus !== $lastreqstatus_new)
+			{
+				if($lastreqstatus==="")$lastreqstatus = "OK";
+				if($lastreqstatus_new==="")$lastreqstatus_new = "OK";
+
+				echo "Req status changed since last scan, sending msg...\n";
+				appendmsg_tofile("Last SOAP request status changed, CDN maintenance status likely changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\".", "msg3dsdev");
+			}
+		}
 
 		close_curl();
 
