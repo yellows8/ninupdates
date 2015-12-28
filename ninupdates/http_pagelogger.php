@@ -66,6 +66,23 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 	$buf = send_httprequest_pagelogger($url);
 	close_curl_pagelogger();
 
+	$httpstat_file = "$datadir/httpstat";
+
+	$httpstat_prev = FALSE;
+	if(file_exists($httpstat_file)===TRUE)$httpstat_prev = file_get_contents($httpstat_file);
+
+	$f = fopen($httpstat_file, "w");
+	fwrite($f, $httpstat_pagelogger);
+	fclose($f);
+
+	if($httpstat_prev!==FALSE && $httpstat_prev!=$httpstat_pagelogger)
+	{
+		$msg = "The HTTP response status-code changed from $httpstat_prev to $httpstat_pagelogger, with the following URL: $url";
+		echo "$msg\n";
+
+		if($enable_notification==="1")appendmsg_tofile($msg, "msg3dsdev");
+	}
+
 	if($httpstat_pagelogger!="200")
 	{
 		echo "Request for the pagelogger with url \"$url\" failed: HTTP $httpstat_pagelogger.\n";
