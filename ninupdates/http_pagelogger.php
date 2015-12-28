@@ -65,22 +65,26 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 	init_curl_pagelogger();
 	$buf = send_httprequest_pagelogger($url);
 	close_curl_pagelogger();
+	if($httpstat_pagelogger == "0")return 5;//Return immediately when the HTTP request failed.
 
 	$httpstat_file = "$datadir/httpstat";
 
 	$httpstat_prev = FALSE;
 	if(file_exists($httpstat_file)===TRUE)$httpstat_prev = file_get_contents($httpstat_file);
 
-	$f = fopen($httpstat_file, "w");
-	fwrite($f, $httpstat_pagelogger);
-	fclose($f);
-
-	if($httpstat_prev!==FALSE && $httpstat_prev!=$httpstat_pagelogger)
+	if($httpstat_pagelogger == 200 || $httpstat_pagelogger == 404)//Only keep track of status-code changes between these two(otherwise this might catch server-side issues).
 	{
-		$msg = "The HTTP response status-code changed from $httpstat_prev to $httpstat_pagelogger, with the following URL: $url";
-		echo "$msg\n";
+		$f = fopen($httpstat_file, "w");
+		fwrite($f, $httpstat_pagelogger);
+		fclose($f);
 
-		if($enable_notification==="1")appendmsg_tofile($msg, "msg3dsdev");
+		if($httpstat_prev!==FALSE && $httpstat_prev!=$httpstat_pagelogger)
+		{
+			$msg = "The HTTP response status-code changed from $httpstat_prev to $httpstat_pagelogger, with the following URL: $url";
+			echo "$msg\n";
+
+			if($enable_notification==="1")appendmsg_tofile($msg, "msg3dsdev");
+		}
 	}
 
 	if($httpstat_pagelogger!="200")
