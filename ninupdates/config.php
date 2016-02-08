@@ -48,6 +48,7 @@ function sendircmsg($msg)
 
 	appendmsg_tofile($msg, "msg_yls8ninupdateschan");
 	if($system=="ctr" || $system=="ktr")appendmsg_tofile($msg, "msg3dsdev");
+	if($system=="wup" || $system=="wupv")appendmsg_tofile($msg, "msgwiiudev");
 }
 
 ?>
