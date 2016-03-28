@@ -1,9 +1,9 @@
 <?php
 
-include_once("config.php");
-include_once("logs.php");
-include_once("db.php");
-include_once("get_officialchangelog.php");
+include_once(dirname(__FILE__) . "/config.php");
+include_once(dirname(__FILE__) . "/logs.php");
+include_once(dirname(__FILE__) . "/db.php");
+include_once(dirname(__FILE__) . "/get_officialchangelog.php");
 
 dbconnection_start();
 

@@ -22,7 +22,7 @@ $sitecfg_sitenav_header Optional HTML to include immediately before the site nav
 $sitecfg_postproc_cmd This is the command which will be executed by postproc.php, if this is set. The full command passed to system() is: "$sitecfg_postproc_cmd $reportdate $system".
 */
 
-include_once("site_cfg.php");
+require_once(dirname(__FILE__) . "/site_cfg.php");
 
 if(!isset($sitecfg_remotecmd))$sitecfg_remotecmd = 0;
 if(!isset($sitecfg_sshhost))$sitecfg_sshhost = "";

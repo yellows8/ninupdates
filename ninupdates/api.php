@@ -1,10 +1,9 @@
 <?php
 
-include_once("/home/yellows8/ninupdates/config.php");
-include_once("/home/yellows8/ninupdates/db.php");
-include_once("/home/yellows8/ninupdates/logs.php");
-include_once("/home/yellows8/ninupdates/weblogging.php");
-include_once("/home/yellows8/ninupdates/nzone/nzone.php");
+require_once(dirname(__FILE__) . "/config.php");
+require_once(dirname(__FILE__) . "/db.php");
+require_once(dirname(__FILE__) . "/logs.php");
+require_once(dirname(__FILE__) . "/weblogging.php");
 
 $logging_dir = "$sitecfg_workdir/weblogs/general";
 

@@ -1,9 +1,9 @@
 <?php
 
-include_once("config.php");
-include_once("logs.php");
-include_once("db.php");
-include_once("get_officialchangelog.php");
+require_once(dirname(__FILE__) . "/config.php");
+require_once(dirname(__FILE__) . "/logs.php");
+require_once(dirname(__FILE__) . "/db.php");
+require_once(dirname(__FILE__) . "/get_officialchangelog.php");
 
 do_systems_soap();
 

@@ -1,10 +1,10 @@
 <?php
 
-include_once("config.php");
-include_once("logs.php");
-include_once("db.php");
+require_once(dirname(__FILE__) . "/config.php");
+require_once(dirname(__FILE__) . "/logs.php");
+require_once(dirname(__FILE__) . "/db.php");
 
-include_once("api.php");
+include_once(dirname(__FILE__) . "/api.php");
 
 if($argc<6)
 {

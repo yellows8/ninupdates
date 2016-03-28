@@ -1,6 +1,6 @@
 <?php
 
-include_once("config.php");
+require_once(dirname(__FILE__) . "/config.php");
 
 function getlogcontents($filename)
 {

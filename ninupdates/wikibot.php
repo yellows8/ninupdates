@@ -1,12 +1,12 @@
 <?php
 
-include_once("config.php");
-include_once("logs.php");
-include_once("db.php");
+require_once(dirname(__FILE__) . "/config.php");
+require_once(dirname(__FILE__) . "/logs.php");
+require_once(dirname(__FILE__) . "/db.php");
 
-include_once("Wikimate/globals.php");
+require_once(dirname(__FILE__) . "/Wikimate/globals.php");
 
-include_once("wikibot_config.php");
+require_once(dirname(__FILE__) . "/wikibot_config.php");
 /*
 The above file must contain the following settings:
 $wikibot_user Account username for the wikibot.

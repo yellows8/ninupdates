@@ -1,10 +1,10 @@
 <?php
 
-include_once("config.php");
-include_once("logs.php");
-include_once("db.php");
+require_once(dirname(__FILE__) . "/config.php");
+require_once(dirname(__FILE__) . "/logs.php");
+require_once(dirname(__FILE__) . "/db.php");
 
-include_once("http_pagelogger.php");
+require_once(dirname(__FILE__) . "/http_pagelogger.php");
 
 if($argc<2)
 {
