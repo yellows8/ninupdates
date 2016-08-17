@@ -190,18 +190,17 @@ if($reportdate!="")
 $regionquery = "";
 if($region!="")$regionquery = " && ninupdates_titles.region='".$region."'";
 
-$versionquery = "ninupdates_titles.version,";
-if($soapquery!="" || $reportdate=="")$versionquery = "GROUP_CONCAT(DISTINCT ninupdates_titles.version ORDER BY ninupdates_titles.version SEPARATOR ','),";
+$versionquery = "GROUP_CONCAT(DISTINCT ninupdates_titles.version ORDER BY ninupdates_titles.version SEPARATOR ','),";
 
 $reportdatequery = "GROUP_CONCAT(DISTINCT ninupdates_reports.reportdate ORDER BY ninupdates_reports.curdate SEPARATOR ','),";
 $updateverquery = "GROUP_CONCAT(DISTINCT ninupdates_reports.updateversion ORDER BY ninupdates_reports.curdate SEPARATOR ','),";
 
-$query = "SELECT ninupdates_titleids.titleid, ninupdates_titleids.description, $versionquery ninupdates_titles.region, ninupdates_regions.regionid, $reportdatequery $updateverquery fssize, tmdsize, tiksize, ninupdates_titles.region FROM ninupdates_titles, ninupdates_titleids, ninupdates_reports, ninupdates_regions WHERE ninupdates_titles.systemid=$systemid && ninupdates_reports.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_reports.id=ninupdates_titles.reportid && ninupdates_regions.regioncode=ninupdates_titles.region";
+$query = "SELECT ninupdates_titleids.titleid, ninupdates_titleids.description, $versionquery ninupdates_titles.region, ninupdates_regions.regionid, $reportdatequery $updateverquery GROUP_CONCAT(fssize ORDER BY ninupdates_titles.version SEPARATOR ','), GROUP_CONCAT(tmdsize ORDER BY ninupdates_titles.version SEPARATOR ','), GROUP_CONCAT(tiksize ORDER BY ninupdates_titles.version SEPARATOR ','), ninupdates_titles.region FROM ninupdates_titles, ninupdates_titleids, ninupdates_reports, ninupdates_regions WHERE ninupdates_titles.systemid=$systemid && ninupdates_reports.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_reports.id=ninupdates_titles.reportid && ninupdates_regions.regioncode=ninupdates_titles.region";
 if($reportquery!="")$query.= $reportquery;
 if($soapquery!="")$query.= $soapquery;
 if($regionquery!="")$query.= $regionquery;
 
-$query.= " GROUP BY ninupdates_titles.tid, ninupdates_titles.region";
+$query.= " GROUP BY ninupdates_titles.tid, ninupdates_titles.region, ninupdates_regions.regionid";
 
 $result=mysqli_query($mysqldb, $query);
 $numrows=mysqli_num_rows($result);
