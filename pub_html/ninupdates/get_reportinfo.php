@@ -21,28 +21,28 @@ if(isset($_REQUEST['format']))$output_format = mysqli_real_escape_string($mysqld
 if($system=="")
 {
 	dbconnection_end();
-	echo "System not specified.\n";
+	echo "ERROR: System not specified.\n";
 	return;
 }
 
 if($updateversion=="")
 {
 	dbconnection_end();
-	echo "Updateversion not specified.\n";
+	echo "ERROR: Updateversion not specified.\n";
 	return;
 }
 
 if($output_format!=="raw")
 {
 	dbconnection_end();
-	echo "Invalid format.\n";
+	echo "ERROR: Invalid format.\n";
 	return;
 }
 
 if($reportinfo!=="reportdate")
 {
 	dbconnection_end();
-	echo "Invalid info param.\n";
+	echo "ERROR: Invalid info param.\n";
 	return;
 }
 
@@ -60,7 +60,7 @@ $numrows=mysqli_num_rows($result);
 if($numrows==0)
 {
 	dbconnection_end();
-	echo "Invalid updateversion.\n";
+	echo "ERROR: Invalid updateversion.\n";
 	return;
 }
 
