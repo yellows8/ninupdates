@@ -332,6 +332,7 @@ for($i=0; $i<$numrows; $i++)
 	{
 		$titlelist_array[$i][1] = $regtext;
 	}
+
 	$titlelist_array[$i][2] = $desctext;
 	$titlelist_array[$i][3] = $versiontext;
 	$titlelist_array[$i][4] = $updatevers;
@@ -514,6 +515,32 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="" && $soapquery=="")
 		if($hashval===FALSE || $hashval=="")$hashval = "N/A";
 
 		$con.= "<br/>SOAP TitleHash: $hashval<br/>\n";
+	}
+
+	if($reportdate!="" && $usesoap=="")
+	{
+		$con.= "<br/>\nTitle info: <br/>\n<br/>\n";
+		$titleinfo_count = 0;
+
+		$titledata_base = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system/";
+
+		if(file_exists($titledata_base)!==FALSE)
+		{
+
+			$diriter = new RecursiveDirectoryIterator($titledata_base);
+			$iter = new RecursiveIteratorIterator($diriter);
+			$regex_iter = new RegexIterator($iter, '/^.+\.*info$/i', RecursiveRegexIterator::GET_MATCH);
+
+			foreach($regex_iter as $path => $pathobj)
+			{
+				$url = substr($path, strlen($sitecfg_workdir)+1);
+				$con.= "<a href=\"$url\">$url</a><br/>\n";
+
+				$titleinfo_count++;
+			}
+		}
+
+		if($titleinfo_count==0)$con.="N/A<br/>\n";
 	}
 }
 
