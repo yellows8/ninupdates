@@ -169,7 +169,7 @@ if($reportdate=="")
 		$system_columntext = "<a href=\"reports.php\">$system_columntext</a>";
 	}
 
-	$con.= "$sitecfg_homepage_header<table border=\"1\">
+	$con.= "$sitecfg_homepage_header <h3><a name=Reports href=#Reports>Reports</a></h3><table border=\"1\">
 <tr>
   <th>$reportdate_columntext</th>
   <th>Update Version</th>
@@ -218,11 +218,17 @@ if($reportdate=="")
 	}
 	$con.= "</table><br />\n";
 
-	$con.= "<table border=\"1\">
+	$con.= "<h3><a name=Systems href=#Systems>Systems</a></h3><table border=\"1\">
 <tr>
   <th>System</th>
   <th>Title List</th>
+  <th>Last report</th>
 </tr>\n";
+
+	$query = "SELECT now()";
+	$result=mysqli_query($mysqldb, $query);
+	$row = mysqli_fetch_row($result);
+	$dbcurdate = $row[0];
 
 	$query="SELECT DISTINCT ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system";
 	$result=mysqli_query($mysqldb, $query);
@@ -235,17 +241,48 @@ if($reportdate=="")
 
 		$sys = getsystem_sysname($system);
 
+		$lastreport_text = "";
+
+		$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_reports.curdate FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
+		$result_new=mysqli_query($mysqldb, $query);
+		$numrows_new=mysqli_num_rows($result_new);
+		if($numrows_new>0)
+		{
+			$row_new = mysqli_fetch_row($result_new);
+
+			$reportdate = $row_new[0];
+			$updateversion = $row_new[1];
+			$report_curdate = $row_new[2];
+
+			$url = "reports.php?date=$reportdate&amp;sys=$system";
+
+			$query="SELECT TIMESTAMPDIFF(DAY,'".$report_curdate."','".$dbcurdate."'), TIMESTAMPDIFF(WEEK,'".$report_curdate."','".$dbcurdate."'), TIMESTAMPDIFF(MONTH,'".$report_curdate."','".$dbcurdate."'), TIMESTAMPDIFF(MINUTE,'".$report_curdate."','".$dbcurdate."'), TIMESTAMPDIFF(HOUR,'".$report_curdate."','".$dbcurdate."')";
+			$result_new=mysqli_query($mysqldb, $query);
+			$row_new = mysqli_fetch_row($result_new);
+
+			$timediff0 = $row_new[0];
+			$timediff1 = $row_new[1];
+			$timediff2 = $row_new[2];
+			$timediff3 = $row_new[3] % (60*24);
+			$timediff4 = $row_new[4] % 24;
+
+			$lastreport_text = "<a href=\"".$url."\">$reportdate($updateversion)</a>, $timediff0 day(s) / $timediff1 week(s) / $timediff2 month(s) and $timediff3 minutes / $timediff4 hours ago.";
+		}
+
 		$url = "titlelist.php?sys=$system";
 
 		$con.= "<tr>\n";
 		$con.= "<td>".$sys."</td>\n";
 		$con.= "<td><a href=\"$url\">HTML</a> <a href=\"$url&amp;wiki=1\">Wiki</a> <a href=\"$url&amp;csv=1\">CSV</a></td>\n";
+		$con.= "<td>".$lastreport_text."</td>\n";
 		$con.= "</tr>\n";
 	}
 
 	$con.= "</table><br />\n";
 
-	$con.= "<iframe src=\"scanstatus.php\" width=512 height=64></iframe><br /><br />\n";
+	$con.= "<h3><a name=ScanStatus href=#ScanStatus>Scan Status</a></h3><iframe src=\"scanstatus.php\" width=512 height=64></iframe><br /><br />\n";
+
+	$con.= "<h3><a name=Other href=#Other>Other</a></h3>";
 
 	$con.= "RSS feed is available <a href=\"feed.php\">here.</a><br />\n";
 	$con.= "Source code is available <a href=\"https://github.com/yellows8/ninupdates\">here.</a><br />\n";
