@@ -263,10 +263,10 @@ if($reportdate=="")
 			$timediff0 = $row_new[0];
 			$timediff1 = $row_new[1];
 			$timediff2 = $row_new[2];
-			$timediff3 = $row_new[3] % (60*24);
+			$timediff3 = $row_new[3] % 60;
 			$timediff4 = $row_new[4] % 24;
 
-			$lastreport_text = "<a href=\"".$url."\">$reportdate($updateversion)</a>, $timediff0 day(s) / $timediff1 week(s) / $timediff2 month(s) and $timediff3 minutes / $timediff4 hours ago.";
+			$lastreport_text = "<a href=\"".$url."\">$reportdate($updateversion)</a>, $timediff0 day(s) / $timediff1 week(s) / $timediff2 month(s) and $timediff4 hours $timediff3 minutes ago.";
 		}
 
 		$url = "titlelist.php?sys=$system";
