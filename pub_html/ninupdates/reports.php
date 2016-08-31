@@ -175,6 +175,7 @@ if($reportdate=="")
   <th>Update Version</th>
   <th>$system_columntext</th>
   <th>Request timestamp</th>
+  <th>Previous report</th>
 </tr>\n";
 //  <th>UTC datetime</th>
 
@@ -192,6 +193,9 @@ if($reportdate=="")
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 	
+	$prev_curdate = "";
+	$prev_system = "";
+
 	for($i=0; $i<$numrows; $i++)
 	{
 		$row = mysqli_fetch_row($result);
@@ -209,12 +213,29 @@ if($reportdate=="")
 
 		$con.= "<tr>\n";
 
+		$query="SELECT TIMESTAMPDIFF(DAY,'".$prev_curdate."','".$curdate."'), TIMESTAMPDIFF(WEEK,'".$prev_curdate."','".$curdate."'), TIMESTAMPDIFF(MONTH,'".$prev_curdate."','".$curdate."'), TIMESTAMPDIFF(MINUTE,'".$prev_curdate."','".$curdate."'), TIMESTAMPDIFF(HOUR,'".$prev_curdate."','".$curdate."')";
+		$result_new=mysqli_query($mysqldb, $query);
+		$row_new = mysqli_fetch_row($result_new);
+
+		$timediff0 = $row_new[0];
+		$timediff1 = $row_new[1];
+		$timediff2 = $row_new[2];
+		$timediff3 = $row_new[3] % 60;
+		$timediff4 = $row_new[4] % 24;
+
+		$lastreport_text = "";
+		if($i>0 && $prev_system===$system)$lastreport_text = "$timediff0 day(s) / $timediff1 week(s) / $timediff2 month(s) and $timediff4 hours $timediff3 minutes ago.";
+
 		$con.= "<td><a href=\"".$url."\">$reportdate</a></td>\n";
 		$con.= "<td>".$updateversion."</td>\n";
 		$con.= "<td>".$sys."</td>\n";
 		$con.= "<td>".$reportdaterfc."</td>\n";
+		$con.= "<td>".$lastreport_text."</td>\n";
 
 		$con.= "</tr>\n";
+
+		$prev_curdate = $curdate;
+		$prev_system = $system;
 	}
 	$con.= "</table><br />\n";
 
