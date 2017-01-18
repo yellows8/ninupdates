@@ -229,6 +229,7 @@ function parse_soapresp($buf)
 	while(($title = strstr($title, "<TitleVersion>")))
 	{
 		$titleid_pos = strpos($title,  "<TitleId>") + 9;
+		$titleid_posend = strpos($title, "</TitleId>");
 		$titlever_pos = strpos($title, "<Version>") + 9;
 		$titlever_posend = strpos($title, "</Version>");
 		$titlesize_pos = strpos($title, "<FsSize>") + 8;
@@ -244,7 +245,7 @@ function parse_soapresp($buf)
 			$titlesize_posend = strpos($title, "</RawSize>");
 		}
 
-		if($titleid_pos!==FALSE)$titleid = substr($title, $titleid_pos, 16);
+		if($titleid_posend!==FALSE)$titleid = substr($title, $titleid_pos, $titleid_posend - $titleid_pos);
 		if($titlever_posend!==FALSE)$titlever = substr($title, $titlever_pos, $titlever_posend - $titlever_pos);
 		if($titlesize_posend!==FALSE)$titlesize = substr($title, $titlesize_pos, $titlesize_posend - $titlesize_pos);
 		if($titlesizetik_posend!==FALSE)$titlesizetik = substr($title, $titlesizetik_pos, $titlesizetik_posend - $titlesizetik_pos);
