@@ -305,7 +305,9 @@ if($reportdate=="")
 
 	$con.= "<h3><a name=Other href=#Other>Other</a></h3>";
 
-	$con.= "RSS feed is available <a href=\"feed.php\">here.</a><br />\n";
+	$con.= "RSS feed is available <a href=\"feed.php\">here.</a>";
+	if($sitecfg_twitterurl!=="")$con.= " The twitter bot is available <a href=\"$sitecfg_twitterurl\">here.</a>";
+	$con.= "<br />\n";
 	$con.= "Source code is available <a href=\"https://github.com/yellows8/ninupdates\">here.</a><br />\n";
 	$con.= "Parsed Nintendo Zone Hotspots data is available <a href=\"3ds_nzonehotspots.php\">here.</a><br />\n";
 	$con.= "Scanning involving eShop can be found <a href=\"eshop/\">here.</a><br />\n";
