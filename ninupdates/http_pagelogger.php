@@ -3,6 +3,7 @@
 require_once(dirname(__FILE__) . "/config.php");
 require_once(dirname(__FILE__) . "/logs.php");
 require_once(dirname(__FILE__) . "/db.php");
+require_once(dirname(__FILE__) . "/tweet.php");
 
 function init_curl_pagelogger()
 {
@@ -108,6 +109,7 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 		$msg = "$msgprefix Converted Last-Modified datetime: " . date(DATE_RFC822, $lastmod) . ". $msgurl";
 
 		appendmsg_tofile($msg, "msg3dsdev");
+		sendtweet($msg);
 	}
 	else
 	{

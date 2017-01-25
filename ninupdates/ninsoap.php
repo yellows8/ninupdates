@@ -4,6 +4,7 @@ require_once(dirname(__FILE__) . "/config.php");
 require_once(dirname(__FILE__) . "/logs.php");
 require_once(dirname(__FILE__) . "/db.php");
 require_once(dirname(__FILE__) . "/get_officialchangelog.php");
+require_once(dirname(__FILE__) . "/tweet.php");
 
 do_systems_soap();
 
@@ -53,7 +54,9 @@ function do_systems_soap()
 				if($lastreqstatus_new==="")$lastreqstatus_new = "OK";
 
 				echo "Req status changed since last scan, sending msg...\n";
-				appendmsg_tofile("Last SOAP request status changed, CDN maintenance status likely changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\". https://www.nintendo.co.jp/netinfo/en_US/index.html", "msg3dsdev");
+				$msg = "Last SOAP request status changed, CDN maintenance status likely changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\". https://www.nintendo.co.jp/netinfo/en_US/index.html";
+				appendmsg_tofile($msg, "msg3dsdev");
+				sendtweet($msg);
 			}
 		}
 
@@ -221,6 +224,7 @@ function dosystem($console)
 
 		echo "\nSending IRC msg...\n";
 		sendircmsg($msgme_message);
+		sendtweet("SOAP sysupdate detected for " . getsystem_sysname($system) . ": $msgme_message");
 		echo "Sending email...\n";
         	if(!mail($sitecfg_target_email, "$system SOAP updates", $email_message, "From: ninsoap@$sitecfg_emailhost"))echo "Failed to send mail.\n";
 
