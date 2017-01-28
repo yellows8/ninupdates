@@ -54,7 +54,7 @@ function do_systems_soap()
 				if($lastreqstatus_new==="")$lastreqstatus_new = "OK";
 
 				echo "Req status changed since last scan, sending msg...\n";
-				$msg = "Last SOAP request status changed, CDN maintenance status likely changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\". https://www.nintendo.co.jp/netinfo/en_US/index.html";
+				$msg = "Last SOAP request status changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\". https://www.nintendo.co.jp/netinfo/en_US/index.html";
 				appendmsg_tofile($msg, "msg3dsdev");
 				sendtweet($msg);
 			}
