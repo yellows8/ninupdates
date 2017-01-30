@@ -13,7 +13,7 @@ $wikibot_user Account username for the wikibot.
 $wikibot_pass Account password for the wikibot.
 */
 
-//This is currently experimental: atm this must be run from the cmd-line.
+require_once(dirname(__FILE__) . "/tweet.php");
 
 function wikibot_writelog($str, $type, $reportdate)
 {
@@ -240,7 +240,7 @@ function wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timesta
 	return 0;
 }
 
-function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $page)
+function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl)
 {
 	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
 
@@ -403,6 +403,11 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 		$text = "Sysupdate page edit request was successful.";
 		echo "$text\n";
 		wikibot_writelog($text, 1, $reportdate);
+		$text = "Sending tweet...";
+		echo "$text\n";
+		wikibot_writelog($text, 1, $reportdate);
+
+		sendtweet("The wiki page for the new $sysnames_list $updateversion sysupdate has been created: $serverbaseurl/wiki/$updateversion");
 	}
 
 	return 0;
@@ -550,7 +555,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 		wikibot_writelog("Sysupdate page:\n".$sysupdate_page->getText(), 1, $reportdate);
 	}
 
-	if($sysupdate_page!==FALSE)wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $sysupdate_page);
+	if($sysupdate_page!==FALSE)wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $sysupdate_page, $serverbaseurl);
 
 	echo "Updating the report's wikibot_runfinished field...\n";
 	$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikibot_runfinished=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
