@@ -407,7 +407,7 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 		echo "$text\n";
 		wikibot_writelog($text, 1, $reportdate);
 
-		sendtweet("The wiki page for the new $sysnames_list $updateversion sysupdate has been created: $serverbaseurl/wiki/$updateversion");
+		sendtweet("The wiki page for the new $sysnames_list $updateversion sysupdate has been created: $serverbaseurl"."wiki/$updateversion");
 	}
 
 	return 0;
