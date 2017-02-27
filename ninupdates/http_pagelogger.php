@@ -106,7 +106,7 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 
 	if($enable_notification==="1" || $enable_notification==="2")
 	{
-		$msg = "$msgprefix Converted Last-Modified datetime: " . date(DATE_RFC822, $lastmod) . ". $msgurl";
+		$msg = "$msgprefix Last-Modified: " . date(DATE_RFC822, $lastmod) . ". $msgurl";
 
 		if($enable_notification==="1")appendmsg_tofile($msg, "msg3dsdev");
 		sendtweet($msg);
