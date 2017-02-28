@@ -92,9 +92,8 @@ else
 	dbconnection_end();
 
 	header("Location: reports.php");
-	writeNormalLog("CHANGED DESC TO $desc. RESULT: 302");
-
 	appendmsg_tofile("title_setdesc.php: desc for TID $titleid changed to: $desc", "msgme");
+	writeNormalLog("CHANGED DESC TO $desc. RESULT: 302");
 
 	return;
 }
