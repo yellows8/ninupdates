@@ -50,7 +50,7 @@ if(!isset($_REQUEST['desc']))
 	$con = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update Set Title Description</title></head><body>
 <form method=\"post\" action=\"title_setdesc.php?titleid=$titleid\" enctype=\"multipart/form-data\">
 $curdesc
-  Changes will be messaged to the admin.</br>Description: <input type=\"text\" value=\"\" name=\"desc\"/></br>Token: <input type=\"text\" value=\"Ask the admin.\" name=\"token\"/></br><input type=\"submit\" value=\"Submit\"/></form></body></html>";
+  Description: <input type=\"text\" value=\"\" name=\"desc\"/></br>Token: <input type=\"text\" value=\"Ask the admin.\" name=\"token\"/></br><input type=\"submit\" value=\"Submit\"/></form></body></html>";
 
 	dbconnection_end();
 	if($sitecfg_logplainhttp200!=0)writeNormalLog("RESULT: 200");
@@ -92,7 +92,6 @@ else
 	dbconnection_end();
 
 	header("Location: reports.php");
-	appendmsg_tofile("title_setdesc.php: desc for TID $titleid changed to: $desc", "msgme");
 	writeNormalLog("CHANGED DESC TO $desc. RESULT: 302");
 
 	return;
