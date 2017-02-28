@@ -91,7 +91,7 @@ else
 
 	appendmsg_tofile("title_setdesc.php: desc for TID $titleid changed to: $desc", "msgme");
 	header("Location: reports.php");
-	writeNormalLog("CHANGED DESC TO $desc. RESULT: 302");
+	writeNormalLog("CHANGED TID $titleid DESC TO $desc. RESULT: 302");
 }
 
 ?>
