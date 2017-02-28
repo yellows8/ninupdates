@@ -25,6 +25,8 @@ function getRealIpAddr()
 
 function writeNormalLog($app)
 {
+error_log($app);
+return;
 //ASSIGN VARIABLES TO USER INFO
 $time = date("M j G:i:s Y"); 
 $ip = getRealIpAddr();
@@ -37,7 +39,8 @@ $uri = $_SERVER['REQUEST_URI'];
 $msg = "IP: " . $ip . " TIME: " . $time . " REFERRER: " . $referrer . " SEARCHSTRING: " . $query . " USERAGENT: " . $userAgent . " URI: " . $uri . " " . $app;
 
 //CALL OUR LOG FUNCTION
-writeToLogFile($msg);
+//writeToLogFile($msg);
+//return;
 }
 
 function writeToLogFile($msg)
