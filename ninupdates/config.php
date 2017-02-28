@@ -38,7 +38,7 @@ if(!isset($sitecfg_twitterurl))$sitecfg_twitterurl = "";
 function appendmsg_tofile($msg, $filename)
 {
 	global $sitecfg_remotecmd, $sitecfg_sshhost;
-	$tmp_cmd = "echo '" . $msg . "' >> /home/yellows8/.irssi/$filename";
+	$tmp_cmd = "echo " . escapeshellarg($msg) . " >> " . escapeshellarg("/home/yellows8/.irssi/$filename");
 	$irc_syscmd = $tmp_cmd;
 	if($sitecfg_remotecmd==1)$irc_syscmd = "ssh yellows8@$sitecfg_sshhost \"".$tmp_cmd."\"";
 	system($irc_syscmd);
