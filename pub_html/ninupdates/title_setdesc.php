@@ -13,8 +13,10 @@ db_checkmaintenance(1);
 
 $titleid = "";
 $desc = "";
+$intoken = "";
 if(isset($_REQUEST['titleid']))$titleid = mysqli_real_escape_string($mysqldb, $_REQUEST['titleid']);
 if(isset($_REQUEST['desc']))$desc = mysqli_real_escape_string($mysqldb, $_REQUEST['desc']);
+if(isset($_REQUEST['token']))$intoken = mysqli_real_escape_string($mysqldb, $_REQUEST['token']);
 
 $query = "SELECT id, description FROM ninupdates_titleids WHERE titleid='" . $titleid . "'";
 $result=mysqli_query($mysqldb, $query);
@@ -48,7 +50,7 @@ if(!isset($_REQUEST['desc']))
 	$con = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update Set Title Description</title></head><body>
 <form method=\"post\" action=\"title_setdesc.php?titleid=$titleid\" enctype=\"multipart/form-data\">
 $curdesc
-  Description: <input type=\"text\" value=\"\" name=\"desc\"/><input type=\"submit\" value=\"Submit\"/></form></body></html>";
+  Changes will be messaged to the admin.</br>Description: <input type=\"text\" value=\"\" name=\"desc\"/></br>Token: <input type=\"text\" value=\"Ask the admin.\" name=\"token\"/></br><input type=\"submit\" value=\"Submit\"/></form></body></html>";
 
 	dbconnection_end();
 	if($sitecfg_logplainhttp200!=0)writeNormalLog("RESULT: 200");
@@ -58,9 +60,23 @@ $curdesc
 }
 else
 {
-	echo "Description changing is disabled due to abuse.\n";
-	writeNormalLog("ATTEMPTED TO CHANGE TITLEDESC, DENIED: $desc. RESULT: 302");
-	return;
+	$tokpath = "$sitecfg_workdir/title_setdesc_authtoken";
+	$cmptoken = "";
+	if(file_exists($tokpath)!==FALSE)$cmptoken = file_get_contents($tokpath);
+	if($cmptoken==="")$cmptoken = FALSE;
+	if($cmptoken===FALSE)
+	{
+		echo "Access denied, the internal token is missing.\n";
+		writeNormalLog("ATTEMPTED TO CHANGE TITLEDESC BUT CMP TOKEN MISSING, DENIED: $desc. RESULT: 302");
+		return;
+	}
+
+	if(strcmp($intoken,$cmptoken)!==0)
+	{
+		echo "Access denied.\n";
+		writeNormalLog("ATTEMPTED TO CHANGE TITLEDESC BUT TOKEN IS INVALID, DENIED: $desc. RESULT: 302");
+		return;
+	}
 
 	$desc = strip_tags($desc);
 
@@ -77,6 +93,8 @@ else
 
 	header("Location: reports.php");
 	writeNormalLog("CHANGED DESC TO $desc. RESULT: 302");
+
+	appendmsg_tofile("title_setdesc.php: desc for TID $titleid changed to: $desc", "msgme");
 
 	return;
 }
