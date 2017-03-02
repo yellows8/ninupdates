@@ -59,7 +59,7 @@ function send_httprequest_pagelogger($url)
 	return $buf;
 }
 
-function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notification)
+function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notification, $msgtarget = "msg3dsdev")
 {
 	global $httpstat_pagelogger, $lastmod_dateid, $lastmod;
 
@@ -108,7 +108,7 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 	{
 		$msg = "$msgprefix Last-Modified: " . date(DATE_RFC822, $lastmod) . ". $msgurl";
 
-		if($enable_notification==="1")appendmsg_tofile($msg, "msg3dsdev");
+		if($enable_notification==="1")appendmsg_tofile($msg, $msgtarget);
 		sendtweet($msg);
 	}
 	else
