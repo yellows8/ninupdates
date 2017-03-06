@@ -17,7 +17,7 @@ $con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=ut
 
 $con.= "$sitecfg_sitenav_header<a href=\"$sitecfg_httpbase/reports.php\">Homepage</a> -> eShop Scanning<hr><br/><br/>\n";
 
-$con.= "See <a href=\"$sitecfg_httpbase/eshop/versionlist_data/ctr/\">here</a> for 3DS eShop <a href=\"http://3dbrew.org/wiki/Home_Menu#VersionList\">VersionList</a> scanning. Currently only the raw binary data from the VersionList is available, nothing for parsing it here.<br/><br/>\n";
+$con.= "See <a href=\"$sitecfg_httpbase/eshop/versionlist_data/ctr/\">here</a> for 3DS eShop <a href=\"http://3dbrew.org/wiki/Home_Menu#VersionList\">VersionList</a> scanning. See <a href=\"verlist_parser.php\">here</a> for VersionList parsing.<br/><br/>\n";
 
 $con.= "</body></html>";
 
