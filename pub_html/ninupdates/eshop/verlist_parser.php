@@ -15,8 +15,10 @@
  </head>
  <body>
 <?php
+include_once("/home/yellows8/ninupdates/config.php");
+
 //by mtheall
-  $dir = '/home/yellows8/ninupdates/versionlist/ctr/';
+  $dir = "$sitecfg_workdir/versionlist/ctr/";
 
   function load_file($file)
   {
