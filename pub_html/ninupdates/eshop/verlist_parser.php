@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<!-- by mtheall -->
 <html>
  <head>
   <style type='text/css'>
@@ -15,9 +17,8 @@
  </head>
  <body>
 <?php
-include_once("/home/yellows8/ninupdates/config.php");
+  include_once("/home/yellows8/ninupdates/config.php");
 
-//by mtheall
   $dir = "$sitecfg_workdir/versionlist/ctr/";
 
   function load_file($file)
@@ -131,7 +132,7 @@ include_once("/home/yellows8/ninupdates/config.php");
     krsort($files);
 ?>
   <form action='' method='POST'>
-   <table>
+   <table id='table'>
     <tr>
      <th>From</th>
      <th>To</th>
@@ -149,7 +150,9 @@ include_once("/home/yellows8/ninupdates/config.php");
     }
 ?>
    </table>
-   <input type='submit' value='Compare' />
+   <div id='submit' style='position:fixed; top:10px;'>
+    <input type='submit' value='Compare' />
+   </div>
   </form>
   <script>
     function checked_index(el)
@@ -204,6 +207,14 @@ include_once("/home/yellows8/ninupdates/config.php");
       el[1].checked = true;
       for(var i = 0; i < el.length; ++i)
         el[i].onclick = update_from;
+    }
+
+    el = document.getElementById('submit');
+    if(el)
+    {
+      var table  = document.getElementById('table');
+      if(table)
+        el.style.left = String(table.offsetWidth + 20) + "px";
     }
 
     update_from();
