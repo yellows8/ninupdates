@@ -17,7 +17,7 @@ if($argc<6)
 }
 else
 {
-	process_pagelogger($argv[1], $argv[2], $argv[3], $argv[4], $argv[5], $argv[5]);
+	process_pagelogger($argv[1], $argv[2], $argv[3], $argv[4], $argv[5], $argv[6]);
 }
 
 ?>
