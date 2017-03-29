@@ -6,12 +6,12 @@ require_once(dirname(__FILE__) . "/db.php");
 
 include_once("http_pagelogger.php");
 
-if($argc<5)
+if($argc<6)
 {
 	die("Usage:\nphp http_pagelogger_cli.php <url> <datadir> <msgprefix> <msgurl> <enable_notification> [optional msgtarget]\n");
 }
 
-if($argc<6)
+if($argc<7)
 {
 	process_pagelogger($argv[1], $argv[2], $argv[3], $argv[4], $argv[5]);
 }
