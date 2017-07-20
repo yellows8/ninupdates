@@ -6,7 +6,7 @@ require_once(dirname(__FILE__) . "/db.php");
 
 if($argc<7)
 {
-	die("Usage:\nphp manage_consoles.php <system(internal name)> <sysname(display name)> <clientcertfn> <clientprivfn> <nushttpsurl> <platformid>\n");
+	die("Usage:\nphp manage_consoles.php <system(internal name)> <sysname(display name)> <clientcertfn> <clientprivfn> <nushttpsurl> <platformid> {optional regions}\n");
 }
 
 dbconnection_start();
@@ -18,11 +18,18 @@ $clientprivfn = mysqli_real_escape_string($mysqldb, $argv[4]);
 $nushttpsurl = mysqli_real_escape_string($mysqldb, $argv[5]);
 $platformid = mysqli_real_escape_string($mysqldb, $argv[6]);
 
+if($argc<8)
+{
+	$regions = "EPJCKAT";
+}
+else
+{
+	$regions = mysqli_real_escape_string($mysqldb, $argv[7]);
+}
+
 $path = "$sitecfg_workdir/soap$system";
 
 mkdir($path, 0760);
-
-$regions = "EPJCKAT";
 
 for($i=0; $i<strlen($regions); $i++)
 {

@@ -414,6 +414,12 @@ function main($reg)
 	$row = mysqli_fetch_row($result);
 	$nushttpsurl = $row[0];
 
+	if($system == "hac")//todo
+	{
+		echo "skipping\n";
+		return;
+	}
+
 	initialize();
 	for($i=0; $i<5; $i++)
 	{
