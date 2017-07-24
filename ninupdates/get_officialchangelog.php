@@ -147,7 +147,7 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 	$updateversion = $row[0];
 	$reportid = $row[1];
 
-	if($updateversion != "N/A" && $updateversion != "Initial scan")
+	if($updateversion != "N/A" && $updateversion != "Initial scan" && $updateversion != "Initial_scan")
 	{
 		getofficalchangelog_writelog("The updateversion for the specified report is already set.", 0, $reportdate);
 		return 3;
@@ -159,6 +159,7 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 	$replydata = send_httprequest_getchangelog($pageurl);
 	close_curl_getchangelog();
 
+	$changelog_switch_flag = 0;
 	if($httpstat_getchangelog!="200")
 	{
 		getofficalchangelog_writelog("Request to the sysupdate list page failed.", 0, $reportdate);
@@ -171,8 +172,40 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 		$str = strstr($replydata, ">Version");//The Nintendo .uk and .jp sites are not supported with this.
 		if($str===FALSE)
 		{
-			getofficalchangelog_writelog("Failed to find version string.", 0, $reportdate);
-			return 5;
+			$str = strstr($replydata, "<h3>Improvements Included in Version ");
+			if($str===FALSE)
+			{
+				getofficalchangelog_writelog("Failed to find version string.", 0, $reportdate);
+				return 5;
+			}
+			else//Switch
+			{
+				$changelog_switch_flag = 1;
+
+				$changelog = strstr($str, "<p>");
+				$len = 3;
+				if($changelog[$len] == "\\n")$len++;
+				if($changelog!==FALSE)
+				{
+					$posend = strpos($changelog, "<h3>Improvements Included");
+					if($posend!==FALSE)
+					{
+						$changelog = substr($changelog, $len, $posend-$len);
+
+						$posend = strpos($changelog, "<section class");
+						if($posend!==FALSE)$changelog = substr($changelog, 0, $posend);
+					}
+					else
+					{
+						$changelog = FALSE;
+					}
+				}
+
+				$str = substr($str, 37);
+
+				$posend = strpos($str, "</h3>");
+				$str = substr($str, 0, $posend);
+			}
 		}
 		else
 		{
@@ -222,51 +255,51 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 					}
 				}
 			}
-			if($changelog!==FALSE)$changelog = mysqli_real_escape_string($mysqldb, $changelog);
+		}
+		if($changelog!==FALSE)$changelog = mysqli_real_escape_string($mysqldb, $changelog);
 
-			$strdata = strtok($str, " ");
-			$strdata = strtok(" ");
+		$strdata = strtok($str, " ");
+		if($changelog_switch_flag==0)$strdata = strtok(" ");
 
-			if(ctype_alpha($strdata[strlen($strdata)-1]) === TRUE)$strdata = substr($strdata, 0, strlen($strdata)-1);
-			mysqli_real_escape_string($mysqldb, $strdata);
-			echo "Version from site: $strdata\n";
+		if(ctype_alpha($strdata[strlen($strdata)-1]) === TRUE)$strdata = substr($strdata, 0, strlen($strdata)-1);
+		$strdata = mysqli_real_escape_string($mysqldb, $strdata);
+		echo "Version from site: $strdata\n";
 
-			if($updateversion != $strdata)
+		if($updateversion != $strdata)
+		{
+			$query="SELECT id FROM ninupdates_reports WHERE systemid=$systemid && updateversion='".$strdata."'";
+			$result=mysqli_query($mysqldb, $query);
+
+			$numrows=mysqli_num_rows($result);
+
+			if($numrows==0)
 			{
-				$query="SELECT id FROM ninupdates_reports WHERE systemid=$systemid && updateversion='".$strdata."'";
+				echo "Updating report updateversion...\n";
+				$query="UPDATE ninupdates_reports SET updateversion='".$strdata."', updatever_autoset=1 WHERE reportdate='".$reportdate."' && systemid=$systemid";
 				$result=mysqli_query($mysqldb, $query);
 
-				$numrows=mysqli_num_rows($result);
+				getofficalchangelog_writelog("Set the updateversion for report=$reportdate and system=$system to: $strdata.", 1, $reportdate);
 
-				if($numrows==0)
+				if($changelog!==FALSE)
 				{
-					echo "Updating report updateversion...\n";
-					$query="UPDATE ninupdates_reports SET updateversion='".$strdata."', updatever_autoset=1 WHERE reportdate='".$reportdate."' && systemid=$systemid";
-					$result=mysqli_query($mysqldb, $query);
-
-					getofficalchangelog_writelog("Set the updateversion for report=$reportdate and system=$system to: $strdata.", 1, $reportdate);
-
-					if($changelog!==FALSE)
-					{
-						echo "Writing changelog into mysql...\n";
-						getofficalchangelog_writechangelog($reportdate, $pageid, $reportid, $changelog);
-					}
-					else
-					{
-						getofficalchangelog_writelog("Failed to extract changelog.", 0, $reportdate);
-					}
+					echo "Writing changelog into mysql...\n";
+					getofficalchangelog_writechangelog($reportdate, $pageid, $reportid, $changelog);
 				}
 				else
 				{
-					getofficalchangelog_writelog("The version from the site is already used with one of the reports.", 0, $reportdate);
-					return 6;
+					getofficalchangelog_writelog("Failed to extract changelog.", 0, $reportdate);
 				}
 			}
 			else
 			{
-				getofficalchangelog_writelog("The report updateversion already matches the one from the site.", 0, $reportdate);
-				return 7;
+				getofficalchangelog_writelog("The version from the site is already used with one of the reports.", 0, $reportdate);
+				return 6;
 			}
+		}
+		else
+		{
+			getofficalchangelog_writelog("The report updateversion already matches the one from the site.", 0, $reportdate);
+			return 7;
 		}
 	}
 

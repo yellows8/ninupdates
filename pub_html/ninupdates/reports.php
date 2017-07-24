@@ -376,7 +376,7 @@ else
 		$con.= "<tr>\n";
 		$con.= "<td>$region</td>\n";
 		$con.= "<td><a href=\"$url\">$reportdate</a> <a href=\"$url&amp;wiki=1\">Wiki</a> <a href=\"$url&amp;csv=1\">CSV</a> <a href=\"$url&amp;gentext=1\">Text</a></td>\n";
-		$con.= "<td><a href=\"$url&amp;soap=1\">$reportdate</a> <a href=\"$url&amp;soap=1&amp;wiki=1\">Wiki</a> <a href=\"$url&amp;soap=1&amp;csv=1\">CSV</a> <a href=\"$url&amp;soapreply=1\">Raw SOAP reply</a></td>\n";
+		$con.= "<td><a href=\"$url&amp;soap=1\">$reportdate</a> <a href=\"$url&amp;soap=1&amp;wiki=1\">Wiki</a> <a href=\"$url&amp;soap=1&amp;csv=1\">CSV</a> <a href=\"$url&amp;soapreply=1\">Raw server reply</a></td>\n";
 
 		$region = strtok(",");
 	}
@@ -458,7 +458,7 @@ else
 
 	if($wikipage_exists==="1")
 	{
-		$query="SELECT ninupdates_wikiconfig.serverbaseurl FROM ninupdates_wikiconfig, ninupdates_consoles WHERE ninupdates_wikiconfig.id=ninupdates_consoles.wikicfgid && ninupdates_consoles.system='".$system."'";
+		$query="SELECT ninupdates_wikiconfig.serverbaseurl, ninupdates_wikiconfig.apiprefixuri FROM ninupdates_wikiconfig, ninupdates_consoles WHERE ninupdates_wikiconfig.id=ninupdates_consoles.wikicfgid && ninupdates_consoles.system='".$system."'";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 
@@ -466,8 +466,12 @@ else
 		{
 			$row = mysqli_fetch_row($result);
 			$wiki_serverbaseurl = $row[0];
+			$wiki_apiprefixuri = $row[1];
 
-			$con.= "The wiki page is available <a href=\"".$wiki_serverbaseurl."wiki/$updateversion\">here</a>.<br/>\n<br/>\n";
+			$wiki_uribase = "wiki/";
+			if($wiki_apiprefixuri == "")$wiki_uribase = "index.php?title=";
+
+			$con.= "The wiki page is available <a href=\"".$wiki_serverbaseurl."$wiki_uribase$updateversion\">here</a>.<br/>\n<br/>\n";
 		}
 	}
 

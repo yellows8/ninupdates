@@ -119,13 +119,13 @@ if($soapreply=="1" && $reportdate!="" && $region!="")
 
 	if($con!==FALSE)
 	{
-		header("Content-Type: application/xml");
+		header("Content-Type: text/plain");
 		echo $con;
 	}
 	else
 	{
 		writeNormalLog("FAILED TO OPEN SOAPREPLY FILE: $path\n");
-		echo "The SOAP reply data for this is not available.\n";
+		echo "The server reply data for this is not available.\n";
 	}
 
 	return;
@@ -496,7 +496,7 @@ else
 if($genwiki=="" && $gencsv=="" && $reportdate!="" && $soapquery=="")
 {
 	$con.= "<br />\n";
-	$con.= "Total titles sizes: $updatesize<br />\n";
+	if($updatesize!=0)$con.= "Total titles sizes: $updatesize<br />\n";
 
 	if($region!="")
 	{
@@ -514,10 +514,12 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="" && $soapquery=="")
 
 		if($hashval===FALSE || $hashval=="")$hashval = "N/A";
 
-		$con.= "<br/>SOAP TitleHash: $hashval<br/>\n";
+		$titlehash_text = "SOAP TitleHash";
+		if($system == "hac")$titlehash_text = "titleID+titleversion for sysupdate title";
+		$con.= "<br/>$titlehash_text: $hashval<br/>\n";
 	}
 
-	if($reportdate!="" && $usesoap=="")
+	if($reportdate!="" && $usesoap=="" && $system!="hac")
 	{
 		$con.= "<br/>\nTitle info: <br/>\n<br/>\n";
 		$titleinfo_count = 0;
@@ -526,17 +528,21 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="" && $soapquery=="")
 
 		if(file_exists($titledata_base)!==FALSE)
 		{
+			try {
+				$diriter = new RecursiveDirectoryIterator($titledata_base);
+				$iter = new RecursiveIteratorIterator($diriter);
+				$regex_iter = new RegexIterator($iter, '/^.+\.*info$/i', RecursiveRegexIterator::GET_MATCH);
 
-			$diriter = new RecursiveDirectoryIterator($titledata_base);
-			$iter = new RecursiveIteratorIterator($diriter);
-			$regex_iter = new RegexIterator($iter, '/^.+\.*info$/i', RecursiveRegexIterator::GET_MATCH);
+				foreach($regex_iter as $path => $pathobj)
+				{
+					$url = substr($path, strlen($sitecfg_workdir)+1);
+					$con.= "<a href=\"$url\">$url</a><br/>\n";
 
-			foreach($regex_iter as $path => $pathobj)
-			{
-				$url = substr($path, strlen($sitecfg_workdir)+1);
-				$con.= "<a href=\"$url\">$url</a><br/>\n";
-
-				$titleinfo_count++;
+					$titleinfo_count++;
+				}
+			}
+			catch (Exception $e) {
+				//Don't print/whatever any error.
 			}
 		}
 

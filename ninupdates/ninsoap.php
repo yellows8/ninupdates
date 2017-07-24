@@ -6,6 +6,34 @@ require_once(dirname(__FILE__) . "/db.php");
 require_once(dirname(__FILE__) . "/get_officialchangelog.php");
 require_once(dirname(__FILE__) . "/tweet.php");
 
+$curtime_override = 0;
+
+if($argc>=2)
+{
+	//Hour is 24h.
+	$tmp_month = 0;
+	$tmp_day = 0;
+	$tmp_year = 0;
+	$tmp_hour = 0;
+	$tmp_min = 0;
+	$tmp_sec = 0;
+	if(sscanf($argv[1], "%02u-%02u-%02u_%02u-%02u-%02u", $tmp_month, $tmp_day, $tmp_year, $tmp_hour, $tmp_min, $tmp_sec) == 6)
+	{
+		echo "Using the specified curtime_override.\n";
+		$curtime_override = mktime($tmp_hour, $tmp_min, $tmp_sec, $tmp_month, $tmp_day, $tmp_year);
+	}
+	else
+	{
+		echo "The specified curtime_override is invalid, ignoring it.\n";
+	}
+
+	if($argc>=4)
+	{
+		$overridden_initial_titleid = $argv[2];
+		$overridden_initial_titleversion = $argv[3];
+	}
+}
+
 do_systems_soap();
 
 function do_systems_soap()
@@ -54,15 +82,14 @@ function do_systems_soap()
 				if($lastreqstatus_new==="")$lastreqstatus_new = "OK";
 
 				echo "Req status changed since last scan, sending msg...\n";
-				$msg = "Last SOAP request status changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\". https://www.nintendo.co.jp/netinfo/en_US/index.html";
-				appendmsg_tofile($msg, "msg3dsdev");
+				$msg = "Last request status changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\". https://www.nintendo.co.jp/netinfo/en_US/index.html";
 				sendtweet($msg);
 			}
 		}
 
 		close_curl();
 
-		$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updatever_autoset=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
+		$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles, ninupdates_officialchangelog_pages WHERE ninupdates_reports.updatever_autoset=0 && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 
@@ -235,9 +262,9 @@ function dosystem($console)
 	}
 }
 
-function initialize()
+function initialize($ishac)
 {
-	global $mysqldb, $hdrs, $soapreq, $fp, $system, $region, $sitecfg_workdir, $soapreq_data;
+	global $mysqldb, $hdrs, $soapreq, $fp, $system, $region, $sitecfg_workdir, $soapreq_data, $httpreq_useragent, $console_deviceid;
 	
 	error_reporting(E_ALL);
 
@@ -254,13 +281,17 @@ function initialize()
 		$deviceid = $row[0];
 		$platformid = $row[1];
 		$subplatformid = $row[2];
+		$console_deviceid = $deviceid;
 
-		$platformid = ($platformid << 32);
-		if($subplatformid != NULL && $subplatformid != "")$platformid |= ($subplatformid << 31);
-
-		if($platformid != NULL && $platformid != "")
+		if($ishac===0)
 		{
-			$deviceid = $platformid | rand(0, 0x7fffffff);
+			$platformid = ($platformid << 32);
+			if($subplatformid != NULL && $subplatformid != "")$platformid |= ($subplatformid << 31);
+
+			if($platformid != NULL && $platformid != "")
+			{
+				$deviceid = $platformid | rand(0, 0x7fffffff);
+			}
 		}
 	}
 	else
@@ -282,7 +313,22 @@ function initialize()
 		die("Row doesn't exist in the db for region $region.\n");
 	}
 
-	$soapreq_data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+	if($ishac===0)
+	{
+		$httpreq_useragent = "ds libnup/2.0";
+	}
+	else
+	{
+		$useragent_fw = "2.1.0-0";
+
+		$eid = "lp1";
+
+		$httpreq_useragent = "NintendoSDK Firmware/" . $useragent_fw . " (platform:NX; did:" . $deviceid . "; eid:" . $eid . ")";
+	}
+
+	if($ishac===0)
+	{
+		$soapreq_data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
   <soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\"
                     xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"
                     xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
@@ -297,8 +343,16 @@ function initialize()
       </GetSystemUpdateRequest>
     </soapenv:Body>
   </soapenv:Envelope>";
+	}
 
-	$hdrs = array('SOAPAction: "urn:nus.wsapi.broadon.com/GetSystemUpdate"', 'Content-Type: application/xml', 'Content-Size: '.strlen($soapreq_data), 'Connection: Keep-Alive', 'Keep-Alive: 30');
+	if($ishac===0)
+	{
+		$hdrs = array('SOAPAction: "urn:nus.wsapi.broadon.com/GetSystemUpdate"', 'Content-Type: application/xml', 'Content-Size: '.strlen($soapreq_data), 'Connection: Keep-Alive', 'Keep-Alive: 30');
+	}
+	else
+	{
+		$hdrs = array('Accept:application/json');
+	}
 
 	init_titlelistarray();
 }
@@ -319,9 +373,9 @@ function close_curl()
 	fclose($error_FH);
 }
 
-function send_httprequest($url)
+function send_httprequest($url, $ishac)
 {
-	global $mysqldb, $hdrs, $soapreq, $httpstat, $sitecfg_workdir, $soapreq_data, $curl_handle, $system, $error_FH;
+	global $mysqldb, $hdrs, $soapreq, $httpstat, $sitecfg_workdir, $soapreq_data, $httpreq_useragent, $curl_handle, $system, $error_FH;
 
 	$query="SELECT clientcertfn, clientprivfn FROM ninupdates_consoles WHERE system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
@@ -332,14 +386,21 @@ function send_httprequest($url)
 	curl_setopt($curl_handle, CURLOPT_VERBOSE, true);
 	curl_setopt ($curl_handle, CURLOPT_STDERR, $error_FH );
 
-	curl_setopt($curl_handle, CURLOPT_USERAGENT, "ds libnup/2.0");
+	curl_setopt($curl_handle, CURLOPT_USERAGENT, $httpreq_useragent);
 
 	curl_setopt($curl_handle, CURLOPT_RETURNTRANSFER, true);
 
 	curl_setopt($curl_handle, CURLOPT_HTTPHEADER, $hdrs);
 
-	curl_setopt($curl_handle, CURLOPT_POST, 1);
-	curl_setopt($curl_handle, CURLOPT_POSTFIELDS, $soapreq_data);
+	if($ishac===0)
+	{
+		curl_setopt($curl_handle, CURLOPT_POST, 1);
+		curl_setopt($curl_handle, CURLOPT_POSTFIELDS, $soapreq_data);
+	}
+	else
+	{
+		curl_setopt($curl_handle, CURLOPT_POST, 0);
+	}
 
 	curl_setopt($curl_handle, CURLOPT_URL, $url);
 
@@ -372,7 +433,69 @@ function send_httprequest($url)
 	return $buf;
 }
 
-function compare_titlelists()
+function load_titlelist_withcmd($reportdate)
+{
+	global $sitecfg_workdir, $sitecfg_load_titlelist_cmd, $system, $newtitles, $newtitlesversions, $newtotal_titles;
+
+	if($newtotal_titles < 1)
+	{
+		echo "newtotal_titles is <1.\n";
+		return -2;
+	}
+
+	$titleid = escapeshellarg($newtitles[0]);
+	$titlever = escapeshellarg($newtitlesversions[0]);
+
+	$filepath = "$sitecfg_workdir/load_titlelist_data/titlelist/$reportdate-$system";
+	$maincmd_str = "$sitecfg_load_titlelist_cmd $reportdate $system $filepath $sitecfg_workdir/load_titlelist_data $titleid,$titlever";
+
+	echo "Running load_titlelist cmd...\n";
+	$retval = 0;
+	$ret = system("$maincmd_str > $sitecfg_workdir/load_titlelist_out/$reportdate-$system 2>&1", $retval);
+	if($ret===FALSE || $retval!=0)
+	{
+		echo "cmd failed.\n";
+		if($retval>0)$retval = -$retval;
+		if($retval==0)$retval = -3;
+		return $retval;
+	}
+
+	if(file_exists($filepath)===FALSE)
+	{
+		echo "The titlelist file doesn't exist.\n";
+		return -1;
+	}
+
+	$buf = file_get_contents($filepath);
+	if($buf===FALSE)
+	{
+		echo "Failed to load the titlelist file.\n";
+		return -1;
+	}
+
+	parse_soapresp($buf, 1);//Reuse the SOAP format.
+
+	return 0;
+}
+
+function titlelist_dbupdate_withcmd($curdate)
+{
+	global $system;
+
+	if($system == "hac")
+	{
+		$retval = load_titlelist_withcmd($curdate);
+		if($retval!=0)
+		{
+			appendmsg_tofile("load_titlelist_withcmd() for $curdate-$system failed.", "msgme");
+			return $retval;
+		}
+	}
+
+	return titlelist_dbupdate();
+}
+
+function compare_titlelists($curdate)
 {
 	global $mysqldb, $system, $region, $sysupdate_systitlehashes;
 
@@ -383,7 +506,7 @@ function compare_titlelists()
 	if($numrows==0)
 	{
 		//echo "System $system Region $region: Titlehash is missing.\n";
-		return titlelist_dbupdate();
+		return titlelist_dbupdate_withcmd($curdate);
 	}
 	else
 	{
@@ -392,7 +515,7 @@ function compare_titlelists()
 
 		if($sysupdate_systitlehashes[$region]!=$titlehashold)
 		{
-			return titlelist_dbupdate();
+			return titlelist_dbupdate_withcmd($curdate);
 		}
 		else
 		{
@@ -405,7 +528,7 @@ function compare_titlelists()
 
 function main($reg)
 {
-	global $mysqldb, $system, $log, $region, $httpstat, $syscmd, $sitecfg_httpbase, $sysupdate_available, $sysupdate_timestamp, $sitecfg_workdir, $curdate, $dbcurdate, $soap_timestamp, $sysupdate_regions, $arg_difflogold, $arg_difflognew, $newtotal_titles;
+	global $mysqldb, $system, $log, $region, $httpstat, $syscmd, $sitecfg_httpbase, $sysupdate_available, $sysupdate_timestamp, $sitecfg_workdir, $curdate, $dbcurdate, $soap_timestamp, $sysupdate_regions, $arg_difflogold, $arg_difflognew, $newtotal_titles, $console_deviceid, $curtime_override;
 
 	$region = $reg;
 
@@ -414,30 +537,52 @@ function main($reg)
 	$row = mysqli_fetch_row($result);
 	$nushttpsurl = $row[0];
 
-	if($system == "hac")//todo
+	$ishac = 0;
+	if($system == "hac")$ishac = 1;
+
+	initialize($ishac);
+
+	if($ishac===0)
 	{
-		echo "skipping\n";
-		return;
+		$url = "$nushttpsurl/nus/services/NetUpdateSOAP";
+	}
+	else
+	{
+		$url = "$nushttpsurl/v1/system_update_meta?device_id=" . $console_deviceid;
 	}
 
-	initialize();
 	for($i=0; $i<5; $i++)
 	{
-		$ret = send_httprequest("$nushttpsurl/nus/services/NetUpdateSOAP");
+		$ret = send_httprequest($url, $ishac);
 		if($httpstat!="0")break;
 	}
 
 	if($httpstat=="200")
 	{
-		parse_soapresp($ret);
+		if($ishac===0)
+		{
+			parse_soapresp($ret, 0);
+		}
+		else
+		{
+			$retval = parse_json_resp($ret);
+			if($retval!=0)return;
+		}
 	}
 	else
 	{
 		echo $ret . "\n";
 		return;
 	}
-	
-	$curtime = time();
+
+	if($curtime_override==0)
+	{
+		$curtime = time();
+	}
+	else
+	{
+		$curtime = $curtime_override;
+	}
 	$soap_timestamp = date(DATE_RFC822, $curtime);
 
 	$curdate = date("m-d-y_h-i-s", $curtime);
@@ -446,10 +591,15 @@ function main($reg)
 
 	if($dbcurdate=="")
 	{	
-		$query = "SELECT now()";
+		$query = "SELECT FROM_UNIXTIME($curtime)";
 		$result=mysqli_query($mysqldb, $query);
 		$row = mysqli_fetch_row($result);
 		$dbcurdate = $row[0];
+	}
+
+	if($curtime_override!=0)
+	{
+		echo "Using overridden timestamps: soap_timestamp = '".$soap_timestamp."', curdate='".$curdate."', dbcurdate='".$dbcurdate."'.\n";
 	}
 
 	$sendupdatelogs = 0;
@@ -460,7 +610,12 @@ function main($reg)
 
 	if($numrows==0 && $newtotal_titles>0)
 	{
-		titlelist_dbupdate();
+		$retval = titlelist_dbupdate_withcmd($curdate);
+		if($retval < 0)
+		{
+			echo "titlelist_dbupdate_withcmd() failed.\n";
+			return;
+		}
 
 		$fsoap = fopen("$sitecfg_workdir/soap$system/$region/$curdatefn.soap", "w");
 		fwrite($fsoap, $ret);
@@ -472,7 +627,14 @@ function main($reg)
 	}
 	else
 	{
-		if(compare_titlelists())
+		$retval = compare_titlelists($curdate);
+		if($retval < 0)
+		{
+			echo "compare_titlelists() failed.\n";
+			return;
+		}
+
+		if($retval)
 		{
 			$sendupdatelogs = 1;
 

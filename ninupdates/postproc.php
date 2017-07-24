@@ -44,6 +44,10 @@ if($postproc_runfinished_updateval===1)
 {
 	$query="UPDATE ninupdates_reports SET ninupdates_reports.postproc_runfinished=1 WHERE ninupdates_reports.id=$reportid";
 	$result=mysqli_query($mysqldb, $query);
+
+	$msg = "$sitecfg_httpbase/titlelist.php?date=$reportdate&sys=$system&csv=1";
+	$tmp_cmd = "echo '" . $msg . "' >> $sitecfg_workdir/lastupdates_postproc_csvurls";
+	system($tmp_cmd);
 }
 
 dbconnection_end();

@@ -2,6 +2,8 @@
 
 require_once(dirname(__FILE__) . "/config.php");
 
+require_once(dirname(__FILE__) . "/api.php");
+
 function getlogcontents($filename)
 {
 	$content = "";
@@ -212,7 +214,7 @@ function diff_titlelists($oldlog, $curdatefn)
 	return 1;
 }
 
-function parse_soapresp($buf)
+function parse_soapresp($buf, $disable_titlehash_init)
 {
 	global $mysqldb, $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles, $system, $region, $sysupdate_systitlehashes;
 	$title = $buf;
@@ -271,15 +273,76 @@ function parse_soapresp($buf)
 		$title = strstr($title, "</TitleVersion>");
 	}
 
-	$sysupdate_systitlehashes[$region] = "";
-
-	$titlehash_pos = strpos($buf, "<TitleHash>") + 11;
-	$titlehash_posend = strpos($buf, "</TitleHash>");
-	if($titlehash_pos!==FALSE && $titlehash_posend!==FALSE)
+	if($disable_titlehash_init==0)
 	{
-		$titlehash = substr($buf, $titlehash_pos, $titlehash_posend - $titlehash_pos);
-		$sysupdate_systitlehashes[$region] = mysqli_real_escape_string($mysqldb, $titlehash);
+		$sysupdate_systitlehashes[$region] = "";
+
+		$titlehash_pos = strpos($buf, "<TitleHash>") + 11;
+		$titlehash_posend = strpos($buf, "</TitleHash>");
+		if($titlehash_pos!==FALSE && $titlehash_posend!==FALSE)
+		{
+			$titlehash = substr($buf, $titlehash_pos, $titlehash_posend - $titlehash_pos);
+			$sysupdate_systitlehashes[$region] = mysqli_real_escape_string($mysqldb, $titlehash);
+		}
 	}
+}
+
+function parse_json_resp($buf)
+{
+	global $mysqldb, $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles, $system, $ninupdatesapi_out_version_array, $region, $sysupdate_systitlehashes, $overridden_initial_titleid, $overridden_initial_titleversion;
+
+	$titleid = "";
+	$titlever = "";
+	$titlesize = 0;
+	$titlesizetik = 0;
+	$titlesizetmd = 0;
+
+	$jsonobj = json_decode($buf);
+	if($jsonobj === NULL)
+	{
+		"json_decode() failed.\n";
+		return 1;
+	}
+
+	if(!isset($jsonobj->system_update_metas))
+	{
+		echo "json is missing 'system_update_metas'.\n";
+		return 2;
+	}
+	
+	$titlelist = $jsonobj->system_update_metas;
+
+	if(count($titlelist) < 1)
+	{
+		echo "json titlelist is empty.\n";
+		return 3;
+	}
+
+	$title_entry = $titlelist[0];
+
+	if(!isset($title_entry->title_id) || !isset($title_entry->title_version))
+	{
+		echo "json title_entry titleid/titleversion isn't set.\n";
+		return 4;
+	}
+
+	$titleid = mysqli_real_escape_string($mysqldb, $title_entry->title_id);
+	$titlever = mysqli_real_escape_string($mysqldb, $title_entry->title_version);
+
+	if($overridden_initial_titleid!="")$titleid = mysqli_real_escape_string($mysqldb, $overridden_initial_titleid);
+	if($overridden_initial_titleversion!="")$titlever = mysqli_real_escape_string($mysqldb, $overridden_initial_titleversion);
+
+	$sysupdate_systitlehashes[$region] = "$titleid,$titlever";
+
+	$newtitles[] = $titleid;
+	$newtitlesversions[] = $titlever;
+	$newtitles_sizes[] = $titlesize;
+	$newtitles_tiksizes[] = $titlesizetik;
+	$newtitles_tmdsizes[] = $titlesizetmd;
+
+	$newtotal_titles++;
+
+	return 0;
 }
 
 function titlelist_dbupdate()

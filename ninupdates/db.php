@@ -2,28 +2,28 @@
 
 require_once(dirname(__FILE__) . "/config.php");
 
-$dbconn_started = 0;
+$dbconn_refcount = 0;
 
 function dbconnection_start()
 {
-	global $mysqldb, $dbconn_started, $sitecfg_mysqldb_username, $sitecfg_mysqldb_pwdpath, $sitecfg_mysqldb_database;
-	if($dbconn_started==1)return;
+	global $mysqldb, $dbconn_refcount, $sitecfg_mysqldb_username, $sitecfg_mysqldb_pwdpath, $sitecfg_mysqldb_database;
+
+	$dbconn_refcount++;
+	if($dbconn_refcount>1)return;
 
 	$password = file_get_contents($sitecfg_mysqldb_pwdpath);
 
 	@$mysqldb = mysqli_connect("localhost", $sitecfg_mysqldb_username, $password, $sitecfg_mysqldb_database);
 	if(mysqli_connect_errno($mysqldb))die("Failed to connect to mysql.\n");
-
-	$dbconn_started = 1;
 }
 
 function dbconnection_end()
 {
-	global $mysqldb, $dbconn_started;
-	if($dbconn_started==0)return;
+	global $mysqldb, $dbconn_refcount;
+	if($dbconn_refcount==0)return;
+	$dbconn_refcount--;
+	if($dbconn_refcount>0)return;
 	@mysqli_close($mysqldb);
-
-	$dbconn_started = 0;
 }
 
 function db_checkmaintenance($abort)

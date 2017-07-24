@@ -21,6 +21,8 @@ $sitecfg_sitenav_header Optional HTML to include immediately before the site nav
 $sitecfg_twitterurl Optional full URL for the twitter bot.
 
 $sitecfg_postproc_cmd This is the command which will be executed by postproc.php, if this is set. The full command passed to system() is: "$sitecfg_postproc_cmd $reportdate $system".
+
+$sitecfg_load_titlelist_cmd See ninsoap.php.
 */
 
 require_once(dirname(__FILE__) . "/site_cfg.php");
@@ -57,7 +59,7 @@ function sendircmsg($msg)
 	{
 		appendmsg_tofile($msg, "msgwiiudev");
 	}
-	else if($system!=="twl" && $system!=="rvl")//tmp
+	else if($system=="hac")
 	{
 		appendmsg_tofile($msg, "msgswitchdev");
 	}

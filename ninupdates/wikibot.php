@@ -446,13 +446,13 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	$day = (int)substr($reportdate, 1*3, 2);
 	$year = (int)substr($reportdate, 2*3, 2);
 
-	$timestamp = mktime(0, 0, 0, $month, $day, $year, -1);
+	$timestamp = mktime(0, 0, 0, $month, $day, $year);
 
 	if(!isset($wiki_homemenutitle))$wiki_homemenutitle = "";
 
 	try
 	{
-		$api = new Wikimate($wiki_apibaseurl . "/api.php");
+		$api = new Wikimate($wiki_apibaseurl . "api.php");
 
 		if(!isset($wikibot_user) || !isset($wikibot_pass))
 		{

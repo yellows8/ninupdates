@@ -55,7 +55,7 @@ $dbcurdate = $row[1];
 $sysupdate_systitlehashes = array();
 
 init_titlelistarray();
-parse_soapresp($soapdata);
+parse_soapresp($soapdata, 0);
 
 $tmpval = titlelist_dbupdate();
 echo "Total titles added by titlelist_dbupdate(): $tmpval\n";
