@@ -251,9 +251,9 @@ function dosystem($console)
 
 		echo "\nSending IRC msg...\n";
 		sendircmsg($msgme_message);
-		sendtweet("SOAP sysupdate detected for " . getsystem_sysname($system) . ": $msgme_message");
+		sendtweet("Sysupdate detected for " . getsystem_sysname($system) . ": $msgme_message");
 		echo "Sending email...\n";
-        	if(!mail($sitecfg_target_email, "$system SOAP updates", $email_message, "From: ninsoap@$sitecfg_emailhost"))echo "Failed to send mail.\n";
+        	if(!mail($sitecfg_target_email, "$system sysupdates", $email_message, "From: ninsoap@$sitecfg_emailhost"))echo "Failed to send mail.\n";
 
 		echo "Writing to the lastupdates_csvurls file...\n";
 		$msg = "$sitecfg_httpbase/titlelist.php?date=".$sysupdate_timestamp."&sys=".$system."&csv=1";
