@@ -246,6 +246,8 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 
 	$page_text = "";
 
+	$page_exists = 0;
+
 	if($page->exists()==TRUE)
 	{
 		wikibot_writelog("Sysupdate page already exists, skipping editing.", 2, $reportdate);
@@ -253,12 +255,14 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 		$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikipage_exists=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
 		$result=mysqli_query($mysqldb, $query);
 
+		$page_exists = 1;
+
 		return 0;
 	}
 
 	wikibot_writelog("Sysupdate page doesn't exist, generating a page...", 2, $reportdate);
 
-	$query="SELECT ninupdates_reports.regions, ninupdates_reports.id, ninupdates_consoles.sysname, ninupdates_consoles.system, ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updateversion='".$updateversion."' && ninupdates_reports.systemid=ninupdates_consoles.id";
+	$query="SELECT ninupdates_reports.regions, ninupdates_reports.id, ninupdates_consoles.sysname, ninupdates_consoles.system, ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updateversion='".$updateversion."' && ninupdates_reports.systemid=ninupdates_consoles.id && wikibot_runfinished=0";
 	$result_systems=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result_systems);
 
@@ -407,7 +411,10 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 		echo "$text\n";
 		wikibot_writelog($text, 1, $reportdate);
 
-		sendtweet("The wiki page for the new $sysnames_list $updateversion sysupdate has been created: $serverbaseurl"."wiki/$updateversion");
+		$msgtext = "created";
+		if($page_exists==1)$msgtext = "edited";
+
+		sendtweet("The wiki page for the new $sysnames_list $updateversion sysupdate has been $msgtext: $serverbaseurl"."wiki/$updateversion");
 	}
 
 	return 0;
