@@ -240,7 +240,7 @@ function wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timesta
 	return 0;
 }
 
-function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl)
+function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri)
 {
 	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
 
@@ -412,9 +412,12 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 		wikibot_writelog($text, 1, $reportdate);
 
 		$msgtext = "created";
-		if($page_exists==1)$msgtext = "edited";
+		if($page_exists==1)$msgtext = "updated";
 
-		sendtweet("The wiki page for the new $sysnames_list $updateversion sysupdate has been $msgtext: $serverbaseurl"."wiki/$updateversion");
+		$wiki_uribase = "wiki/";
+		if($apiprefixuri == "")$wiki_uribase = "index.php?title=";
+
+		sendtweet("The wiki page for the new $sysnames_list $updateversion sysupdate has been $msgtext: $serverbaseurl$wiki_uribase$updateversion");
 	}
 
 	return 0;
@@ -562,7 +565,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 		wikibot_writelog("Sysupdate page:\n".$sysupdate_page->getText(), 1, $reportdate);
 	}
 
-	if($sysupdate_page!==FALSE)wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $sysupdate_page, $serverbaseurl);
+	if($sysupdate_page!==FALSE)wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $sysupdate_page, $serverbaseurl, $apiprefixuri);
 
 	echo "Updating the report's wikibot_runfinished field...\n";
 	$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikibot_runfinished=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
