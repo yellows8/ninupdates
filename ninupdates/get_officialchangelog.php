@@ -182,8 +182,8 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 			{
 				$changelog_switch_flag = 1;
 
-				$changelog = strstr($str, "<p>");
-				$len = 3;
+				$changelog = strstr($str, "</h3>");
+				$len = 5;
 				if($changelog[$len] == "\\n")$len++;
 				if($changelog!==FALSE)
 				{
