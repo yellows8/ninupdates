@@ -104,13 +104,13 @@ function wikibot_updatenewspages($api, $updateversion, $reportdate, $timestamp, 
 
 		if($newspage->setText($newspage_new)===FALSE)
 		{
-			wikibot_writelog("The http request for editing the news-page failed: " . $newspage->error, 0, $reportdate);
+			wikibot_writelog("The http request for editing the news-page failed: " . $newspage->getError(), 0, $reportdate);
 			return 4;
 		}
 
 		if($newsarchivepage->setText($newsarchivepage_new)===FALSE)
 		{
-			wikibot_writelog("The http request for editing the news-archive-page failed: " . $newsarchivepage->error, 0, $reportdate);
+			wikibot_writelog("The http request for editing the news-archive-page failed: " . $newsarchivepage->getError(), 0, $reportdate);
 			return 4;
 		}
 
@@ -228,7 +228,7 @@ function wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timesta
 
 		if($page->setText($new_page)===FALSE)
 		{
-			wikibot_writelog("The http request for editing the Home Menu page failed: " . $page->error, 0, $reportdate);
+			wikibot_writelog("The http request for editing the Home Menu page failed: " . $page->getError(), 0, $reportdate);
 			return 4;
 		}
 
@@ -397,7 +397,7 @@ function wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, 
 
 		if($page->setText($page_text)===FALSE)
 		{
-			wikibot_writelog("The http request for editing the sysupdate page failed: " . $page->error, 0, $reportdate);
+			wikibot_writelog("The http request for editing the sysupdate page failed: " . $page->getError(), 0, $reportdate);
 			return 4;
 		}
 
