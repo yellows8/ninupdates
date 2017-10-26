@@ -484,6 +484,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 			{
 				$error = $api->getError();
 				wikibot_writelog("Wiki login failed: ".$error['login'], 0, $reportdate);
+				return 7;
 			}
 		}
 	}
@@ -542,7 +543,8 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	}
 	else
 	{
-		wikibot_updatenewspages($api, $updateversion, $reportdate, $timestamp, $newspage, $newsarchivepage);
+		$ret = wikibot_updatenewspages($api, $updateversion, $reportdate, $timestamp, $newspage, $newsarchivepage);
+		if($ret!=0)return $ret;
 	}
 
 	if($wiki_homemenutitle!="")
@@ -554,7 +556,8 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 		}
 		else
 		{
-			wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timestamp, $homemenu_page, $wiki_homemenutitle);
+			$ret = wikibot_updatepage_homemenu($api, $updateversion, $reportdate, $timestamp, $homemenu_page, $wiki_homemenutitle);
+			if($ret!=0)return $ret;
 		}
 	}
 
@@ -569,7 +572,11 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 		wikibot_writelog("Sysupdate page:\n".$sysupdate_page->getText(), 1, $reportdate);
 	}
 
-	if($sysupdate_page!==FALSE)wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $sysupdate_page, $serverbaseurl, $apiprefixuri);
+	if($sysupdate_page!==FALSE)
+	{
+		$ret = wikibot_edit_updatepage($api, $updateversion, $reportdate, $timestamp, $sysupdate_page, $serverbaseurl, $apiprefixuri);
+		if($ret!=0)return $ret;
+	}
 
 	echo "Updating the report's wikibot_runfinished field...\n";
 	$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikibot_runfinished=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
