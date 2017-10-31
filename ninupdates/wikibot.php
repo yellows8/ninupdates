@@ -530,11 +530,11 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 	$page = $services->newPageGetter()->getFromTitle($wiki_newspagetitle);
 	$revision = $page->getRevisions()->getLatest();
-	$newspage_text = $revision->getContent()->getText();
+	$newspage_text = $revision->getContent()->getData();
 
 	$page = $services->newPageGetter()->getFromTitle($wiki_newsarchivepagetitle);
 	$revision = $page->getRevisions()->getLatest();
-	$newsarchivepage_text = $revision->getContent()->getText();
+	$newsarchivepage_text = $revision->getContent()->getData();
 
 	$updatelisted = 0;
 	if(strstr($newspage_text, $updateversion)!==FALSE)
@@ -560,7 +560,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	{
 		$page = $services->newPageGetter()->getFromTitle($wiki_homemenutitle);
 		$revision = $page->getRevisions()->getLatest();
-		$homemenu_page_text = $revision->getContent()->getText();
+		$homemenu_page_text = $revision->getContent()->getData();
 		/*if($homemenu_page===FALSE || $homemenu_page->exists()==FALSE)
 		{
 			wikibot_writelog("Failed to get the home-menu page.", 0, $reportdate);
@@ -574,7 +574,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 	/*$page = $services->newPageGetter()->getFromTitle($updateversion);
 	$revision = $page->getRevisions()->getLatest();
-	$sysupdate_page = $revision->getContent()->getText();*/
+	$sysupdate_page = $revision->getContent()->getData();*/
 	$page=0;
 
 	/*if($sysupdate_page===FALSE || $sysupdate_page->exists()==FALSE)
