@@ -528,12 +528,12 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 	wikibot_writelog($text, 2, $reportdate);
 
-	$page = $services->newPageGetter()->getFromTitle($wiki_newspagetitle);
-	$revision = $page->getRevisions()->getLatest();
+	$newspage = $services->newPageGetter()->getFromTitle($wiki_newspagetitle);
+	$revision = $newspage->getRevisions()->getLatest();
 	$newspage_text = $revision->getContent()->getData();
 
-	$page = $services->newPageGetter()->getFromTitle($wiki_newsarchivepagetitle);
-	$revision = $page->getRevisions()->getLatest();
+	$newsarchivepage = $services->newPageGetter()->getFromTitle($wiki_newsarchivepagetitle);
+	$revision = $newsarchivepage->getRevisions()->getLatest();
 	$newsarchivepage_text = $revision->getContent()->getData();
 
 	$updatelisted = 0;
@@ -552,7 +552,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	}
 	else
 	{
-		$ret = wikibot_updatenewspages($api, $services, $updateversion, $reportdate, $timestamp, $newspage_text, $newsarchivepage_text, $wiki_newspagetitle, $wiki_newsarchivepagetitle);
+		$ret = wikibot_updatenewspages($api, $services, $updateversion, $reportdate, $timestamp, $newspage_text, $newsarchivepage_text, $newspage, $newsarchivepage);
 		if($ret!=0)return $ret;
 	}
 
