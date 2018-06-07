@@ -13,7 +13,7 @@ db_checkmaintenance(1);
 $tmptoken = "";
 $msg = "";
 if(isset($_REQUEST['token']))$tmptoken = mysqli_real_escape_string($mysqldb, $_REQUEST['token']);
-if(isset($_REQUEST['msg']))$msg = mysqli_real_escape_string($mysqldb, $_REQUEST['msg']);
+if(isset($_REQUEST['msg']))$msg = $_REQUEST['msg'];
 
 if($tmptoken=="")
 {
