@@ -45,16 +45,6 @@ function do_systems_soap()
 	{
 		init_curl();
 
-		$query="SELECT lastreqstatus FROM ninupdates_management";
-		$result=mysqli_query($mysqldb, $query);
-		$numrows=mysqli_num_rows($result);
-		$lastreqstatus = "";
-		if($numrows>0)
-		{
-			$row = mysqli_fetch_row($result);
-			$lastreqstatus = $row[0];
-		}
-
 		$query="SELECT system FROM ninupdates_consoles WHERE enabled!=0 || enabled IS NULL";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
@@ -67,25 +57,6 @@ function do_systems_soap()
 
 		$query="UPDATE ninupdates_management SET lastscan='" . date(DATE_RFC822, time()) . "'";
 		$result=mysqli_query($mysqldb, $query);
-
-		$query="SELECT lastreqstatus FROM ninupdates_management";
-		$result=mysqli_query($mysqldb, $query);
-		$numrows=mysqli_num_rows($result);
-		if($numrows>0)
-		{
-			$row = mysqli_fetch_row($result);
-			$lastreqstatus_new = $row[0];
-
-			if($lastreqstatus !== $lastreqstatus_new)
-			{
-				if($lastreqstatus==="")$lastreqstatus = "OK";
-				if($lastreqstatus_new==="")$lastreqstatus_new = "OK";
-
-				echo "Req status changed since last scan, sending msg...\n";
-				$msg = "Last request status changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\". https://www.nintendo.co.jp/netinfo/en_US/index.html";
-				sendtweet($msg);
-			}
-		}
 
 		close_curl();
 
@@ -189,9 +160,39 @@ function dosystem($console)
 	$row = mysqli_fetch_row($result);
 	$regions = $row[0];
 
+	$query="SELECT lastreqstatus FROM ninupdates_consoles WHERE system='".$system."'";
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
+	$lastreqstatus = "";
+	if($numrows>0)
+	{
+		$row = mysqli_fetch_row($result);
+		$lastreqstatus = $row[0];
+	}
+
 	for($i=0; $i<strlen($regions); $i++)
 	{
 		main(substr($regions, $i, 1));
+	}
+
+	$query="SELECT lastreqstatus FROM ninupdates_consoles WHERE system='".$system."'";
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
+	if($numrows>0)
+	{
+		$row = mysqli_fetch_row($result);
+		$lastreqstatus_new = $row[0];
+
+		if($lastreqstatus==="" || $lastreqstatus===NULL)$lastreqstatus = "OK";
+		if($lastreqstatus_new==="" || $lastreqstatus_new===NULL)$lastreqstatus_new = "OK";
+
+		if($lastreqstatus !== $lastreqstatus_new)
+		{
+			echo "Req status changed since last scan, sending msg...\n";
+			$msg = "Last " . getsystem_sysname($system) . " request status changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\". https://www.nintendo.co.jp/netinfo/en_US/index.html";
+			echo "msg: $msg\n";
+			sendtweet($msg);
+		}
 	}
 
 	if($sysupdate_available==0)
@@ -249,7 +250,7 @@ function dosystem($console)
 		if($initialscan==0)echo "System $system: System update available for regions $sysupdate_regions.\n";
 		if($initialscan)echo "System $system: Initial scan successful for regions $sysupdate_regions.\n";
 
-		echo "\nSending IRC msg...\n";
+		echo "\nSending notifications...\n";
 		sendircmsg($msgme_message);
 		sendtweet("Sysupdate detected for " . getsystem_sysname($system) . ": $msgme_message");
 		echo "Sending email...\n";
@@ -427,7 +428,7 @@ function send_httprequest($url, $ishac)
 
 	if($errorstr!="")$buf = $errorstr;
 
-	$query="UPDATE ninupdates_management SET lastreqstatus='" . mysqli_real_escape_string($mysqldb, $errorstr) . "'";
+	$query="UPDATE ninupdates_consoles SET lastreqstatus='" . mysqli_real_escape_string($mysqldb, $errorstr) . "' WHERE system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 
 	return $buf;

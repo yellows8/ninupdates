@@ -244,6 +244,7 @@ if($reportdate=="")
   <th>System</th>
   <th>Title List</th>
   <th>Last report</th>
+  <th>Last request status</th>
 </tr>\n";
 
 	$query = "SELECT now()";
@@ -251,7 +252,7 @@ if($reportdate=="")
 	$row = mysqli_fetch_row($result);
 	$dbcurdate = $row[0];
 
-	$query="SELECT DISTINCT ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system";
+	$query="SELECT DISTINCT ninupdates_consoles.system, ninupdates_consoles.lastreqstatus FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_consoles.system";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 
@@ -259,6 +260,8 @@ if($reportdate=="")
 	{
 		$row = mysqli_fetch_row($result);
 		$system = $row[0];
+		$lastreqstatus = $row[1];
+		if($lastreqstatus==="" || $lastreqstatus===NULL)$lastreqstatus = "OK";
 
 		$sys = getsystem_sysname($system);
 
@@ -296,6 +299,7 @@ if($reportdate=="")
 		$con.= "<td>".$sys."</td>\n";
 		$con.= "<td><a href=\"$url\">HTML</a> <a href=\"$url&amp;wiki=1\">Wiki</a> <a href=\"$url&amp;csv=1\">CSV</a></td>\n";
 		$con.= "<td>".$lastreport_text."</td>\n";
+		$con.= "<td>".$lastreqstatus."</td>\n";
 		$con.= "</tr>\n";
 	}
 
