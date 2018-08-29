@@ -272,7 +272,7 @@ function initialize($ishac)
 	$regionid = "";
 	$countrycode = "";
 
-	$query="SELECT deviceid, platformid, subplatformid FROM ninupdates_consoles WHERE system='".$system."'";
+	$query="SELECT deviceid, platformid, subplatformid, useragent_fw, eid FROM ninupdates_consoles WHERE system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 
@@ -283,6 +283,9 @@ function initialize($ishac)
 		$platformid = $row[1];
 		$subplatformid = $row[2];
 		$console_deviceid = $deviceid;
+
+		$useragent_fw = $row[3];
+		$eid = $row[4];
 
 		if($ishac===0)
 		{
@@ -320,9 +323,8 @@ function initialize($ishac)
 	}
 	else
 	{
-		$useragent_fw = "2.1.0-0";
-
-		$eid = "lp1";
+		if($useragent_fw==="" || $useragent_fw===NULL)die("useragent_fw field isn't set for system $system.\n");
+		if($eid==="" || $eid===NULL)die("eid field isn't set for system $system.\n");
 
 		$httpreq_useragent = "NintendoSDK Firmware/" . $useragent_fw . " (platform:NX; did:" . $deviceid . "; eid:" . $eid . ")";
 	}
