@@ -36,6 +36,8 @@ $row = mysqli_fetch_row($result);
 $rowid = $row[0];
 $curdesc = $row[1];
 
+if($curdesc==="" || $curdesc===NULL)$curdesc = "N/A";
+
 if($desc==="")echo "$curdesc";
 
 if($desc!=="")
