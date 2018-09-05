@@ -519,7 +519,7 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="" && $soapquery=="")
 		$con.= "<br/>$titlehash_text: $hashval<br/>\n";
 	}
 
-	if($reportdate!="" && $usesoap=="" && $system!="hac")
+	if($reportdate!="" && $usesoap=="")
 	{
 		$con.= "<br/>\nTitle info: <br/>\n<br/>\n";
 		$titleinfo_count = 0;
