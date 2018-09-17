@@ -433,6 +433,8 @@ function send_httprequest($url, $ishac)
 	$query="UPDATE ninupdates_consoles SET lastreqstatus='" . mysqli_real_escape_string($mysqldb, $errorstr) . "' WHERE system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 
+	fflush($error_FH);
+
 	return $buf;
 }
 
