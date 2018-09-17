@@ -258,7 +258,10 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 
 	$page_exists = 0;
 
-	/*if($page->exists()==TRUE)
+	$tmp_page = $services->newPageGetter()->getFromTitle($updateversion);
+	$tmp_revision = $tmp_page->getRevisions()->getLatest();
+
+	if($tmp_revision!==NULL)
 	{
 		wikibot_writelog("Sysupdate page already exists, skipping editing.", 2, $reportdate);
 
@@ -268,7 +271,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$page_exists = 1;
 
 		return 0;
-	}*/
+	}
 
 	wikibot_writelog("Sysupdate page doesn't exist, generating a page...", 2, $reportdate);
 
