@@ -446,6 +446,81 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 	return 0;
 }
 
+function wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri)
+{
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
+
+	$page_text = "";
+
+	$page_exists = 1;
+
+	$pagetitle = "FirmwareNews";
+
+	$tmp_page = $services->newPageGetter()->getFromTitle($pagetitle);
+	$tmp_revision = $tmp_page->getRevisions()->getLatest();
+
+	if($tmp_revision===NULL)
+	{
+		wikibot_writelog("FirmwareNews page doesn't exist.", 2, $reportdate);
+
+		$page_exists = 0;
+
+		return 0;
+	}
+
+	wikibot_writelog("FirmwareNews page exists, generating new page text if needed...", 2, $reportdate);
+
+	$page_text = $tmp_revision->getContent()->getData();
+
+	$strstart = strstr($page_text, "'''");
+	if($strstart===FALSE)
+	{
+		wikibot_writelog("wikibot_edit_firmwarenews(): Failed to find the curupdatetext start.", 0, $reportdate);
+		return 1;
+	}
+
+	$strendpos = strpos($strstart, "'''", 3);
+	if($strendpos===FALSE)
+	{
+		wikibot_writelog("wikibot_edit_firmwarenews(): Failed to find the curupdatetext end.", 0, $reportdate);
+		return 2;
+	}
+
+	$curupdatetext = substr($strstart, 3, $strendpos-3);
+	$reportupdatetext = "[[$updateversion]]";
+
+	wikibot_writelog("curupdatetext: $curupdatetext, reportupdatetext: $reportupdatetext", 2, $reportdate);
+
+	if($curupdatetext === $reportupdatetext)
+	{
+		wikibot_writelog("curupdatetext and reportupdatetext already match.", 2, $reportdate);
+		return 0;
+	}
+
+	wikibot_writelog("curupdatetext and reportupdatetext don't match, generating new page-text...", 2, $reportdate);
+
+	$new_page_text = str_replace("'''$curupdatetext'''", "'''$reportupdatetext'''", $page_text);
+
+	wikibot_writelog("New FirmwareNews page:\n$new_page_text", 1, $reportdate);
+
+	if($wikibot_loggedin == 1)
+	{
+		wikibot_writelog("Sending FirmwareNews page edit request...", 2, $reportdate);
+
+		$newContent = new \Mediawiki\DataModel\Content($new_page_text);
+		$title = new \Mediawiki\DataModel\Title($pagetitle);
+		$identifier = new \Mediawiki\DataModel\PageIdentifier($title);
+		$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
+		$services->newRevisionSaver()->save($revision);
+
+		$text = "FirmwareNews page edit request was successful.";
+		echo "$text\n";
+		wikibot_writelog($text, 1, $reportdate);
+	}
+
+	return 0;
+}
+
 function runwikibot_newsysupdate($updateversion, $reportdate)
 {
 	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $system;
@@ -590,6 +665,26 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	//}
 
 	/*if($sysupdate_page!==FALSE)*/wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+
+	$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
+	if($numrows>0)
+	{
+		$row = mysqli_fetch_row($result);
+
+		$tmp_reportdate = $row[0];
+
+		if($tmp_reportdate === $reportdate)
+		{
+			$ret = wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+			if($ret!=0)return $ret;
+		}
+		else
+		{
+			wikibot_writelog("Skipping FirmwareNews page handling since this report isn't the latest one.", 2, $reportdate);
+		}
+	}
 
 	echo "Updating the report's wikibot_runfinished field...\n";
 	$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikibot_runfinished=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
