@@ -188,6 +188,7 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 				if($changelog!==FALSE)
 				{
 					$posend = strpos($changelog, "<h3>Improvements Included");
+					if($posend===FALSE) $posend = strpos($changelog, "<li><strong><a href=");
 					if($posend!==FALSE)
 					{
 						$changelog = substr($changelog, $len, $posend-$len);
