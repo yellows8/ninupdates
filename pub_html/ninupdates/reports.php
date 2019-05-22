@@ -316,7 +316,7 @@ if($reportdate=="")
 	$con.= "Scanning involving eShop can be found <a href=\"eshop/\">here.</a><br />\n";
 	$con.= "Page scanning is also available: <a href=\"browserupdate/\">browser-version-check</a> and <a href=\"ninoss/\">Nintendo OSS</a>.<br />\n";
 
-	if($sitecfg_twitter_username!=="")$con.= "<a class=\"twitter-timeline\" data-width=\"300\" data-height=\"300\" href=\"https://twitter.com/$sitecfg_twitter_username\">Tweets by $sitecfg_twitter_username</a> <script async src=\"https://platform.twitter.com/widgets.js\" charset=\"utf-8\"></script>";
+	if($sitecfg_twitter_username!=="")$con.= "<a class=\"twitter-timeline\" data-width=\"300\" data-height=\"300\" data-dnt=\"true\" href=\"https://twitter.com/$sitecfg_twitter_username\">Tweets by $sitecfg_twitter_username</a> <script async src=\"https://platform.twitter.com/widgets.js\" charset=\"utf-8\"></script>";
 
 	$con.= "$sitecfg_homepage_footer</body></html>";
 }
