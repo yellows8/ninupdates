@@ -169,14 +169,35 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 	{
 		echo "Successfully received the sysupdate list page.\n";
 
-		$str = strstr($replydata, ">Version");//The Nintendo .uk and .jp sites are not supported with this.
+		$str = FALSE;//strstr($replydata, ">Version");//The Nintendo .uk and .jp sites are not supported with this.
 		if($str===FALSE)
 		{
 			$str = strstr($replydata, "<h3>Improvements Included in Version ");
-			if($str===FALSE)
+			if($str===FALSE)//Updated site
 			{
-				getofficalchangelog_writelog("Failed to find version string.", 0, $reportdate);
-				return 5;
+				$str = strstr($replydata, "<section class=\"update-versions\">");
+				if($str!==FALSE) $str = strstr($str, "<h3><a name=\"");
+				if($str!==FALSE) $str = strstr($str, "\">");
+				if($str!==FALSE) $str = substr($str, 2);
+
+				if($str===FALSE)
+				{
+					getofficalchangelog_writelog("Failed to find version string.", 0, $reportdate);
+					return 5;
+				}
+
+				if($str!==FALSE)
+				{
+					$changelog = strstr($str, "</a></h3>");
+					if($changelog!==FALSE) $changelog = substr($changelog, 10);
+					if($changelog!==FALSE)
+					{
+						$posend = strpos($changelog, "</section>");
+						if($posend!==FALSE)$changelog = substr($changelog, 0, $posend);
+						$posend = strpos($changelog, "<h3><a name=\"");
+						if($posend!==FALSE)$changelog = substr($changelog, 0, $posend);
+					}
+				}
 			}
 			else//Switch
 			{
@@ -261,6 +282,9 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 
 		$strdata = strtok($str, " ");
 		if($changelog_switch_flag==0)$strdata = strtok(" ");
+
+		$posend = strpos($strdata, "</");
+		if($posend!==FALSE)$strdata = substr($strdata, 0, $posend);
 
 		if(ctype_alpha($strdata[strlen($strdata)-1]) === TRUE)$strdata = substr($strdata, 0, strlen($strdata)-1);
 		$strdata = mysqli_real_escape_string($mysqldb, $strdata);
