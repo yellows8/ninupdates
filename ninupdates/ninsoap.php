@@ -5,6 +5,7 @@ require_once(dirname(__FILE__) . "/logs.php");
 require_once(dirname(__FILE__) . "/db.php");
 require_once(dirname(__FILE__) . "/get_officialchangelog.php");
 require_once(dirname(__FILE__) . "/tweet.php");
+require_once(dirname(__FILE__) . "/send_webhook.php");
 
 $curtime_override = 0;
 
@@ -192,6 +193,7 @@ function dosystem($console)
 			$msg = "Last " . getsystem_sysname($system) . " request status changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\". https://www.nintendo.co.jp/netinfo/en_US/index.html";
 			echo "msg: $msg\n";
 			sendtweet($msg);
+			send_webhook($msg);
 		}
 	}
 
@@ -250,9 +252,12 @@ function dosystem($console)
 		if($initialscan==0)echo "System $system: System update available for regions $sysupdate_regions.\n";
 		if($initialscan)echo "System $system: Initial scan successful for regions $sysupdate_regions.\n";
 
+		$notif_msg = "Sysupdate detected for " . getsystem_sysname($system) . ": $msgme_message";
+
 		echo "\nSending notifications...\n";
 		sendircmsg($msgme_message);
-		sendtweet("Sysupdate detected for " . getsystem_sysname($system) . ": $msgme_message");
+		sendtweet($notif_msg);
+		send_webhook($notif_msg);
 		echo "Sending email...\n";
         	if(!mail($sitecfg_target_email, "$system sysupdates", $email_message, "From: ninsoap@$sitecfg_emailhost"))echo "Failed to send mail.\n";
 

@@ -4,6 +4,7 @@ require_once(dirname(__FILE__) . "/config.php");
 require_once(dirname(__FILE__) . "/logs.php");
 require_once(dirname(__FILE__) . "/db.php");
 require_once(dirname(__FILE__) . "/tweet.php");
+require_once(dirname(__FILE__) . "/send_webhook.php");
 
 function init_curl_pagelogger()
 {
@@ -59,9 +60,21 @@ function send_httprequest_pagelogger($url)
 	return $buf;
 }
 
+function sendnotif_pagelogger($msg, $enable_notification, $msgtarget)
+{
+	if($enable_notification>=1)
+	{
+		if($enable_notification===1)appendmsg_tofile($msg, $msgtarget);
+		sendtweet($msg);
+		if($enable_notification===3)send_webhook($msg);
+	}
+}
+
 function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notification, $msgtarget = "msg3dsdev")
 {
 	global $httpstat_pagelogger, $lastmod_dateid, $lastmod;
+
+	$enable_notification = intval($enable_notification);
 
 	init_curl_pagelogger();
 	$buf = send_httprequest_pagelogger($url);
@@ -84,7 +97,7 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 			$msg = "The HTTP response status-code changed from $httpstat_prev to $httpstat_pagelogger, with the following URL: $url";
 			echo "$msg\n";
 
-			if($enable_notification==="1")appendmsg_tofile($msg, "msg3dsdev");
+			sendnotif_pagelogger($msg, $enable_notification, $msgtarget);
 		}
 	}
 
@@ -104,12 +117,11 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 	fwrite($f, $buf);
 	fclose($f);
 
-	if($enable_notification==="1" || $enable_notification==="2")
+	if($enable_notification>=1)
 	{
 		$msg = "$msgprefix Last-Modified: " . date(DATE_RFC822, $lastmod) . ". $msgurl";
 
-		if($enable_notification==="1")appendmsg_tofile($msg, $msgtarget);
-		sendtweet($msg);
+		sendnotif_pagelogger($msg, $enable_notification, $msgtarget);
 	}
 	else
 	{
