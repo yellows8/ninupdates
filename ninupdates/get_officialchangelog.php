@@ -21,7 +21,7 @@ function getofficalchangelog_writelog($str, $type, $reportdate)
 		return 1;
 	}
 
-	fprintf($f, "%s reportdate=%s: %s\n", date("m-d-y_h-i-s"), $reportdate, $str);
+	fprintf($f, "%s reportdate=%s: %s\n", gmdate(DATE_ATOM), $reportdate, $str);
 	fclose($f);
 
 	return 0;

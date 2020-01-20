@@ -53,8 +53,8 @@ function send_httprequest_pagelogger($url)
 	if($errorstr!="")$buf = $errorstr;
 
 	$lastmod = curl_getinfo ($curl_handle_pagelogger, CURLINFO_FILETIME);
-	echo "lastmod:".date(DATE_RFC822, $lastmod)."\n";
-	$lastmod_dateid = date("m-d-y_H-i-s", $lastmod);
+	echo "lastmod:".gmdate(DATE_RFC822, $lastmod)."\n";
+	$lastmod_dateid = gmdate("Y-m-d_H-i-s", $lastmod);
 	echo "lastmod_dateid: $lastmod_dateid\n";
 
 	return $buf;
@@ -119,7 +119,7 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 
 	if($enable_notification>=1)
 	{
-		$msg = "$msgprefix Last-Modified: " . date(DATE_RFC822, $lastmod) . ". $msgurl";
+		$msg = "$msgprefix Last-Modified: " . gmdate(DATE_RFC822, $lastmod) . ". $msgurl";
 
 		sendnotif_pagelogger($msg, $enable_notification, $msgtarget);
 	}

@@ -35,7 +35,7 @@ function wikibot_writelog($str, $type, $reportdate)
 		return 1;
 	}
 
-	fprintf($f, "%s reportdate=%s: %s\n", date("m-d-y_h-i-s"), $reportdate, $str);
+	fprintf($f, "%s reportdate=%s: %s\n", gmdate(DATE_ATOM), $reportdate, $str);
 	fclose($f);
 
 	return 0;
@@ -45,7 +45,7 @@ function wikibot_updatenewspages($api, $services, $updateversion, $reportdate, $
 {
 	global $wikibot_loggedin, $wikibot_user, $wikibot_pass;
 
-	$sysupdate_date = date("j F y", $timestamp);
+	$sysupdate_date = gmdate("j F y", $timestamp);
 
 	$insertstring = "*'''$sysupdate_date''' Nintendo released system update [[$updateversion]].\n";
 
@@ -206,7 +206,7 @@ function wikibot_updatepage_homemenu($api, $services, $updateversion, $reportdat
 		}
 		else if(strpos($line, "Date")!==FALSE || strpos($line, "date")!==FALSE)
 		{
-			$table_entry.= date("F j, Y", $timestamp);
+			$table_entry.= gmdate("F j, Y", $timestamp);
 		}
 		else if($line === "CDN Availability")
 		{
@@ -387,7 +387,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$regions_list.= ".";
 	}
 
-	$page_text.= "The $sysnames_list $updateversion system update was released on ".date("F j, Y", $timestamp).". $regions_list\n\n";
+	$page_text.= "The $sysnames_list $updateversion system update was released on ".gmdate("F j, Y", $timestamp)." (UTC). $regions_list\n\n";
 	$page_text.= "Security flaws fixed: <fill this in manually later, see the updatedetails page from the ninupdates-report page(s) once available for now>.\n\n";
 
 	$page_text.= "==Change-log==\n";
@@ -550,11 +550,17 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 	$wiki_apibaseurl = $serverbaseurl . $apiprefixuri;
 
-	$month = (int)substr($reportdate, 0*3, 2);
-	$day = (int)substr($reportdate, 1*3, 2);
-	$year = (int)substr($reportdate, 2*3, 2);
+	$query="SELECT ninupdates_reports.reportdaterfc FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.reportdate='".$reportdate."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."'";
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
 
-	$timestamp = mktime(0, 0, 0, $month, $day, $year);
+	if($numrows==0)
+	{
+		wikibot_writelog("Failed to find the report with reportdate $reportdate.", 0, $reportdate);
+		return 12;
+	}
+
+	$timestamp = date_timestamp_get(date_create_from_format(DateTimeInterface::RFC822, $row[0]));
 
 	if(!isset($wiki_homemenutitle))$wiki_homemenutitle = "";
 

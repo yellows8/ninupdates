@@ -18,10 +18,10 @@ if($argc>=2)
 	$tmp_hour = 0;
 	$tmp_min = 0;
 	$tmp_sec = 0;
-	if(sscanf($argv[1], "%02u-%02u-%02u_%02u-%02u-%02u", $tmp_month, $tmp_day, $tmp_year, $tmp_hour, $tmp_min, $tmp_sec) == 6)
+	if(sscanf($argv[1], "%04u-%02u-%02u_%02u-%02u-%02u", $tmp_year, $tmp_month, $tmp_day, $tmp_hour, $tmp_min, $tmp_sec) == 6)
 	{
 		echo "Using the specified curtime_override.\n";
-		$curtime_override = mktime($tmp_hour, $tmp_min, $tmp_sec, $tmp_month, $tmp_day, $tmp_year);
+		$curtime_override = gmmktime($tmp_hour, $tmp_min, $tmp_sec, $tmp_month, $tmp_day, $tmp_year);
 	}
 	else
 	{
@@ -56,7 +56,7 @@ function do_systems_soap()
 			dosystem($row[0]);
 		}
 
-		$query="UPDATE ninupdates_management SET lastscan='" . date(DATE_RFC822, time()) . "'";
+		$query="UPDATE ninupdates_management SET lastscan='" . gmdate(DATE_RFC822, time()) . "'";
 		$result=mysqli_query($mysqldb, $query);
 
 		close_curl();
@@ -74,7 +74,7 @@ function do_systems_soap()
 			{
 				echo "Starting a get_officialchangelog task for processing $count report(s)...\n";
 
-				$get_officialchangelog_timestamp = date("m-d-y_h-i-s");
+				$get_officialchangelog_timestamp = gmdate("Y-m-d_H-i-s");
 
 				system("php $sitecfg_workdir/get_officialchangelog_cli.php > $sitecfg_workdir/get_officialchangelog_scheduled_out/$get_officialchangelog_timestamp 2>&1 &");
 			}
@@ -93,7 +93,7 @@ function do_systems_soap()
 			{
 				echo "Starting a wikibot task for processing $count report(s)...\n";
 
-				$wikibot_timestamp = date("m-d-y_h-i-s");
+				$wikibot_timestamp = gmdate("Y-m-d_H-i-s");
 
 				system("php $sitecfg_workdir/wikibot.php scheduled > $sitecfg_workdir/wikibot_out/$wikibot_timestamp 2>&1 &");
 			}
@@ -107,7 +107,7 @@ function do_systems_soap()
 		{
 			echo "Starting post-processing tasks for processing $numrows report(s)...\n";
 
-			$postproc_timestamp = date("m-d-y_h-i-s");
+			$postproc_timestamp = gmdate("Y-m-d_H-i-s");
 
 			for($i=0; $i<$numrows; $i++)
 			{
@@ -593,9 +593,9 @@ function main($reg)
 	{
 		$curtime = $curtime_override;
 	}
-	$soap_timestamp = date(DATE_RFC822, $curtime);
+	$soap_timestamp = gmdate(DATE_RFC822, $curtime);
 
-	$curdate = date("m-d-y_h-i-s", $curtime);
+	$curdate = gmdate("Y-m-d_H-i-s", $curtime);
 	if($sysupdate_timestamp!="")$curdate = $sysupdate_timestamp;
 	$curdatefn = $curdate . ".html";
 
