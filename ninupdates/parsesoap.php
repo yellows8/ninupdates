@@ -34,7 +34,7 @@ if($numrows==0)
 	exit;
 }
 
-$row = mysql_fetch_row($result);
+$row = mysqli_fetch_row($result);
 $systemid = $row[0];
 
 $query="SELECT id, curdate FROM ninupdates_reports WHERE systemid='".$systemid."' && reportdate='".$reportdate."'";
