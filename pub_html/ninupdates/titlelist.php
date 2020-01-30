@@ -225,7 +225,6 @@ for($i=0; $i<$numrows; $i++)
 	$regionid = $row[4];
 	$reportdates = $row[5];
 	$updateversions = $row[6];
-	$updatesize += $row[7] + $row[8] + $row[9];
 	$regioncode = $row[10];
 
 	$versiontext = $versions;
@@ -295,6 +294,17 @@ for($i=0; $i<$numrows; $i++)
 	else
 	{
 		$versiontext = "v$versions";
+	}
+
+	for($sizei=7; $sizei<=9; $sizei++)
+	{
+		$tmpsizes = $row[$sizei];
+		$tmpsize = strtok($tmpsizes, ",");
+		while($tmpsize!==FALSE)
+		{
+			$updatesize += $tmpsize;
+			$tmpsize = strtok(",");
+		}
 	}
 
 	$regtext = $regionid;
@@ -493,12 +503,12 @@ else
 	$con.= "|}\n";
 }
 
-if($genwiki=="" && $gencsv=="" && $reportdate!="" && $soapquery=="")
+if($genwiki=="" && $gencsv=="" && $reportdate!="")
 {
 	$con.= "<br />\n";
 	if($updatesize!=0)$con.= "Total titles sizes: $updatesize<br />\n";
 
-	if($region!="")
+	if($region!="" && $usesoap=="" && $filter_tid=="")
 	{
 		$hashval = "";
 
@@ -519,7 +529,7 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="" && $soapquery=="")
 		$con.= "<br/>$titlehash_text: $hashval<br/>\n";
 	}
 
-	if($reportdate!="" && $usesoap=="")
+	if($reportdate!="" && $usesoap=="" && $filter_tid=="")
 	{
 		$con.= "<br/>\nTitle info: <br/>\n<br/>\n";
 		$titleinfo_count = 0;
