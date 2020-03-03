@@ -560,6 +560,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 		return 12;
 	}
 
+	$row = mysqli_fetch_row($result);
 	$timestamp = date_timestamp_get(date_create_from_format(DateTimeInterface::RFC822, $row[0]));
 
 	if(!isset($wiki_homemenutitle))$wiki_homemenutitle = "";
