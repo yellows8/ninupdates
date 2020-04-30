@@ -89,7 +89,9 @@ else
 	$result=mysqli_query($mysqldb, $query);
 	dbconnection_end();
 
-	appendmsg_tofile("title_setdesc.php: desc for TID $titleid changed to: $desc", "msgme");
+	$msg = "title_setdesc.php: desc for TID $titleid changed to: $desc";
+	appendmsg_tofile($msg, "msgme");
+	send_webhook($msg, 1);
 	header("Location: reports.php");
 	writeNormalLog("CHANGED TID $titleid DESC TO $desc. RESULT: 302");
 }

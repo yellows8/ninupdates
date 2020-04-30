@@ -497,7 +497,9 @@ function titlelist_dbupdate_withcmd($curdate)
 		$retval = load_titlelist_withcmd($curdate);
 		if($retval!=0)
 		{
-			appendmsg_tofile("load_titlelist_withcmd() for $curdate-$system failed.", "msgme");
+			$msg = "load_titlelist_withcmd() for $curdate-$system failed.";
+			appendmsg_tofile($msg, "msgme");
+			send_webhook($msg, 1);
 			return $retval;
 		}
 	}
