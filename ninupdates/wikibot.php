@@ -250,6 +250,79 @@ function wikibot_updatepage_homemenu($api, $services, $updateversion, $reportdat
 	return 0;
 }
 
+function wikibot_edit_navboxversions($api, $services, $updateversion, $reportdate, $pagename, $page_text)
+{
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
+
+	if(strstr($page_text, $updateversion)!==FALSE)
+	{
+		wikibot_writelog("This updateversion is already listed on the NavboxVersions page.", 2, $reportdate);
+		return 0;
+	}
+
+	$tmp_pos = strpos($updateversion, ".");
+	if($tmp_pos===FALSE)
+	{
+		wikibot_writelog("Failed to locate '.' in the updateversion.", 0, $reportdate);
+		return 2;
+	}
+
+	$major_version = "[[" . substr($updateversion, 0, $tmp_pos+1);
+
+	$new_page = "";
+	$new_text = "";
+
+	$version_pos = strpos($page_text, $major_version);
+	$posend = 0;
+	if($version_pos===FALSE)
+	{
+		wikibot_writelog("Major version text '$major_version' not found on the NavboxVersions page, adding a new entry...", 2, $reportdate);
+
+		$posend = strpos($page_text, "|}");
+		if($posend===FALSE)
+		{
+			wikibot_writelog("Failed to locate the NavboxVersions table end.", 0, $reportdate);
+			return 2;
+		}
+
+		$new_text = "| align=\"center\" | [[$updateversion]]\n|-\n";
+
+		if(substr($page_text, $posend-1, 1) !== "\n") $new_text = "\n" . $new_text;
+	}
+	else
+	{
+		$posend = strpos($page_text, "|-", $version_pos);
+		if($posend===FALSE)
+		{
+			wikibot_writelog("Failed to locate the NavboxVersions table entry end.", 0, $reportdate);
+			return 2;
+		}
+		if(substr($page_text, $posend-1, 1) === "\n") $posend--;
+
+		$new_text = " • [[$updateversion]]";
+	}
+
+	$new_page = substr($page_text, 0, $posend) . $new_text . substr($page_text, $posend);
+
+	wikibot_writelog("Updated NavboxVersions page:\n$new_page", 1, $reportdate);
+
+	if($wikibot_loggedin == 1)
+	{
+		wikibot_writelog("Sending NavboxVersions page edit request...", 2, $reportdate);
+
+		$newContent = new \Mediawiki\DataModel\Content($new_page);
+		$title = new \Mediawiki\DataModel\Title($pagename);
+		$identifier = new \Mediawiki\DataModel\PageIdentifier($title);
+		$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
+		$services->newRevisionSaver()->save($revision);
+
+		$text = "NavboxVersions page edit request was successful.";
+		wikibot_writelog($text, 1, $reportdate);
+	}
+
+	return 0;
+}
+
 function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri)
 {
 	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
@@ -257,6 +330,18 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 	$page_text = "";
 
 	$page_exists = 0;
+
+	$navbox_pagename = "Template:NavboxVersions";
+
+	$tmp_page = $services->newPageGetter()->getFromTitle($navbox_pagename);
+	$navbox_revision = $tmp_page->getRevisions()->getLatest();
+
+	if($navbox_revision!==NULL)
+	{
+		wikibot_writelog("Updating NavboxVersions if needed...", 2, $reportdate);
+		$navbox_text = $navbox_revision->getContent()->getData();
+		wikibot_edit_navboxversions($api, $services, $updateversion, $reportdate, $navbox_pagename, $navbox_text);
+	}
 
 	$tmp_page = $services->newPageGetter()->getFromTitle($updateversion);
 	$tmp_revision = $tmp_page->getRevisions()->getLatest();
@@ -401,6 +486,12 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 	$page_text.= "System update report(s):\n";
 	$page_text.= $reportlinks_list;
 	$page_text.= "\n";
+
+	if($navbox_revision!==NULL)
+	{
+		$page_text.= "\n{{NavboxVersions}}\n\n";
+		$page_text.= "[[Category:System versions]]\n";
+	}
 
 	wikibot_writelog("New sysupdate page:\n$page_text", 1, $reportdate);
 
