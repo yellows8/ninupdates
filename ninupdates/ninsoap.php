@@ -219,6 +219,9 @@ function dosystem($console)
 		$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
+		$report_exists = 0;
+		$old_sysupdate_regions = "";
+		$new_sysupdate_regions = "";
 		if($numrows==0)
 		{
 			$query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
@@ -229,25 +232,58 @@ function dosystem($console)
 			$query = "INSERT INTO ninupdates_reports (reportdate, curdate, systemid, log, regions, updateversion, reportdaterfc, initialscan, updatever_autoset, wikibot_runfinished, postproc_runfinished) VALUES ('".$sysupdate_timestamp."','".$dbcurdate."',$systemid,'report','".$sysupdate_regions."','".$updateversion."','".$soap_timestamp."',$initialscan,0,0,0)";
 			$result=mysqli_query($mysqldb, $query);
 			$reportid = mysqli_insert_id($mysqldb);
-
-			$region = strtok($sysupdate_regions, ",");
-			while($region!==FALSE)
-			{
-				$query = "INSERT INTO ninupdates_systitlehashes (reportid, region, titlehash) VALUES ('".$reportid."','".$region."','".$sysupdate_systitlehashes[$region]."')";
-				$result=mysqli_query($mysqldb, $query);
-
-				$region = strtok(",");
-			}
-
-			$query="UPDATE ninupdates_titles SET reportid=$reportid WHERE curdate='".$dbcurdate."' && reportid=0";
-			$result=mysqli_query($mysqldb, $query);
 		}
 		else
 		{
-			//this will only happen when the report row already exists and the --difflogs option was used.
-			$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.regions='".$sysupdate_regions."' WHERE reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
+			//this will only happen when the report row already exists.
+			$report_exists = 1;
+			$query = "SELECT ninupdates_reports.regions FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
+			$result=mysqli_query($mysqldb, $query);
+			$row = mysqli_fetch_row($result);
+			$old_sysupdate_regions = $row[0];
+			$new_sysupdate_regions = $old_sysupdate_regions;
+		}
+
+		$region = strtok($sysupdate_regions, ",");
+		while($region!==FALSE)
+		{
+			$query="SELECT COUNT(*) FROM ninupdates_systitlehashes WHERE ninupdates_systitlehashes.reportid='".$reportid."' && ninupdates_systitlehashes.region='".$region."'";
+			$result=mysqli_query($mysqldb, $query);
+			$numrows=mysqli_num_rows($result);
+			$count=0;
+
+			if($numrows>0)
+			{
+				$row = mysqli_fetch_row($result);
+				$count = $row[0];
+			}
+
+			if($count==0)
+			{
+				$query = "INSERT INTO ninupdates_systitlehashes (reportid, region, titlehash) VALUES ('".$reportid."','".$region."','".$sysupdate_systitlehashes[$region]."')";
+				$result=mysqli_query($mysqldb, $query);
+			}
+
+			if($report_exists == 1)
+			{
+				if(strstr($old_sysupdate_regions, $region)===FALSE)
+				{
+					if(strlen($new_sysupdate_regions)>0) $new_sysupdate_regions.= ",";
+					$new_sysupdate_regions.= $region;
+				}
+			}
+
+			$region = strtok(",");
+		}
+
+		if($report_exists == 1)
+		{
+			$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.regions='".$new_sysupdate_regions."' WHERE reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
 			$result=mysqli_query($mysqldb, $query);
 		}
+
+		$query="UPDATE ninupdates_titles SET reportid=$reportid WHERE curdate='".$dbcurdate."' && reportid=0";
+		$result=mysqli_query($mysqldb, $query);
 
 		if($initialscan==0)echo "System $system: System update available for regions $sysupdate_regions.\n";
 		if($initialscan)echo "System $system: Initial scan successful for regions $sysupdate_regions.\n";
@@ -261,10 +297,10 @@ function dosystem($console)
 		echo "Sending email...\n";
         	if(!mail($sitecfg_target_email, "$system sysupdates", $email_message, "From: ninsoap@$sitecfg_emailhost"))echo "Failed to send mail.\n";
 
-		echo "Writing to the lastupdates_csvurls file...\n";
+		/*echo "Writing to the lastupdates_csvurls file...\n";
 		$msg = "$sitecfg_httpbase/titlelist.php?date=".$sysupdate_timestamp."&sys=".$system."&csv=1";
 		$tmp_cmd = "echo '" . $msg . "' >> $sitecfg_workdir/lastupdates_csvurls";
-		system($tmp_cmd);
+		system($tmp_cmd);*/
 	}
 }
 
