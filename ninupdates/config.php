@@ -23,6 +23,8 @@ $sitecfg_twitter_username Optional username for the twitter bot.
 $sitecfg_postproc_cmd This is the command which will be executed by postproc.php, if this is set. The full command passed to system() is: "$sitecfg_postproc_cmd $reportdate $system".
 
 $sitecfg_load_titlelist_cmd See ninsoap.php.
+
+$sitecfg_consoles_deviceid["{system}"]["{regioncode}"] = "{id}"; DeviceId to use, overrides the value from the db.
 */
 
 require_once(dirname(__FILE__) . "/site_cfg.php");

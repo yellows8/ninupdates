@@ -287,10 +287,16 @@ function initialize($ishac)
 		$deviceid = $row[0];
 		$platformid = $row[1];
 		$subplatformid = $row[2];
-		$console_deviceid = $deviceid;
 
 		$useragent_fw = $row[3];
 		$eid = $row[4];
+
+		if(isset($sitecfg_consoles_deviceid))
+		{
+			if(isset($sitecfg_consoles_deviceid["$system"]["$region"])) $deviceid = $sitecfg_consoles_deviceid["$system"]["$region"];
+		}
+
+		$console_deviceid = $deviceid;
 
 		if($ishac===0)
 		{
@@ -383,7 +389,7 @@ function close_curl()
 
 function send_httprequest($url, $ishac)
 {
-	global $mysqldb, $hdrs, $soapreq, $httpstat, $sitecfg_workdir, $soapreq_data, $httpreq_useragent, $curl_handle, $system, $error_FH;
+	global $mysqldb, $hdrs, $soapreq, $httpstat, $sitecfg_workdir, $soapreq_data, $httpreq_useragent, $curl_handle, $system, $region, $error_FH;
 
 	$query="SELECT clientcertfn, clientprivfn FROM ninupdates_consoles WHERE system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
@@ -414,9 +420,13 @@ function send_httprequest($url, $ishac)
 
 	if(strstr($url, "https") && $clientcertfn!="" && $clientprivfn!="")
 	{
+		$certbasepath = "$sitecfg_workdir/sslcerts";
+		$certbasepath_region = "$certbasepath/$region";
+		if(file_exists("$certbasepath_region/$clientcertfn")===TRUE && file_exists("$certbasepath_region/$clientprivfn")===TRUE) $certbasepath = $certbasepath_region;
+
 		curl_setopt($curl_handle, CURLOPT_SSLCERTTYPE, "PEM");
-		curl_setopt($curl_handle, CURLOPT_SSLCERT, "$sitecfg_workdir/sslcerts/$clientcertfn");
-		curl_setopt($curl_handle, CURLOPT_SSLKEY, "$sitecfg_workdir/sslcerts/$clientprivfn");
+		curl_setopt($curl_handle, CURLOPT_SSLCERT, "$certbasepath/$clientcertfn");
+		curl_setopt($curl_handle, CURLOPT_SSLKEY, "$certbasepath/$clientprivfn");
 
 		curl_setopt($curl_handle, CURLOPT_SSL_VERIFYPEER, 0);
 		curl_setopt($curl_handle, CURLOPT_SSL_VERIFYHOST, 0);
@@ -445,7 +455,7 @@ function send_httprequest($url, $ishac)
 
 function load_titlelist_withcmd($reportdate)
 {
-	global $sitecfg_workdir, $sitecfg_load_titlelist_cmd, $system, $newtitles, $newtitlesversions, $newtotal_titles;
+	global $sitecfg_workdir, $sitecfg_load_titlelist_cmd, $system, $region, $newtitles, $newtitlesversions, $newtotal_titles;
 
 	if($newtotal_titles < 1)
 	{
@@ -457,7 +467,7 @@ function load_titlelist_withcmd($reportdate)
 	$titlever = escapeshellarg($newtitlesversions[0]);
 
 	$filepath = "$sitecfg_workdir/load_titlelist_data/titlelist/$reportdate-$system";
-	$maincmd_str = "$sitecfg_load_titlelist_cmd $reportdate $system $filepath $sitecfg_workdir/load_titlelist_data $titleid,$titlever";
+	$maincmd_str = "$sitecfg_load_titlelist_cmd $reportdate $system $region $filepath $sitecfg_workdir/load_titlelist_data $titleid,$titlever";
 
 	echo "Running load_titlelist cmd...\n";
 	$retval = 0;
@@ -560,6 +570,14 @@ function main($reg)
 	}
 	else
 	{
+		$hostpos = strpos($nushttpsurl, ".nintendo.net");
+		$chn_host = "n.nintendoswitch.cn";
+		if($hostpos!==FALSE && $region=="C")
+		{
+			$nushttpsurl = substr($nushttpsurl, 0, $hostpos);
+			$nushttpsurl = "$nushttpsurl.$chn_host";
+		}
+		else if($region=="C") $nushttpsurl = "$nushttpsurl.$chn_host";
 		$url = "$nushttpsurl/v1/system_update_meta?device_id=" . $console_deviceid;
 	}
 

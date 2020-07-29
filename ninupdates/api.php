@@ -58,6 +58,22 @@ function ninupdates_api($ninupdatesapi_in_command, $ninupdatesapi_in_sys, $ninup
 	$row = mysqli_fetch_row($result);
 	$rowid = $row[0];
 
+	if(strlen($ninupdatesapi_in_region)>1)
+	{
+		$query = "SELECT regioncode FROM ninupdates_regions WHERE regionid='".$ninupdatesapi_in_region."'";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+
+		if($numrows==0)
+		{
+			dbconnection_end();
+			return 4;
+		}
+
+		$row = mysqli_fetch_row($result);
+		$ninupdatesapi_in_region = $row[0];
+	}
+
 	$versionquery = "GROUP_CONCAT(DISTINCT ninupdates_titles.version ORDER BY ninupdates_titles.version SEPARATOR ','),";
 	$reportdatequery = "GROUP_CONCAT(DISTINCT ninupdates_reports.reportdate ORDER BY ninupdates_reports.curdate SEPARATOR ','),";
 	$updateverquery = "GROUP_CONCAT(DISTINCT ninupdates_reports.updateversion ORDER BY ninupdates_reports.curdate SEPARATOR ',')";
