@@ -237,10 +237,11 @@ function dosystem($console)
 		{
 			//this will only happen when the report row already exists.
 			$report_exists = 1;
-			$query = "SELECT ninupdates_reports.regions FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
+			$query = "SELECT ninupdates_reports.id, ninupdates_reports.regions FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
 			$result=mysqli_query($mysqldb, $query);
 			$row = mysqli_fetch_row($result);
-			$old_sysupdate_regions = $row[0];
+			$reportid = $row[0];
+			$old_sysupdate_regions = $row[1];
 			$new_sysupdate_regions = $old_sysupdate_regions;
 		}
 
