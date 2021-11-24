@@ -14,7 +14,7 @@ function dbconnection_start()
 	$password = file_get_contents($sitecfg_mysqldb_pwdpath);
 
 	@$mysqldb = mysqli_connect("localhost", $sitecfg_mysqldb_username, $password, $sitecfg_mysqldb_database);
-	if(mysqli_connect_errno($mysqldb))die("Failed to connect to mysql.\n");
+	if(mysqli_connect_errno())die("Failed to connect to mysql.\n");
 }
 
 function dbconnection_end()
