@@ -19,32 +19,43 @@ function sendtweet($msg)
 {
 	global $twittercfg_consumer_key, $twittercfg_consumer_secret, $twittercfg_access_token, $twittercfg_access_token_secret;
 
+	$ret = 0;
+
 	if(!isset($twittercfg_consumer_key) || !isset($twittercfg_consumer_secret) || !isset($twittercfg_access_token) || !isset($twittercfg_access_token_secret))
 	{
 		echo "Twitter config is missing.\n";
-		return 1;
+		$ret = 1;
 	}
 
-	$connection = new TwitterOAuth($twittercfg_consumer_key, $twittercfg_consumer_secret, $twittercfg_access_token, $twittercfg_access_token_secret);
-	$content = $connection->get("account/verify_credentials");
-	$statuscode = $connection->getLastHttpCode();
-
-	if($statuscode != 200)
+	if($ret == 0)
 	{
-		echo "Auth failed, got HTTP status-code: $statuscode.\n";
-		return 2;
+		$connection = new TwitterOAuth($twittercfg_consumer_key, $twittercfg_consumer_secret, $twittercfg_access_token, $twittercfg_access_token_secret);
+		$content = $connection->get("account/verify_credentials");
+		$statuscode = $connection->getLastHttpCode();
+
+		if($statuscode != 200)
+		{
+			echo "Auth failed, got HTTP status-code: $statuscode.\n";
+			$ret = 2;
+		}
 	}
 
-	$statues = $connection->post("statuses/update", ["status" => $msg]);
-	$statuscode = $connection->getLastHttpCode();
-
-	if($statuscode != 200)
+	if($ret == 0)
 	{
-		echo "statuses/update request failed, got HTTP status-code: $statuscode.\n";
-		return 3;
+		$statues = $connection->post("statuses/update", ["status" => $msg]);
+		$statuscode = $connection->getLastHttpCode();
+
+		if($statuscode != 200)
+		{
+			echo "statuses/update request failed, got HTTP status-code: $statuscode.\n";
+			return 3;
+		}
 	}
 
-	return 0;
+	$tmp_cmd = dirname(__FILE__) .  "/send_mastodon.py " . escapeshellarg($msg);
+	system($tmp_cmd);
+
+	return $ret;
 }
 
 ?>
