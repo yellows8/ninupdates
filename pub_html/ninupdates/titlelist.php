@@ -527,7 +527,7 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="")
 		if($hashval===FALSE || $hashval=="")$hashval = "N/A";
 
 		$titlehash_text = "SOAP TitleHash";
-		if($generation!==0)$titlehash_text = "titleID+titleversion for sysupdate title";
+		if($generation!=0)$titlehash_text = "titleID+titleversion for sysupdate title";
 		$con.= "<br/>$titlehash_text: $hashval<br/>\n";
 	}
 

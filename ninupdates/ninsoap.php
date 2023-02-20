@@ -335,7 +335,7 @@ function initialize($generation)
 
 		$console_deviceid = $deviceid;
 
-		if($generation===0)
+		if($generation==0)
 		{
 			$platformid = ($platformid << 32);
 			if($subplatformid != NULL && $subplatformid != "")$platformid |= ($subplatformid << 31);
@@ -365,7 +365,7 @@ function initialize($generation)
 		die("Row doesn't exist in the db for region $region.\n");
 	}
 
-	if($generation===0)
+	if($generation==0)
 	{
 		$httpreq_useragent = "ds libnup/2.0";
 	}
@@ -377,7 +377,7 @@ function initialize($generation)
 		$httpreq_useragent = "NintendoSDK Firmware/" . $useragent_fw . " (platform:NX; did:" . $deviceid . "; eid:" . $eid . ")";
 	}
 
-	if($generation===0)
+	if($generation==0)
 	{
 		$soapreq_data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
   <soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\"
@@ -396,7 +396,7 @@ function initialize($generation)
   </soapenv:Envelope>";
 	}
 
-	if($generation===0)
+	if($generation==0)
 	{
 		$hdrs = array('SOAPAction: "urn:nus.wsapi.broadon.com/GetSystemUpdate"', 'Content-Type: application/xml', 'Content-Size: '.strlen($soapreq_data), 'Connection: Keep-Alive', 'Keep-Alive: 30');
 	}
@@ -443,7 +443,7 @@ function send_httprequest($url, $generation)
 
 	curl_setopt($curl_handle, CURLOPT_HTTPHEADER, $hdrs);
 
-	if($generation===0)
+	if($generation==0)
 	{
 		curl_setopt($curl_handle, CURLOPT_POST, 1);
 		curl_setopt($curl_handle, CURLOPT_POSTFIELDS, $soapreq_data);
@@ -539,7 +539,7 @@ function titlelist_dbupdate_withcmd($curdate, $generation)
 {
 	global $system;
 
-	if(generation!==0)
+	if(generation!=0)
 	{
 		$retval = load_titlelist_withcmd($curdate);
 		if($retval!=0)
@@ -599,7 +599,7 @@ function main($reg)
 
 	initialize($generation);
 
-	if($generation===0)
+	if($generation==0)
 	{
 		$url = "$nushttpsurl/nus/services/NetUpdateSOAP";
 	}
@@ -624,7 +624,7 @@ function main($reg)
 
 	if($httpstat=="200")
 	{
-		if($generation===0)
+		if($generation==0)
 		{
 			parse_soapresp($ret, 0);
 		}
