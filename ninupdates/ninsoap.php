@@ -305,7 +305,7 @@ function dosystem($console)
 	}
 }
 
-function initialize($ishac)
+function initialize($generation)
 {
 	global $mysqldb, $hdrs, $soapreq, $fp, $system, $region, $sitecfg_workdir, $soapreq_data, $httpreq_useragent, $console_deviceid;
 	
@@ -335,7 +335,7 @@ function initialize($ishac)
 
 		$console_deviceid = $deviceid;
 
-		if($ishac===0)
+		if($generation===0)
 		{
 			$platformid = ($platformid << 32);
 			if($subplatformid != NULL && $subplatformid != "")$platformid |= ($subplatformid << 31);
@@ -365,7 +365,7 @@ function initialize($ishac)
 		die("Row doesn't exist in the db for region $region.\n");
 	}
 
-	if($ishac===0)
+	if($generation===0)
 	{
 		$httpreq_useragent = "ds libnup/2.0";
 	}
@@ -377,7 +377,7 @@ function initialize($ishac)
 		$httpreq_useragent = "NintendoSDK Firmware/" . $useragent_fw . " (platform:NX; did:" . $deviceid . "; eid:" . $eid . ")";
 	}
 
-	if($ishac===0)
+	if($generation===0)
 	{
 		$soapreq_data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
   <soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\"
@@ -396,7 +396,7 @@ function initialize($ishac)
   </soapenv:Envelope>";
 	}
 
-	if($ishac===0)
+	if($generation===0)
 	{
 		$hdrs = array('SOAPAction: "urn:nus.wsapi.broadon.com/GetSystemUpdate"', 'Content-Type: application/xml', 'Content-Size: '.strlen($soapreq_data), 'Connection: Keep-Alive', 'Keep-Alive: 30');
 	}
@@ -424,7 +424,7 @@ function close_curl()
 	fclose($error_FH);
 }
 
-function send_httprequest($url, $ishac)
+function send_httprequest($url, $generation)
 {
 	global $mysqldb, $hdrs, $soapreq, $httpstat, $sitecfg_workdir, $soapreq_data, $httpreq_useragent, $curl_handle, $system, $region, $error_FH;
 
@@ -443,7 +443,7 @@ function send_httprequest($url, $ishac)
 
 	curl_setopt($curl_handle, CURLOPT_HTTPHEADER, $hdrs);
 
-	if($ishac===0)
+	if($generation===0)
 	{
 		curl_setopt($curl_handle, CURLOPT_POST, 1);
 		curl_setopt($curl_handle, CURLOPT_POSTFIELDS, $soapreq_data);
@@ -535,11 +535,11 @@ function load_titlelist_withcmd($reportdate)
 	return 0;
 }
 
-function titlelist_dbupdate_withcmd($curdate)
+function titlelist_dbupdate_withcmd($curdate, $generation)
 {
 	global $system;
 
-	if($system == "hac")
+	if(generation!==0)
 	{
 		$retval = load_titlelist_withcmd($curdate);
 		if($retval!=0)
@@ -554,7 +554,7 @@ function titlelist_dbupdate_withcmd($curdate)
 	return titlelist_dbupdate();
 }
 
-function compare_titlelists($curdate)
+function compare_titlelists($curdate, $generation)
 {
 	global $mysqldb, $system, $region, $sysupdate_systitlehashes;
 
@@ -565,7 +565,7 @@ function compare_titlelists($curdate)
 	if($numrows==0)
 	{
 		//echo "System $system Region $region: Titlehash is missing.\n";
-		return titlelist_dbupdate_withcmd($curdate);
+		return titlelist_dbupdate_withcmd($curdate, $generation);
 	}
 	else
 	{
@@ -574,7 +574,7 @@ function compare_titlelists($curdate)
 
 		if($sysupdate_systitlehashes[$region]!=$titlehashold)
 		{
-			return titlelist_dbupdate_withcmd($curdate);
+			return titlelist_dbupdate_withcmd($curdate, $generation);
 		}
 		else
 		{
@@ -591,17 +591,15 @@ function main($reg)
 
 	$region = $reg;
 
-	$query="SELECT nushttpsurl FROM ninupdates_consoles WHERE system='".$system."'";
+	$query="SELECT nushttpsurl, generation FROM ninupdates_consoles WHERE system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$row = mysqli_fetch_row($result);
 	$nushttpsurl = $row[0];
+	$generation = $row[1];
 
-	$ishac = 0;
-	if($system == "hac")$ishac = 1;
+	initialize($generation);
 
-	initialize($ishac);
-
-	if($ishac===0)
+	if($generation===0)
 	{
 		$url = "$nushttpsurl/nus/services/NetUpdateSOAP";
 	}
@@ -620,13 +618,13 @@ function main($reg)
 
 	for($i=0; $i<5; $i++)
 	{
-		$ret = send_httprequest($url, $ishac);
+		$ret = send_httprequest($url, $generation);
 		if($httpstat!="0")break;
 	}
 
 	if($httpstat=="200")
 	{
-		if($ishac===0)
+		if($generation===0)
 		{
 			parse_soapresp($ret, 0);
 		}
@@ -677,7 +675,7 @@ function main($reg)
 
 	if($numrows==0 && $newtotal_titles>0)
 	{
-		$retval = titlelist_dbupdate_withcmd($curdate);
+		$retval = titlelist_dbupdate_withcmd($curdate, $generation);
 		if($retval < 0)
 		{
 			echo "titlelist_dbupdate_withcmd() failed.\n";
@@ -694,7 +692,7 @@ function main($reg)
 	}
 	else
 	{
-		$retval = compare_titlelists($curdate);
+		$retval = compare_titlelists($curdate, $generation);
 		if($retval < 0)
 		{
 			echo "compare_titlelists() failed.\n";

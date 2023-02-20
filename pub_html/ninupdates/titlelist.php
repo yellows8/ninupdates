@@ -511,8 +511,9 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="")
 	if($region!="" && $usesoap=="" && $filter_tid=="")
 	{
 		$hashval = "";
+		$generation = 0;
 
-		$query="SELECT ninupdates_systitlehashes.titlehash FROM ninupdates_reports, ninupdates_consoles, ninupdates_systitlehashes WHERE ninupdates_systitlehashes.reportid=ninupdates_reports.id && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' && ninupdates_systitlehashes.region='".$region."' && ninupdates_reports.log='report' && ninupdates_reports.reportdate='".$reportdate."'";
+		$query="SELECT ninupdates_systitlehashes.titlehash, ninupdates_consoles.generation FROM ninupdates_reports, ninupdates_consoles, ninupdates_systitlehashes WHERE ninupdates_systitlehashes.reportid=ninupdates_reports.id && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' && ninupdates_systitlehashes.region='".$region."' && ninupdates_reports.log='report' && ninupdates_reports.reportdate='".$reportdate."'";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 
@@ -520,12 +521,13 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="")
 		{
 			$row = mysqli_fetch_row($result);
 			$hashval = $row[0];
+			$generation = $row[1];
 		}
 
 		if($hashval===FALSE || $hashval=="")$hashval = "N/A";
 
 		$titlehash_text = "SOAP TitleHash";
-		if($system == "hac")$titlehash_text = "titleID+titleversion for sysupdate title";
+		if($generation!==0)$titlehash_text = "titleID+titleversion for sysupdate title";
 		$con.= "<br/>$titlehash_text: $hashval<br/>\n";
 	}
 
