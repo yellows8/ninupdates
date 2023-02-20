@@ -48,7 +48,7 @@ function sendtweet($msg)
 		if($statuscode != 200)
 		{
 			echo "statuses/update request failed, got HTTP status-code: $statuscode.\n";
-			return 3;
+			$ret = 3;
 		}
 	}
 
