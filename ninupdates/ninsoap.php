@@ -539,7 +539,7 @@ function titlelist_dbupdate_withcmd($curdate, $generation)
 {
 	global $system;
 
-	if(generation!=0)
+	if($generation!=0)
 	{
 		$retval = load_titlelist_withcmd($curdate);
 		if($retval!=0)
