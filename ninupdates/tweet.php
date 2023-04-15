@@ -2,7 +2,7 @@
 
 //This is based on the example code from here: https://twitteroauth.com/
 
-require "vendor/abraham/twitteroauth/autoload.php";
+require "vendor/autoload.php";
 
 use Abraham\TwitterOAuth\TwitterOAuth;
 
@@ -30,24 +30,18 @@ function sendtweet($msg)
 	if($ret == 0)
 	{
 		$connection = new TwitterOAuth($twittercfg_consumer_key, $twittercfg_consumer_secret, $twittercfg_access_token, $twittercfg_access_token_secret);
-		$content = $connection->get("account/verify_credentials");
-		$statuscode = $connection->getLastHttpCode();
-
-		if($statuscode != 200)
-		{
-			echo "Auth failed, got HTTP status-code: $statuscode.\n";
-			$ret = 2;
-		}
+		$connection->setApiVersion('2');
 	}
 
 	if($ret == 0)
 	{
-		$statues = $connection->post("statuses/update", ["status" => $msg]);
+		$out = $connection->post("tweets", ["text" => $msg], $json = true);
 		$statuscode = $connection->getLastHttpCode();
 
-		if($statuscode != 200)
+		if($statuscode != 200 && $statuscode != 201)
 		{
-			echo "statuses/update request failed, got HTTP status-code: $statuscode.\n";
+			echo "tweet request failed, got HTTP status-code: $statuscode.\n";
+			var_dump($out);
 			$ret = 3;
 		}
 	}
