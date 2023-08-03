@@ -6,7 +6,7 @@ require_once(dirname(__FILE__) . "/db.php");
 
 if($argc<3)
 {
-	die("Get/set the updatever, etc.\nUsage:\nphp manage_report_updatever.php <system(internal name)> <reportdate> [optional updatever when setting updatever] [optional value for updatever_autoset] [optional value for wikibot_runfinished]\n");
+	die("Get/set the updatever, etc.\nUsage:\nphp manage_report_updatever.php <system(internal name)> <reportdate> [optional updatever when setting updatever] [optional value for updatever_autoset] [optional value for wikibot_runfinished] [optional value for wikipage_exists]\n");
 }
 
 dbconnection_start();
@@ -22,6 +22,9 @@ if($argc > 4) $updatever_autoset = mysqli_real_escape_string($mysqldb, $argv[4])
 
 $wikibot_runfinished = "";
 if($argc > 5) $wikibot_runfinished = mysqli_real_escape_string($mysqldb, $argv[5]);
+
+$wikipage_exists = "";
+if($argc > 6) $wikipage_exists = mysqli_real_escape_string($mysqldb, $argv[6]);
 
 $query="SELECT id FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
 $result=mysqli_query($mysqldb, $query);
@@ -65,6 +68,11 @@ if($updatever!=="")
 	{
 		$query.= ", wikibot_runfinished=".$wikibot_runfinished."";
 		$logmsg.= ", wikibot_runfinished=".$wikibot_runfinished;
+	}
+	if($wikipage_exists!=="")
+	{
+		$query.= ", wikipage_exists=".$wikipage_exists."";
+		$logmsg.= ", wikipage_exists=".$wikipage_exists;
 	}
 	$query.= " WHERE id=$reportid";
 	$result=mysqli_query($mysqldb, $query);
