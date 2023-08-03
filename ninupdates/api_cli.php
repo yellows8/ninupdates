@@ -29,7 +29,7 @@ if($argc>=7)
 	}
 }
 
-$retval = ninupdates_api($argv[1], $argv[2], $argv[3], $argv[4], $argv[5]);
+$retval = ninupdates_api($argv[1], $argv[2], $argv[3], $argv[4], $argv[5], $prevreport);
 if($retval!=0)
 {
 	echo("API returned error $retval.\n");
@@ -49,7 +49,7 @@ if($prevreport!=="" && $prevtitlever!=="")
 
 if($prevreport!=="" || $prevtitlever!=="")$select_previousentry = 1;
 
-if($select_previousentry === 1 && $ninupdatesapi_out_total_entries<2)
+if($select_previousentry === 1 && $prevreport==="" && $ninupdatesapi_out_total_entries<2)
 {
 	echo "prev-entry was specified but there's less than 2 output entries.\n";
 	exit(1);
@@ -72,7 +72,7 @@ for($i=0; $i<$ninupdatesapi_out_total_entries; $i++)
 
 	if($select_previousentry === 1 && $i>0)
 	{
-		if(($prevreport!=="" && $reportdate === $prevreport) || ($prevtitlever!=="" && $version === $prevtitlever))
+		if($prevtitlever!=="" && $version === $prevtitlever)
 		{
 			$foundflag = 1;
 
@@ -82,7 +82,7 @@ for($i=0; $i<$ninupdatesapi_out_total_entries; $i++)
 		}
 	}
 
-	if($select_previousentry === 0 || $foundflag===1)
+	if($select_previousentry === 0 || $foundflag===1 || $prevreport!=="")
 	{
 		if($outformat === "plain")echo "ent $i: titleversion = $version, reportdate = $reportdate, updateversion = $updateversion.\n";
 
@@ -92,7 +92,7 @@ for($i=0; $i<$ninupdatesapi_out_total_entries; $i++)
 	if($foundflag===1)break;
 }
 
-if($select_previousentry === 1 && $foundflag===0)
+if($select_previousentry === 1 && ($foundflag===0 && $prevreport===""))
 {
 	echo "Specified prev-entry not found.\n";
 	exit(1);

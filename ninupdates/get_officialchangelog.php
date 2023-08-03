@@ -120,7 +120,7 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 {
 	global $mysqldb, $httpstat_getchangelog;
 
-	$query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
+	$query="SELECT id FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 
 	$numrows=mysqli_num_rows($result);
@@ -133,7 +133,7 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 	$row = mysqli_fetch_row($result);
 	$systemid = $row[0];
 
-	$query="SELECT updateversion, id FROM ninupdates_reports WHERE reportdate='".$reportdate."' && systemid=$systemid";
+	$query="SELECT updateversion, id FROM ninupdates_reports WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_reports.systemid=$systemid";
 	$result=mysqli_query($mysqldb, $query);
 
 	$numrows=mysqli_num_rows($result);
@@ -147,10 +147,12 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 	$updateversion = $row[0];
 	$reportid = $row[1];
 
+	$updateversion_set = False;
 	if($updateversion != "N/A" && $updateversion != "Initial scan" && $updateversion != "Initial_scan")
 	{
-		getofficalchangelog_writelog("The updateversion for the specified report is already set.", 0, $reportdate);
-		return 3;
+		getofficalchangelog_writelog("The updateversion for the specified report is already set, continuing anyway.", 0, $reportdate);
+		//return 3;
+		$updateversion_set = True;
 	}
 
 	if(ctype_alpha($updateversion[strlen($updateversion)-1]) === TRUE)$updateversion = substr($updateversion, 0, strlen($updateversion)-1);
@@ -290,41 +292,44 @@ function get_ninsite_changelog($reportdate, $system, $pageurl, $pageid)
 		$strdata = mysqli_real_escape_string($mysqldb, $strdata);
 		echo "Version from site: $strdata\n";
 
-		if($updateversion != $strdata)
+		if($updateversion === $strdata)
 		{
-			$query="SELECT id FROM ninupdates_reports WHERE systemid=$systemid && updateversion='".$strdata."'";
+			getofficalchangelog_writelog("The report updateversion already matches the one from the site, continuing anyway.", 0, $reportdate);
+		}
+
+		if($updateversion_set === True && $updateversion !== $strdata)
+		{
+			getofficalchangelog_writelog("The report updateversion is already set and doesn't match the site.", 0, $reportdate);
+			return 7;
+		}
+
+		$query="SELECT id FROM ninupdates_reports WHERE ninupdates_reports.systemid=$systemid && ninupdates_reports.updateversion='".$strdata."'";
+		$result=mysqli_query($mysqldb, $query);
+
+		$numrows=mysqli_num_rows($result);
+
+		if($numrows==0 || ($updateversion_set === True && $updateversion === $strdata))
+		{
+			echo "Updating report updateversion...\n";
+			$query="UPDATE ninupdates_reports SET updateversion='".$strdata."', updatever_autoset=1 WHERE ninupdates_reports.reportdate='".$reportdate."' && ninupdates_reports.systemid=$systemid";
 			$result=mysqli_query($mysqldb, $query);
 
-			$numrows=mysqli_num_rows($result);
+			getofficalchangelog_writelog("Set the updateversion for report=$reportdate and system=$system to: $strdata.", 1, $reportdate);
 
-			if($numrows==0)
+			if($changelog!==FALSE)
 			{
-				echo "Updating report updateversion...\n";
-				$query="UPDATE ninupdates_reports SET updateversion='".$strdata."', updatever_autoset=1 WHERE reportdate='".$reportdate."' && systemid=$systemid";
-				$result=mysqli_query($mysqldb, $query);
-
-				getofficalchangelog_writelog("Set the updateversion for report=$reportdate and system=$system to: $strdata.", 1, $reportdate);
-
-				if($changelog!==FALSE)
-				{
-					echo "Writing changelog into mysql...\n";
-					getofficalchangelog_writechangelog($reportdate, $pageid, $reportid, $changelog);
-				}
-				else
-				{
-					getofficalchangelog_writelog("Failed to extract changelog.", 0, $reportdate);
-				}
+				echo "Writing changelog into mysql...\n";
+				getofficalchangelog_writechangelog($reportdate, $pageid, $reportid, $changelog);
 			}
 			else
 			{
-				getofficalchangelog_writelog("The version from the site is already used with one of the reports.", 0, $reportdate);
-				return 6;
+				getofficalchangelog_writelog("Failed to extract changelog.", 0, $reportdate);
 			}
 		}
 		else
 		{
-			getofficalchangelog_writelog("The report updateversion already matches the one from the site.", 0, $reportdate);
-			return 7;
+			getofficalchangelog_writelog("The version from the site is already used with one of the reports.", 0, $reportdate);
+			return 6;
 		}
 	}
 

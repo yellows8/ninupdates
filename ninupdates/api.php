@@ -7,7 +7,7 @@ require_once(dirname(__FILE__) . "/weblogging.php");
 
 $logging_dir = "$sitecfg_workdir/weblogs/general";
 
-function ninupdates_api($ninupdatesapi_in_command, $ninupdatesapi_in_sys, $ninupdatesapi_in_region, $ninupdatesapi_in_titleid, $ninupdatesapi_in_filterent)
+function ninupdates_api($ninupdatesapi_in_command, $ninupdatesapi_in_sys, $ninupdatesapi_in_region, $ninupdatesapi_in_titleid, $ninupdatesapi_in_filterent, $ninupdatesapi_in_reportdate="")
 {
 	global $mysqldb, $ninupdatesapi_out_total_entries, $ninupdatesapi_out_version_array, $ninupdatesapi_out_reportdate_array, $ninupdatesapi_out_updateversion_array;
 
@@ -32,7 +32,7 @@ function ninupdates_api($ninupdatesapi_in_command, $ninupdatesapi_in_sys, $ninup
 		return 2;
 	}
 
-	$query="SELECT id FROM ninupdates_consoles WHERE system='".$ninupdatesapi_in_sys."'";
+	$query="SELECT id FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$ninupdatesapi_in_sys."'";
 	$result=mysqli_query($mysqldb, $query);
 
 	$numrows=mysqli_num_rows($result);
@@ -45,7 +45,7 @@ function ninupdates_api($ninupdatesapi_in_command, $ninupdatesapi_in_sys, $ninup
 	$row = mysqli_fetch_row($result);
 	$system = $row[0];
 
-	$query = "SELECT id FROM ninupdates_titleids WHERE titleid='".$ninupdatesapi_in_titleid."'";
+	$query = "SELECT id FROM ninupdates_titleids WHERE ninupdates_titleids.titleid='".$ninupdatesapi_in_titleid."'";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 		
@@ -60,7 +60,7 @@ function ninupdates_api($ninupdatesapi_in_command, $ninupdatesapi_in_sys, $ninup
 
 	if(strlen($ninupdatesapi_in_region)>1)
 	{
-		$query = "SELECT regioncode FROM ninupdates_regions WHERE regionid='".$ninupdatesapi_in_region."'";
+		$query = "SELECT regioncode FROM ninupdates_regions WHERE ninupdates_regions.regionid='".$ninupdatesapi_in_region."'";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 
@@ -74,11 +74,33 @@ function ninupdates_api($ninupdatesapi_in_command, $ninupdatesapi_in_sys, $ninup
 		$ninupdatesapi_in_region = $row[0];
 	}
 
+	if($ninupdatesapi_in_reportdate!=="")
+	{
+		$query = "SELECT curdate FROM ninupdates_reports WHERE ninupdates_reports.reportdate='".$ninupdatesapi_in_reportdate."'";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+
+		if($numrows==0)
+		{
+			dbconnection_end();
+			return 5;
+		}
+
+		$row = mysqli_fetch_row($result);
+		$curdate = $row[0];
+	}
+
 	$versionquery = "GROUP_CONCAT(DISTINCT ninupdates_titles.version ORDER BY ninupdates_titles.version SEPARATOR ','),";
 	$reportdatequery = "GROUP_CONCAT(DISTINCT ninupdates_reports.reportdate ORDER BY ninupdates_reports.curdate SEPARATOR ','),";
 	$updateverquery = "GROUP_CONCAT(DISTINCT ninupdates_reports.updateversion ORDER BY ninupdates_reports.curdate SEPARATOR ',')";
 
 	$query = "SELECT $versionquery $reportdatequery $updateverquery FROM ninupdates_titles, ninupdates_reports WHERE ninupdates_titles.tid=$rowid && ninupdates_titles.region='".$ninupdatesapi_in_region."' && ninupdates_titles.systemid=$system && ninupdates_reports.id=ninupdates_titles.reportid";
+
+	if($ninupdatesapi_in_reportdate!=="")
+	{
+		$query.= " && ninupdates_reports.curdate < '".$curdate."'";
+	}
+
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 

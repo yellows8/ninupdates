@@ -400,7 +400,7 @@ function getsystem_sysname($sys)
 {
 	global $mysqldb;
 
-	$query="SELECT sysname FROM ninupdates_consoles WHERE system='".$sys."'";
+	$query="SELECT ninupdates_consoles.sysname FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$sys."'";
 	$result=mysqli_query($mysqldb, $query);
 
 	$numrows=mysqli_num_rows($result);
