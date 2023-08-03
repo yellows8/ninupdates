@@ -478,6 +478,9 @@ else
 			$wiki_uribase = "wiki/";
 			if($wiki_apiprefixuri == "")$wiki_uribase = "index.php?title=";
 
+			$posend = strpos($updateversion, "_rebootless");
+			if($posend!==FALSE)$updateversion = substr($updateversion, 0, $posend);
+
 			$con.= "The wiki page is available <a href=\"".$wiki_serverbaseurl."$wiki_uribase$updateversion\">here</a>.<br/>\n<br/>\n";
 		}
 	}
