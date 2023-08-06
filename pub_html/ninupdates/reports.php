@@ -33,13 +33,13 @@ if(($reportdate!="" && $system=="") || ($system!="" && $reportdate==""))
 
 if($system!="")$sys = getsystem_sysname($system);
 
-$con = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" dir=\"ltr\">\n";
+$con = "<!doctype html>\n<html lang=\"en\">\n";
 
 if($reportdate!="" && $system!="")
 {
 	if($setver=="1" || $setsysver!="")
 	{
-		$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update $sys $reportdate Set System Version</title></head><body>
+		$con .= "<head><meta charset=\"UTF-8\" /><title>Nintendo System Update $sys $reportdate Set System Version</title></head><body>
 Manually setting the update-version is disabled since that's supposed to be done automatically, doing it manually would also disable other things which are supposed to be done automatically.</body></html>";
 
 		dbconnection_end();
@@ -153,7 +153,7 @@ if($reportdate!="")
 	$report_titletext = $text;
 }
 
-$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update $text</title></head>\n<body>";
+$con .= "<head><meta charset=\"UTF-8\" /><title>Nintendo System Update $text</title></head>\n<body>";
 
 if($reportdate=="")
 {

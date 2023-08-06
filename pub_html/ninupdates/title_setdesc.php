@@ -47,7 +47,7 @@ else
 
 if(!isset($_REQUEST['desc']))
 {
-	$con = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update Set Title Description</title></head><body>
+	$con = "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"UTF-8\" /><title>Nintendo System Update Set Title Description</title></head><body>
 <form method=\"post\" action=\"title_setdesc.php?titleid=$titleid\" enctype=\"multipart/form-data\">
 $curdesc
   Changes will be messaged to the admin.</br>Description: <input type=\"text\" value=\"\" name=\"desc\"/></br>Token: <input type=\"text\" value=\"Ask the admin.\" name=\"token\"/></br><input type=\"submit\" value=\"Submit\"/></form></body></html>";
@@ -64,6 +64,7 @@ else
 	if($cmptoken==="")$cmptoken = FALSE;
 	if($cmptoken===FALSE)
 	{
+		header("Content-Type: text/plain");
 		echo "Access denied, the internal token is missing.\n";
 		writeNormalLog("ATTEMPTED TO CHANGE TITLEDESC BUT CMP TOKEN MISSING, DENIED: $desc. RESULT: 302");
 		return;
@@ -71,6 +72,7 @@ else
 
 	if(strcmp($intoken,$cmptoken)!==0)
 	{
+		header("Content-Type: text/plain");
 		echo "Access denied.\n";
 		writeNormalLog("ATTEMPTED TO CHANGE TITLEDESC BUT TOKEN IS INVALID, DENIED: $desc. RESULT: 302");
 		return;

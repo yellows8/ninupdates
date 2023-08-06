@@ -21,6 +21,7 @@ if($system=="")
 {
 	dbconnection_end();
 	writeNormalLog("SYSTEM NOT SPECIFIED. RESULT: 200");
+	header("Content-Type: text/plain");
 	echo "System not specified.\n";
 	return;
 }
@@ -29,13 +30,14 @@ if($reportdate=="")
 {
 	dbconnection_end();
 	writeNormalLog("REPORTDATE NOT SPECIFIED. RESULT: 200");
+	header("Content-Type: text/plain");
 	echo "Report-date not specified.\n";
 	return;
 }
 
 $sys = getsystem_sysname($system);
 
-$query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
+$query="SELECT id FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
 $result=mysqli_query($mysqldb, $query);
 $row = mysqli_fetch_row($result);
 $systemid = $row[0];
@@ -48,6 +50,7 @@ if($numrows==0)
 {
 	dbconnection_end();
 	writeNormalLog("REPORT ROW NOT FOUND. RESULT: 200");
+	header("Content-Type: text/plain");
 	echo "Invalid reportdate.\n";
 	return;
 }
@@ -64,7 +67,7 @@ else
 	$reportname = "$sys ".$row[1];
 }
 
-$con = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update Report Update Details</title></head>\n<body>";
+$con = "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"UTF-8\" /><title>Nintendo System Update Report Update Details</title></head>\n<body>";
 
 $con.= "$sitecfg_sitenav_header<a href=\"reports.php\">Homepage</a> -> ";
 if($reportdate!="")$con.= "<a href=\"reports.php?date=$reportdate&sys=$system\">$reportname report</a> -> ";

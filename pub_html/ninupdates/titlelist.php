@@ -36,6 +36,7 @@ if($system=="")
 {
 	dbconnection_end();
 	writeNormalLog("SYSTEM NOT SPECIFIED. RESULT: 200");
+	header("Content-Type: text/plain");
 	echo "System not specified.\n";
 	return;
 }
@@ -46,17 +47,17 @@ $con = "";
 
 if($genwiki=="" && $gencsv=="")
 {
-	$con .= "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" dir=\"ltr\">\n";
+	$con .= "<!doctype html>\n<html lang=\"en\">\n";
 }
 
-$query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
+$query="SELECT id FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
 $result=mysqli_query($mysqldb, $query);
 $row = mysqli_fetch_row($result);
 $systemid = $row[0];
 
 if($region!="")
 {
-	$query="SELECT id FROM ninupdates_regions WHERE regioncode='".$region."'";
+	$query="SELECT id FROM ninupdates_regions WHERE ninupdates_regions.regioncode='".$region."'";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 
@@ -64,6 +65,7 @@ if($region!="")
 	{
 		dbconnection_end();
 		writeNormalLog("REGION ROW NOT FOUND. RESULT: 200");
+		header("Content-Type: text/plain");
 		echo "Invalid region.\n";
 		return;
 	}
@@ -85,6 +87,7 @@ if($reportdate!="")
 	{
 		dbconnection_end();
 		writeNormalLog("REPORT ROW NOT FOUND. RESULT: 200");
+		header("Content-Type: text/plain");
 		echo "Invalid reportdate.\n";
 		return;
 	}
@@ -125,6 +128,7 @@ if($soapreply=="1" && $reportdate!="" && $region!="")
 	else
 	{
 		writeNormalLog("FAILED TO OPEN SOAPREPLY FILE: $path\n");
+		header("Content-Type: text/plain");
 		echo "The server reply data for this is not available.\n";
 	}
 
@@ -150,7 +154,7 @@ else if($gencsv!="")
 }
 else
 {
-	$con .= "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo System Update Titlelist $text</title></head>\n<body>";
+	$con .= "<head><meta charset=\"UTF-8\" /><title>Nintendo System Update Titlelist $text</title></head>\n<body>";
 
 	$con.= "$sitecfg_sitenav_header<a href=\"reports.php\">Homepage</a> -> ";
 	if($reportdate!="")$con.= "<a href=\"reports.php?date=$reportdate&sys=$system\">$reportname report</a> -> ";

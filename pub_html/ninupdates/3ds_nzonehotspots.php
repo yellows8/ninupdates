@@ -15,7 +15,7 @@ db_checkmaintenance(1);
 $reqversion = "";
 if(isset($_REQUEST['version']))$reqversion = mysqli_real_escape_string($mysqldb, $_REQUEST['version']);
 
-$query="SELECT id FROM ninupdates_consoles WHERE system='ctr'";
+$query="SELECT id FROM ninupdates_consoles WHERE ninupdates_consoles.system='ctr'";
 $result=mysqli_query($mysqldb, $query);
 
 $numrows=mysqli_num_rows($result);
@@ -29,7 +29,7 @@ if($numrows==0)
 $row = mysqli_fetch_row($result);
 $system = $row[0];
 
-$query = "SELECT id FROM ninupdates_titleids WHERE titleid='000400DB00010502'";
+$query = "SELECT id FROM ninupdates_titleids WHERE ninupdates_titleids.titleid='000400DB00010502'";
 $result=mysqli_query($mysqldb, $query);
 $numrows=mysqli_num_rows($result);
 		
@@ -100,14 +100,13 @@ while($updatever!==FALSE)
 
 if($reqversion=="")
 {
-	$con = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Nintendo Zone Hotspots</title></head><body>\n";
+	$con = "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"UTF-8\" /><title>Nintendo Zone Hotspots</title></head><body>\n";
 	$con.= "<table border=\"1\">
 <tr>
   <th>Title version</th>
   <th>Update version + report</th>
   <th>Parsed data</th>
 </tr>\n";
-	$con .= "</body></html>";
 
 	for($i=0; $i<$total_entries; $i++)
 	{
@@ -127,6 +126,7 @@ if($reqversion=="")
 		$con.= "<td>$parsetext</td>\n";
 		$con.= "</tr>\n";
 	}
+	$con .= "</table></body></html>";
 
 	echo $con;
 

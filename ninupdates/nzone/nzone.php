@@ -14,7 +14,7 @@
 	$linenum = 0;
 	$f = file($filepath);
 
-	echo "<html>\n <body>\n  <table border=\"1\">";
+	echo "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"UTF-8\" /></head> <body>\n  <table border=\"1\">";
 	foreach($f as $line)
 	{
 		switch($linenum++)
@@ -22,7 +22,7 @@
 			case 0:
 			case 1:
 			#echo $line;
-			continue;
+			break;
 
 			case 2:
 			$arr = explode(',', trim($line, "\n"));
