@@ -11,7 +11,7 @@ dbconnection_start();
 
 db_checkmaintenance(1);
 
-header("Content-Type: text/xml;charset=iso-8859-1");
+header("Content-Type: text/xml;charset=utf-8");
 
 $query="SELECT ninupdates_reports.reportdaterfc FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
 $result=mysqli_query($mysqldb, $query);
@@ -19,8 +19,8 @@ $numrows=mysqli_num_rows($result);
 $row = mysqli_fetch_row($result);
 $curdate = gmdate(DATE_RSS, date_timestamp_get(date_create_from_format(DateTimeInterface::RFC822, $row[0])));
 
-$con = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\" ?>
-<rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\" xmlns:sy=\"http://purl.org/rss/1.0/modules/syndication/\">
+$con = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>
+<rss xmlns:atom=\"http://www.w3.org/2005/Atom\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" version=\"2.0\">
     <channel>
       <title>Sysupdate Reports</title>
       <atom:link href=\"$sitecfg_httpbase/feed.php\" rel=\"self\" type=\"application/rss+xml\" />
@@ -28,8 +28,6 @@ $con = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\" ?>
       <description>Nintendo System Update Reports</description>
       <lastBuildDate>$curdate</lastBuildDate>
       <language>en</language>
-      <sy:updatePeriod>hourly</sy:updatePeriod>
-      <sy:updateFrequency>1</sy:updateFrequency>
     ";
 
 $query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system, ninupdates_reports.reportdaterfc FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_reports.curdate DESC LIMIT 4";
