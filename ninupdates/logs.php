@@ -351,14 +351,14 @@ function titlelist_dbupdate()
 
 	$titles_added = 0;
 
-	$query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
+	$query="SELECT id FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$row = mysqli_fetch_row($result);
 	$systemid = $row[0];
 
 	for($titlei=0; $titlei<$newtotal_titles; $titlei++)
 	{
-		$query = "SELECT id FROM ninupdates_titleids WHERE titleid='".$newtitles[$titlei]."'";
+		$query = "SELECT id FROM ninupdates_titleids WHERE ninupdates_titleids.titleid='".$newtitles[$titlei]."'";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 		if($numrows==0)
@@ -373,7 +373,7 @@ function titlelist_dbupdate()
 			$tid = $row[0];
 		}
 
-		$query = "SELECT id FROM ninupdates_titles WHERE version=".$newtitlesversions[$titlei]." && region='".$region."' && tid=$tid && systemid=$systemid";
+		$query = "SELECT id FROM ninupdates_titles WHERE ninupdates_titles.version=".$newtitlesversions[$titlei]." AND ninupdates_titles.region='".$region."' AND ninupdates_titles.tid=$tid AND ninupdates_titles.systemid=$systemid";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 

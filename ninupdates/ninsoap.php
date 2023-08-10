@@ -46,7 +46,7 @@ function do_systems_soap()
 	{
 		init_curl();
 
-		$query="SELECT system FROM ninupdates_consoles WHERE enabled!=0 || enabled IS NULL";
+		$query="SELECT ninupdates_consoles.system FROM ninupdates_consoles WHERE enabled!=0 OR enabled IS NULL";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 
@@ -61,7 +61,7 @@ function do_systems_soap()
 
 		close_curl();
 
-		$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles, ninupdates_officialchangelog_pages WHERE ninupdates_reports.updatever_autoset=0 && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id";
+		$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles, ninupdates_officialchangelog_pages WHERE ninupdates_reports.updatever_autoset=0 AND ninupdates_reports.systemid=ninupdates_consoles.id AND ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 
@@ -80,7 +80,7 @@ function do_systems_soap()
 			}
 		}
 
-		$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updatever_autoset=1 && ninupdates_reports.wikibot_runfinished=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
+		$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updatever_autoset=1 && ninupdates_reports.wikibot_runfinished=0 AND ninupdates_reports.systemid=ninupdates_consoles.id";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 
@@ -99,7 +99,7 @@ function do_systems_soap()
 			}
 		}
 
-		$query="SELECT ninupdates_reports.reportdate, ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.postproc_runfinished=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
+		$query="SELECT ninupdates_reports.reportdate, ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.postproc_runfinished=0 AND ninupdates_reports.systemid=ninupdates_consoles.id";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 
@@ -156,12 +156,12 @@ function dosystem($console)
 
 	echo "System $system\n";
 
-	$query="SELECT regions FROM ninupdates_consoles WHERE system='".$system."'";
+	$query="SELECT ninupdates_consoles.regions FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$row = mysqli_fetch_row($result);
 	$regions = $row[0];
 
-	$query="SELECT lastreqstatus FROM ninupdates_consoles WHERE system='".$system."'";
+	$query="SELECT ninupdates_consoles.lastreqstatus FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 	$lastreqstatus = "";
@@ -176,7 +176,7 @@ function dosystem($console)
 		main(substr($regions, $i, 1));
 	}
 
-	$query="SELECT lastreqstatus FROM ninupdates_consoles WHERE system='".$system."'";
+	$query="SELECT ninupdates_consoles.lastreqstatus FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 	if($numrows>0)
@@ -206,7 +206,7 @@ function dosystem($console)
 		$msgme_message = "$sitecfg_httpbase/reports.php?date=".$sysupdate_timestamp."&sys=".$system;
 		$email_message = "$msgme_message";
 		
-		$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
+		$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_consoles.system='".$system."' AND ninupdates_reports.systemid=ninupdates_consoles.id AND ninupdates_reports.log='report'";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 
@@ -216,7 +216,7 @@ function dosystem($console)
 		$updateversion = "N/A";
 		if($initialscan)$updateversion = "Initial_scan";
 
-		$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_reports.log='report'";
+		$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$sysupdate_timestamp."' AND ninupdates_consoles.system='".$system."' AND ninupdates_reports.systemid=ninupdates_consoles.id AND ninupdates_reports.log='report'";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 		$report_exists = 0;
@@ -224,7 +224,7 @@ function dosystem($console)
 		$new_sysupdate_regions = "";
 		if($numrows==0)
 		{
-			$query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
+			$query="SELECT ninupdates_consoles.id FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
 			$result=mysqli_query($mysqldb, $query);
 			$row = mysqli_fetch_row($result);
 			$systemid = $row[0];
@@ -237,7 +237,7 @@ function dosystem($console)
 		{
 			//this will only happen when the report row already exists.
 			$report_exists = 1;
-			$query = "SELECT ninupdates_reports.id, ninupdates_reports.regions FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
+			$query = "SELECT ninupdates_reports.id, ninupdates_reports.regions FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$sysupdate_timestamp."' AND ninupdates_consoles.system='".$system."' AND ninupdates_reports.systemid=ninupdates_consoles.id AND ninupdates_reports.log='report'";
 			$result=mysqli_query($mysqldb, $query);
 			$row = mysqli_fetch_row($result);
 			$reportid = $row[0];
@@ -248,7 +248,7 @@ function dosystem($console)
 		$region = strtok($sysupdate_regions, ",");
 		while($region!==FALSE)
 		{
-			$query="SELECT COUNT(*) FROM ninupdates_systitlehashes WHERE ninupdates_systitlehashes.reportid='".$reportid."' && ninupdates_systitlehashes.region='".$region."'";
+			$query="SELECT COUNT(*) FROM ninupdates_systitlehashes WHERE ninupdates_systitlehashes.reportid='".$reportid."' AND ninupdates_systitlehashes.region='".$region."'";
 			$result=mysqli_query($mysqldb, $query);
 			$numrows=mysqli_num_rows($result);
 			$count=0;
@@ -279,11 +279,11 @@ function dosystem($console)
 
 		if($report_exists == 1)
 		{
-			$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.regions='".$new_sysupdate_regions."' WHERE reportdate='".$sysupdate_timestamp."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
+			$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.regions='".$new_sysupdate_regions."' WHERE ninupdates_reports.reportdate='".$sysupdate_timestamp."' AND ninupdates_consoles.system='".$system."' AND ninupdates_reports.systemid=ninupdates_consoles.id AND ninupdates_reports.log='report'";
 			$result=mysqli_query($mysqldb, $query);
 		}
 
-		$query="UPDATE ninupdates_titles SET reportid=$reportid WHERE curdate='".$dbcurdate."' && reportid=0";
+		$query="UPDATE ninupdates_titles SET reportid=$reportid WHERE curdate='".$dbcurdate."' AND reportid=0";
 		$result=mysqli_query($mysqldb, $query);
 
 		if($initialscan==0)echo "System $system: System update available for regions $sysupdate_regions.\n";
@@ -307,14 +307,14 @@ function dosystem($console)
 
 function initialize($generation)
 {
-	global $mysqldb, $hdrs, $soapreq, $fp, $system, $region, $sitecfg_workdir, $soapreq_data, $httpreq_useragent, $console_deviceid;
+	global $mysqldb, $hdrs, $soapreq, $fp, $system, $region, $sitecfg_workdir, $soapreq_data, $httpreq_useragent, $console_deviceid, $sitecfg_consoles_deviceid;
 	
 	error_reporting(E_ALL);
 
 	$regionid = "";
 	$countrycode = "";
 
-	$query="SELECT deviceid, platformid, subplatformid, useragent_fw, eid FROM ninupdates_consoles WHERE system='".$system."'";
+	$query="SELECT deviceid, platformid, subplatformid, useragent_fw, eid FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 
@@ -351,7 +351,7 @@ function initialize($generation)
 		die("Row doesn't exist in the db for system $system.\n");
 	}
 
-	$query="SELECT regionid, countrycode FROM ninupdates_regions WHERE regioncode='".$region."'";
+	$query="SELECT regionid, countrycode FROM ninupdates_regions WHERE ninupdates_regions.regioncode='".$region."'";
 	$result=mysqli_query($mysqldb, $query);
 	$row = mysqli_fetch_row($result);
 
@@ -428,7 +428,7 @@ function send_httprequest($url, $generation)
 {
 	global $mysqldb, $hdrs, $soapreq, $httpstat, $sitecfg_workdir, $soapreq_data, $httpreq_useragent, $curl_handle, $system, $region, $error_FH;
 
-	$query="SELECT clientcertfn, clientprivfn FROM ninupdates_consoles WHERE system='".$system."'";
+	$query="SELECT clientcertfn, clientprivfn FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$row = mysqli_fetch_row($result);
 	$clientcertfn = $row[0];
@@ -482,7 +482,7 @@ function send_httprequest($url, $generation)
 
 	if($errorstr!="")$buf = $errorstr;
 
-	$query="UPDATE ninupdates_consoles SET lastreqstatus='" . mysqli_real_escape_string($mysqldb, $errorstr) . "' WHERE system='".$system."'";
+	$query="UPDATE ninupdates_consoles SET lastreqstatus='" . mysqli_real_escape_string($mysqldb, $errorstr) . "' WHERE ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 
 	fflush($error_FH);
@@ -558,7 +558,7 @@ function compare_titlelists($curdate, $generation)
 {
 	global $mysqldb, $system, $region, $sysupdate_systitlehashes;
 
-	$query="SELECT ninupdates_systitlehashes.titlehash FROM ninupdates_reports, ninupdates_consoles, ninupdates_systitlehashes WHERE ninupdates_systitlehashes.reportid=ninupdates_reports.id && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' && ninupdates_systitlehashes.region='".$region."' && ninupdates_reports.log='report' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
+	$query="SELECT ninupdates_systitlehashes.titlehash FROM ninupdates_reports, ninupdates_consoles, ninupdates_systitlehashes WHERE ninupdates_systitlehashes.reportid=ninupdates_reports.id AND ninupdates_reports.systemid=ninupdates_consoles.id AND ninupdates_consoles.system='".$system."' AND ninupdates_systitlehashes.region='".$region."' AND ninupdates_reports.log='report' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 
@@ -591,7 +591,7 @@ function main($reg)
 
 	$region = $reg;
 
-	$query="SELECT nushttpsurl, generation FROM ninupdates_consoles WHERE system='".$system."'";
+	$query="SELECT nushttpsurl, generation FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$row = mysqli_fetch_row($result);
 	$nushttpsurl = $row[0];
@@ -669,7 +669,7 @@ function main($reg)
 
 	$sendupdatelogs = 0;
 
-	$query = "SELECT ninupdates_titles.version FROM ninupdates_titles, ninupdates_consoles WHERE ninupdates_titles.region='".$region."' && ninupdates_titles.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."'";
+	$query = "SELECT ninupdates_titles.version FROM ninupdates_titles, ninupdates_consoles WHERE ninupdates_titles.region='".$region."' AND ninupdates_titles.systemid=ninupdates_consoles.id AND ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 
