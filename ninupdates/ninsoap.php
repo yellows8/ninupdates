@@ -142,7 +142,7 @@ function do_systems_soap()
 
 function dosystem($console)
 {
-	global $mysqldb, $region, $system, $sitecfg_emailhost, $sitecfg_target_email, $sitecfg_httpbase, $sitecfg_workdir, $sysupdate_available, $soap_timestamp, $dbcurdate, $sysupdate_regions, $sysupdate_timestamp, $sysupdate_systitlehashes;
+	global $mysqldb, $region, $system, $sitecfg_emailhost, $sitecfg_target_email, $sitecfg_httpbase, $sitecfg_workdir, $sysupdate_available, $soap_timestamp, $dbcurdate, $sysupdate_regions, $sysupdate_timestamp, $sysupdate_systitlehashes, $curtime_override;
 
 	$system = $console;
 	$msgme_message = "";
@@ -169,6 +169,30 @@ function dosystem($console)
 	{
 		$row = mysqli_fetch_row($result);
 		$lastreqstatus = $row[0];
+	}
+
+	// When the last report is <1h ago and the report regions don't match the system regions, reuse the report in case the remaining regions are detected.
+	$reuse_report = False;
+	if($curtime_override===0)
+	{
+		$query="SELECT ninupdates_reports.reportdaterfc, ninupdates_reports.regions, ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' AND ninupdates_consoles.system='".$system."' AND ninupdates_reports.systemid=ninupdates_consoles.id ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+		if($numrows>0)
+		{
+			$row = mysqli_fetch_row($result);
+			$last_report_timestamp = date_timestamp_get(date_create_from_format(DateTimeInterface::RFC822, $row[0]));
+			$last_report_regions = $row[1];
+			$last_reportdate = $row[2];
+			$last_report_regions_cmp = str_replace(",", "", $last_report_regions);
+			$check_time = time();
+			if(strlen($last_report_regions_cmp) !== strlen($regions) && $check_time > $last_report_timestamp && $check_time - $last_report_timestamp < 60*60)
+			{
+				echo "Regions mismatch compared against system/last-report. Reusing the existing report, last_reportdate = $last_reportdate.\n";
+				$sysupdate_timestamp = $last_reportdate;
+				$reuse_report = True;
+			}
+		}
 	}
 
 	for($i=0; $i<strlen($regions); $i++)
@@ -290,9 +314,13 @@ function dosystem($console)
 		if($initialscan)echo "System $system: Initial scan successful for regions $sysupdate_regions.\n";
 
 		$notif_msg = "Sysupdate detected for " . getsystem_sysname($system) . ": $msgme_message";
+		if($reuse_report === True)
+		{
+			$notif_msg = "Sysupdate detected for " . getsystem_sysname($system) . " for an existing report with additional region(s): $msgme_message";
+		}
 
 		echo "\nSending notifications...\n";
-		sendircmsg($msgme_message);
+		sendircmsg($notif_msg);
 		sendtweet($notif_msg);
 		send_webhook($notif_msg);
 		echo "Sending email...\n";
