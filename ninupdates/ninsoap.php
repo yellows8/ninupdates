@@ -440,9 +440,10 @@ function init_curl()
 {
 	global $curl_handle, $sitecfg_workdir, $error_FH;
 
-	$error_FH = fopen("$sitecfg_workdir/debuglogs/error.log","w"); // truncate
+	$path = "$sitecfg_workdir/debuglogs/error.log";
+	$error_FH = fopen($path, "w"); // truncate
 	fclose($error_FH);
-	$error_FH = fopen("$sitecfg_workdir/debuglogs/error.log","a"); // Use append-mode so that each curl request logs properly (otherwise only the last request is logged).
+	$error_FH = fopen($path, "a"); // Use append-mode so that each curl request logs properly (otherwise only the last request is logged).
 	$curl_handle = curl_init();
 }
 
