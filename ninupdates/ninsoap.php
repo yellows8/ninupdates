@@ -440,7 +440,9 @@ function init_curl()
 {
 	global $curl_handle, $sitecfg_workdir, $error_FH;
 
-	$error_FH = fopen("$sitecfg_workdir/debuglogs/error.log","w");
+	$error_FH = fopen("$sitecfg_workdir/debuglogs/error.log","w"); // truncate
+	fclose($error_FH);
+	$error_FH = fopen("$sitecfg_workdir/debuglogs/error.log","a"); // Use append-mode so that each curl request logs properly (otherwise only the last request is logged).
 	$curl_handle = curl_init();
 }
 
@@ -463,7 +465,7 @@ function send_httprequest($url, $generation)
 	$clientprivfn = $row[1];
 
 	curl_setopt($curl_handle, CURLOPT_VERBOSE, true);
-	curl_setopt ($curl_handle, CURLOPT_STDERR, $error_FH );
+	curl_setopt($curl_handle, CURLOPT_STDERR, $error_FH);
 
 	curl_setopt($curl_handle, CURLOPT_USERAGENT, $httpreq_useragent);
 
