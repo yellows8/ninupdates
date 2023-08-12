@@ -323,7 +323,7 @@ function wikibot_edit_navboxversions($api, $services, $updateversion, $reportdat
 	return 0;
 }
 
-function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri)
+function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag)
 {
 	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
 
@@ -331,16 +331,25 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 
 	$page_exists = 0;
 
-	$navbox_pagename = "Template:NavboxVersions";
-
-	$tmp_page = $services->newPageGetter()->getFromTitle($navbox_pagename);
-	$navbox_revision = $tmp_page->getRevisions()->getLatest();
-
-	if($navbox_revision!==NULL)
+	if($rebootless_flag===False)
 	{
-		wikibot_writelog("Updating NavboxVersions if needed...", 2, $reportdate);
-		$navbox_text = $navbox_revision->getContent()->getData();
-		wikibot_edit_navboxversions($api, $services, $updateversion, $reportdate, $navbox_pagename, $navbox_text);
+		$navbox_pagename = "Template:NavboxVersions";
+
+		$tmp_page = $services->newPageGetter()->getFromTitle($navbox_pagename);
+		$navbox_revision = $tmp_page->getRevisions()->getLatest();
+
+		if($navbox_revision!==NULL)
+		{
+			wikibot_writelog("Updating NavboxVersions if needed...", 2, $reportdate);
+			$navbox_text = $navbox_revision->getContent()->getData();
+			wikibot_edit_navboxversions($api, $services, $updateversion, $reportdate, $navbox_pagename, $navbox_text);
+		}
+	}
+	else
+	{
+		wikibot_writelog("Skipping sysupdate page handling since this report is rebootless.", 2, $reportdate);
+
+		return 0;
 	}
 
 	$tmp_page = $services->newPageGetter()->getFromTitle($updateversion);
@@ -612,6 +621,114 @@ function wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate,
 	return 0;
 }
 
+function wikibot_edit_systemversiondata($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri)
+{
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_workdir;
+
+	$page_text = "";
+
+	$pagetitle = "System_Version_Title";
+
+	$tmp_page = $services->newPageGetter()->getFromTitle($pagetitle);
+	$tmp_revision = $tmp_page->getRevisions()->getLatest();
+
+	if($tmp_revision===NULL)
+	{
+		wikibot_writelog("$pagetitle page doesn't exist.", 2, $reportdate);
+
+		return 0;
+	}
+
+	wikibot_writelog("$pagetitle page exists, generating new page text if needed...", 2, $reportdate);
+
+	$page_text = $tmp_revision->getContent()->getData();
+
+	$section_pos = strpos($page_text, "== Retail ==");
+	if($section_pos===FALSE)
+	{
+		wikibot_writelog("wikibot_edit_systemversiondata(): Failed to find the section start.", 0, $reportdate);
+		return 1;
+	}
+
+	$table_endpos = strpos($page_text, "|}", $section_pos);
+	if($table_endpos===FALSE)
+	{
+		wikibot_writelog("wikibot_edit_systemversiondata(): Failed to find the table end.", 0, $reportdate);
+		return 2;
+	}
+
+	$table_text = substr($page_text, $section_pos, $table_endpos);
+	if(strpos($table_text, "| $updateversion\n", $section_pos)!==FALSE)
+	{
+		wikibot_writelog("wikibot_edit_systemversiondata(): This updateversion already exists in the table.", 2, $reportdate);
+		return 0;
+	}
+
+	$new_text = "";
+
+	$sysver_fullversionstr = "";
+	$sysver_hexstr = "";
+	$sysver_digest = "N/A";
+
+	$updatedir = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system";
+
+	$sysver_fullversionstr_path = "$updatedir/sysver_fullversionstr";
+	$sysver_hexstr_path = "$updatedir/sysver_hexstr";
+	$sysver_digest_path = "$updatedir/sysver_digest";
+
+	if(file_exists($sysver_fullversionstr_path)===FALSE || file_exists($sysver_hexstr_path)===FALSE)
+	{
+		wikibot_writelog("wikibot_edit_systemversiondata(): The sysver files doesn't exist.", 0, $reportdate);
+		return 3;
+	}
+
+	if(file_exists($sysver_digest_path)===FALSE)
+	{
+		wikibot_writelog("wikibot_edit_systemversiondata(): The sysver digest file doesn't exist, using 'N/A' for the digest instead.", 2, $reportdate);
+	}
+	else
+	{
+		$sysver_digest = file_get_contents($sysver_digest_path);
+	}
+
+	$sysver_fullversionstr = file_get_contents($sysver_fullversionstr_path);
+	$sysver_hexstr = file_get_contents($sysver_hexstr_path);
+
+	if($sysver_digest===FALSE || $sysver_fullversionstr===FALSE || $sysver_hexstr===FALSE)
+	{
+		wikibot_writelog("wikibot_edit_systemversiondata(): Failed to load the sysver files.", 0, $reportdate);
+		return 3;
+	}
+
+	$new_text.= "|-\n";
+	$new_text.= "| $updateversion\n";
+	$new_text.= "| $sysver_fullversionstr\n";
+	$new_text.= "| $sysver_hexstr\n";
+	$new_text.= "| $sysver_digest\n";
+	$new_text.= "| \n";
+
+	$new_page_text = substr($page_text, 0, $table_endpos) . $new_text . substr($page_text, $table_endpos);
+
+	wikibot_writelog("New $pagetitle page:\n$new_page_text", 1, $reportdate);
+
+	if($wikibot_loggedin == 1)
+	{
+		wikibot_writelog("Sending $pagetitle page edit request...", 2, $reportdate);
+
+		$newContent = new \Mediawiki\DataModel\Content($new_page_text);
+		$title = new \Mediawiki\DataModel\Title($pagetitle);
+		$identifier = new \Mediawiki\DataModel\PageIdentifier($title);
+		$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
+		$services->newRevisionSaver()->save($revision);
+
+		$text = "$pagetitle page edit request was successful.";
+		echo "$text\n";
+		wikibot_writelog($text, 1, $reportdate);
+	}
+
+	return 0;
+}
+
 function runwikibot_newsysupdate($updateversion, $reportdate)
 {
 	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $system;
@@ -641,7 +758,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 	$wiki_apibaseurl = $serverbaseurl . $apiprefixuri;
 
-	$query="SELECT ninupdates_reports.reportdaterfc FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.reportdate='".$reportdate."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."'";
+	$query="SELECT ninupdates_reports.reportdaterfc, ninupdates_consoles.generation, ninupdates_reports.postproc_runfinished FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.reportdate='".$reportdate."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 
@@ -653,8 +770,18 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 	$row = mysqli_fetch_row($result);
 	$timestamp = date_timestamp_get(date_create_from_format(DateTimeInterface::RFC822, $row[0]));
+	$system_generation = $row[1];
+	$postproc_runfinished = $row[2];
 
 	if(!isset($wiki_homemenutitle))$wiki_homemenutitle = "";
+
+	$rebootless_flag = False;
+	if(strpos($updateversion, "rebootless")!==FALSE)
+	{
+		wikibot_writelog("This report updateversion is rebootless, skipping handling for the relevant pages.", 2, $reportdate);
+
+		$rebootless_flag = True;
+	}
 
 	//try
 	//{
@@ -704,32 +831,35 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 	wikibot_writelog($text, 2, $reportdate);
 
-	$newspage = $services->newPageGetter()->getFromTitle($wiki_newspagetitle);
-	$revision = $newspage->getRevisions()->getLatest();
-	$newspage_text = $revision->getContent()->getData();
+	if($rebootless_flag===False)
+	{
+		$newspage = $services->newPageGetter()->getFromTitle($wiki_newspagetitle);
+		$revision = $newspage->getRevisions()->getLatest();
+		$newspage_text = $revision->getContent()->getData();
 
-	$newsarchivepage = $services->newPageGetter()->getFromTitle($wiki_newsarchivepagetitle);
-	$revision = $newsarchivepage->getRevisions()->getLatest();
-	$newsarchivepage_text = $revision->getContent()->getData();
+		$newsarchivepage = $services->newPageGetter()->getFromTitle($wiki_newsarchivepagetitle);
+		$revision = $newsarchivepage->getRevisions()->getLatest();
+		$newsarchivepage_text = $revision->getContent()->getData();
 
-	$updatelisted = 0;
-	if(strstr($newspage_text, $updateversion)!==FALSE)
-	{
-		$updatelisted = 1;
-	}
-	else if(strstr($newsarchivepage_text, $updateversion)!==FALSE)
-	{
-		$updatelisted = 2;
-	}
+		$updatelisted = 0;
+		if(strstr($newspage_text, $updateversion)!==FALSE)
+		{
+			$updatelisted = 1;
+		}
+		else if(strstr($newsarchivepage_text, $updateversion)!==FALSE)
+		{
+			$updatelisted = 2;
+		}
 
-	if($updatelisted)
-	{
-		wikibot_writelog("This updatever is already listed on the wiki news.", 2, $reportdate);
-	}
-	else
-	{
-		$ret = wikibot_updatenewspages($api, $services, $updateversion, $reportdate, $timestamp, $newspage_text, $newsarchivepage_text, $newspage, $newsarchivepage);
-		if($ret!=0)return $ret;
+		if($updatelisted)
+		{
+			wikibot_writelog("This updatever is already listed on the wiki news.", 2, $reportdate);
+		}
+		else
+		{
+			$ret = wikibot_updatenewspages($api, $services, $updateversion, $reportdate, $timestamp, $newspage_text, $newsarchivepage_text, $newspage, $newsarchivepage);
+			if($ret!=0)return $ret;
+		}
 	}
 
 	if($wiki_homemenutitle!="")
@@ -762,7 +892,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 		//wikibot_writelog("Sysupdate page:\n".$sysupdate_page, 1, $reportdate);
 	//}
 
-	/*if($sysupdate_page!==FALSE)*/wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+	/*if($sysupdate_page!==FALSE)*/wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag);
 
 	$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
 	$result=mysqli_query($mysqldb, $query);
@@ -775,12 +905,28 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 		if($tmp_reportdate === $reportdate)
 		{
-			$ret = wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
-			if($ret!=0)return $ret;
+			if($rebootless_flag===False)
+			{
+				$ret = wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+				if($ret!=0)return $ret;
+			}
+
+			if($system_generation!=0)
+			{
+				if($postproc_runfinished!=0 && $rebootless_flag===False)
+				{
+					$ret = wikibot_edit_systemversiondata($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+					if($ret!=0)return $ret;
+				}
+				else
+				{
+					wikibot_writelog("Skipping generation1 page handling since the report post-processing isn't finished / updateversion is rebootless.", 2, $reportdate);
+				}
+			}
 		}
 		else
 		{
-			wikibot_writelog("Skipping FirmwareNews page handling since this report isn't the latest one.", 2, $reportdate);
+			wikibot_writelog("Skipping FirmwareNews and generation1 page handling since this report isn't the latest one.", 2, $reportdate);
 		}
 	}
 
