@@ -3,6 +3,7 @@
 require_once(dirname(__FILE__) . "/config.php");
 require_once(dirname(__FILE__) . "/logs.php");
 require_once(dirname(__FILE__) . "/db.php");
+include_once(dirname(__FILE__) . "/api.php");
 
 //require_once(dirname(__FILE__) . "/Wikimate/globals.php");
 
@@ -621,13 +622,11 @@ function wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate,
 	return 0;
 }
 
-function wikibot_edit_systemversiondata($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri)
+function wikibot_edit_pagetable($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $pagetitle, $table_search, $searchtext, $entrydata)
 {
 	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_workdir;
 
 	$page_text = "";
-
-	$pagetitle = "System_Version_Title";
 
 	$tmp_page = $services->newPageGetter()->getFromTitle($pagetitle);
 	$tmp_revision = $tmp_page->getRevisions()->getLatest();
@@ -643,28 +642,96 @@ function wikibot_edit_systemversiondata($api, $services, $updateversion, $report
 
 	$page_text = $tmp_revision->getContent()->getData();
 
-	$section_pos = strpos($page_text, "== Retail ==");
+	$section_pos = strpos($page_text, $table_search);
 	if($section_pos===FALSE)
 	{
-		wikibot_writelog("wikibot_edit_systemversiondata(): Failed to find the section start.", 0, $reportdate);
+		wikibot_writelog("wikibot_edit_pagetable($pagetitle): Failed to find the section/table start.", 0, $reportdate);
 		return 1;
 	}
 
 	$table_endpos = strpos($page_text, "|}", $section_pos);
 	if($table_endpos===FALSE)
 	{
-		wikibot_writelog("wikibot_edit_systemversiondata(): Failed to find the table end.", 0, $reportdate);
+		wikibot_writelog("wikibot_edit_pagetable($pagetitle): Failed to find the table end.", 0, $reportdate);
 		return 2;
 	}
 
-	$table_text = substr($page_text, $section_pos, $table_endpos);
-	if(strpos($table_text, "| $updateversion\n", $section_pos)!==FALSE)
+	$table_text = substr($page_text, $section_pos, $table_endpos-$section_pos);
+	if(strpos($table_text, "$searchtext")!==FALSE)
 	{
-		wikibot_writelog("wikibot_edit_systemversiondata(): This updateversion already exists in the table.", 2, $reportdate);
+		wikibot_writelog("wikibot_edit_pagetable($pagetitle): This entry already exists in the table.", 2, $reportdate);
 		return 0;
 	}
 
 	$new_text = "";
+	if(substr($page_text, $table_endpos-3, 3)!="|-\n")
+	{
+		$new_text.= "|-\n";
+	}
+
+	$lines = explode("\n", $table_text);
+	$found = False;
+	for($i=count($lines)-1; $i>=0; $i--)
+	{
+		if($i == count($lines)-1 && substr($lines[$i], 0, 2)==="|-")
+		{
+			continue;
+		}
+		if(substr($lines[$i], 0, 2)==="|-")
+		{
+			$linei = $i+1;
+			$found = True;
+			break;
+		}
+	}
+
+	if($found === False)
+	{
+		wikibot_writelog("wikibot_edit_pagetable($pagetitle): Failed to find the last table entry.", 0, $reportdate);
+		return 2;
+	}
+
+	$i=0;
+	foreach($entrydata as $linetext)
+	{
+		if($linetext === "!LAST")
+		{
+			$new_text.= $lines[$linei+$i] . "\n";
+		}
+		else
+		{
+			$new_text.= "| $linetext\n";
+		}
+		$i++;
+	}
+
+	$new_page_text = substr($page_text, 0, $table_endpos) . $new_text . substr($page_text, $table_endpos);
+
+	wikibot_writelog("New $pagetitle page:\n$new_page_text", 1, $reportdate);
+
+	if($wikibot_loggedin == 1)
+	{
+		wikibot_writelog("Sending $pagetitle page edit request...", 2, $reportdate);
+
+		$newContent = new \Mediawiki\DataModel\Content($new_page_text);
+		$title = new \Mediawiki\DataModel\Title($pagetitle);
+		$identifier = new \Mediawiki\DataModel\PageIdentifier($title);
+		$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
+		$services->newRevisionSaver()->save($revision);
+
+		$text = "$pagetitle page edit request was successful.";
+		echo "$text\n";
+		wikibot_writelog($text, 1, $reportdate);
+	}
+
+	return 0;
+}
+
+function wikibot_edit_systemversiondata($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri)
+{
+	global $system, $sitecfg_workdir;
+
+	$pagetitle = "System_Version_Title";
 
 	$sysver_fullversionstr = "";
 	$sysver_hexstr = "";
@@ -700,33 +767,194 @@ function wikibot_edit_systemversiondata($api, $services, $updateversion, $report
 		return 3;
 	}
 
-	$new_text.= "|-\n";
-	$new_text.= "| $updateversion\n";
-	$new_text.= "| $sysver_fullversionstr\n";
-	$new_text.= "| $sysver_hexstr\n";
-	$new_text.= "| $sysver_digest\n";
-	$new_text.= "| \n";
+	$entrydata = array($updateversion, $sysver_fullversionstr, $sysver_hexstr, $sysver_digest, "");
 
-	$new_page_text = substr($page_text, 0, $table_endpos) . $new_text . substr($page_text, $table_endpos);
+	return wikibot_edit_pagetable($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $pagetitle, "== Retail ==", "| $updateversion\n", $entrydata);
+}
 
-	wikibot_writelog("New $pagetitle page:\n$new_page_text", 1, $reportdate);
+function wikibot_edit_systemversions($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri)
+{
+	global $mysqldb, $system, $sitecfg_workdir, $ninupdatesapi_out_total_entries, $ninupdatesapi_out_version_array, $ninupdatesapi_out_reportdate_array;
 
-	if($wikibot_loggedin == 1)
+	$pagetitle = "System_Versions";
+
+	$build_date = "";
+	$sdk_versions = "";
+
+	$updatedir = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system";
+
+	$sdk_versions_path = "$updatedir/sdk_versions.info";
+
+	if(file_exists($sdk_versions_path)===FALSE)
 	{
-		wikibot_writelog("Sending $pagetitle page edit request...", 2, $reportdate);
-
-		$newContent = new \Mediawiki\DataModel\Content($new_page_text);
-		$title = new \Mediawiki\DataModel\Title($pagetitle);
-		$identifier = new \Mediawiki\DataModel\PageIdentifier($title);
-		$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
-		$services->newRevisionSaver()->save($revision);
-
-		$text = "$pagetitle page edit request was successful.";
-		echo "$text\n";
-		wikibot_writelog($text, 1, $reportdate);
+		wikibot_writelog("wikibot_edit_systemversions(): The sdk_versions file doesn't exist.", 0, $reportdate);
+		return 3;
 	}
 
-	return 0;
+	$sdk_versions = file_get_contents($sdk_versions_path);
+
+	if($sdk_versions===FALSE)
+	{
+		wikibot_writelog("wikibot_edit_systemversions(): Failed to load the sdk_versions file.", 0, $reportdate);
+		return 3;
+	}
+
+	$sdk_versions = str_replace(" (.0)", "", $sdk_versions);
+	if($sdk_versions[strlen($sdk_versions)-1]=="\n") $sdk_versions = substr($sdk_versions, 0, strlen($sdk_versions)-1);
+
+	$lines = explode("\n", $sdk_versions);
+	$first_line = $lines[0];
+	$last_line = $lines[count($lines)-1];
+
+	if($last_line == $first_line)
+	{
+		$sdk_versions = $first_line;
+	}
+	else
+	{
+		$sdk_versions = "$first_line-$last_line";
+	}
+
+	$titleid = "0100000000000819";
+
+	$query="SELECT ninupdates_reports.regions FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$reportdate."' AND ninupdates_reports.systemid=ninupdates_consoles.id AND ninupdates_consoles.system='".$system."'";
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
+
+	if($numrows==0)
+	{
+		wikibot_writelog("wikibot_edit_systemversions(): Failed to get regions field from the report row.", 0, $reportdate);
+		return 1;
+	}
+
+	$row = mysqli_fetch_row($result);
+	$regions = $row[0];
+
+	$region = strtok($regions, ",");
+	while($region!==FALSE)
+	{
+		if(strlen($region)>1)break;
+
+		$region_next = strtok(",");
+
+		$query="SELECT regionid FROM ninupdates_regions WHERE regioncode='".$region."'";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+
+		if($numrows==0)
+		{
+			wikibot_writelog("wikibot_edit_systemversions(): Failed to load the regionid.", 0, $reportdate);
+			return 2;
+		}
+
+		$row = mysqli_fetch_row($result);
+		$regionid = $row[0];
+
+		$retval = ninupdates_api("gettitleversions", $system, $region, $titleid, 0);
+		$region = $region_next;
+		if($retval!=0)
+		{
+			wikibot_writelog("wikibot_edit_systemversions(): API returned error $retval.", 0, $reportdate);
+			return($retval);
+		}
+
+		$found = False;
+		for($i=0; $i<$ninupdatesapi_out_total_entries; $i++)
+		{
+			$version = $ninupdatesapi_out_version_array[$i];
+			$entry_reportdate = $ninupdatesapi_out_reportdate_array[$i];
+
+			if($reportdate === $entry_reportdate)
+			{
+				$found = True;
+				break;
+			}
+		}
+		if($found===False) continue;
+
+		$titledir = "$updatedir/$titleid/$regionid/$version";
+		if(is_dir($titledir)===FALSE)
+		{
+			$titledir = "$updatedir/$titleid/$version";
+		}
+
+		if(is_dir($titledir)===FALSE)
+		{
+			wikibot_writelog("wikibot_edit_systemversions(): The titledir doesn't exist: $titledir", 0, $reportdate);
+			return 5;
+		}
+		else
+		{
+			$path = "$titledir/nx_package1_hactool.info";
+			if(file_exists($path)===FALSE)
+			{
+				wikibot_writelog("wikibot_edit_systemversions(): The nx_package1_hactool file doesn't exist.", 0, $reportdate);
+				return 5;
+			}
+			else
+			{
+				$hactoolinfo = file_get_contents($path);
+				if($hactoolinfo===FALSE)
+				{
+					wikibot_writelog("wikibot_edit_systemversions(): Failed to load the nx_package1_hactool file.", 0, $reportdate);
+					return 5;
+				}
+				else
+				{
+					if(strlen($hactoolinfo)==0)
+					{
+						wikibot_writelog("wikibot_edit_systemversions(): The nx_package1_hactool file is empty.", 0, $reportdate);
+						return 5;
+					}
+					else
+					{
+						$lines = explode("\n", $hactoolinfo);
+						foreach($lines as $line)
+						{
+							if(strpos($line, "Build Date")!==FALSE)
+							{
+								$str = substr($line, strrpos($line, " ")+1);
+								$pos=0;
+								$poslen = 4;
+								for($i=0; $i<6; $i++)
+								{
+									$val = substr($str, $pos, $poslen);
+									$pos+= $poslen;
+									$poslen = 2;
+									$build_date.= $val;
+
+									if($i<2)
+									{
+										$build_date.= "-";
+									}
+									else if($i==2)
+									{
+										$build_date.= " ";
+									}
+									else if($i<5)
+									{
+										$build_date.= ":";
+									}
+								}
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+		if($build_date!=="") break;
+	}
+
+	if($build_date==="")
+	{
+		$build_date = "!LAST";
+		wikibot_writelog("wikibot_edit_systemversions(): This report doesn't include bootpkg, loading build_date from the last wiki entry.", 2, $reportdate);
+	}
+
+	$entrydata = array("[[$updateversion]]", gmdate("F j, Y", $timestamp)." (UTC)", $build_date, $sdk_versions);
+
+	return wikibot_edit_pagetable($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $pagetitle, "{| ", "| [[$updateversion]]\n", $entrydata);
 }
 
 function runwikibot_newsysupdate($updateversion, $reportdate)
@@ -916,6 +1144,9 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 				if($postproc_runfinished!=0 && $rebootless_flag===False)
 				{
 					$ret = wikibot_edit_systemversiondata($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+					if($ret!=0)return $ret;
+
+					wikibot_edit_systemversions($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
 					if($ret!=0)return $ret;
 				}
 				else
