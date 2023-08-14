@@ -350,6 +350,9 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 	{
 		wikibot_writelog("Skipping sysupdate page handling since this report is rebootless.", 2, $reportdate);
 
+		$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikipage_exists=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
+		$result=mysqli_query($mysqldb, $query);
+
 		return 0;
 	}
 
