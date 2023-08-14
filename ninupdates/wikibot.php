@@ -957,6 +957,183 @@ function wikibot_edit_systemversions($api, $services, $updateversion, $reportdat
 	return wikibot_edit_pagetable($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $pagetitle, "{| ", "| [[$updateversion]]\n", $entrydata);
 }
 
+function wikibot_edit_fuses($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri)
+{
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_workdir;
+
+	$pagetitle = "Fuses";
+
+	$table_search = "= Anti-downgrade =";
+
+	$page_text = "";
+
+	$updatedetails = "";
+	$retail_fuses = "";
+	$dev_fuses = "";
+
+	$updatedir = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system";
+
+	$updatedir_path = "$updatedir/updatedetails";
+
+	if(file_exists($updatedir_path)===FALSE)
+	{
+		wikibot_writelog("wikibot_edit_fuses(): The updatedetails file doesn't exist.", 0, $reportdate);
+		return 3;
+	}
+
+	$updatedetails = file_get_contents($updatedir_path);
+
+	if($updatedetails===FALSE)
+	{
+		wikibot_writelog("wikibot_edit_fuses(): Failed to load the updatedetails file.", 0, $reportdate);
+		return 3;
+	}
+
+	if(strpos($updatedetails, "BootImagePackage")!==FALSE)
+	{
+		$searchstr = "Total retail blown fuses: ";
+		$tmp = strstr($updatedetails, $searchstr);
+		if($tmp!==FALSE)
+		{
+			$line_end = strpos($tmp, "\n");
+			$tmp = substr($tmp, strlen($searchstr), $line_end-strlen($searchstr));
+			$retail_fuses = $tmp;
+		}
+
+		$searchstr = "Total devunit blown fuses: ";
+		$tmp = strstr($updatedetails, $searchstr);
+		if($tmp!==FALSE)
+		{
+			$line_end = strpos($tmp, "\n");
+			$tmp = substr($tmp, strlen($searchstr), $line_end-strlen($searchstr));
+			$dev_fuses = $tmp;
+		}
+
+		if($retail_fuses==="" || $dev_fuses==="")
+		{
+			wikibot_writelog("wikibot_edit_fuses(): Failed to load the fuse values from the updatedetails file.", 0, $reportdate);
+			return 4;
+		}
+	}
+
+	$tmp_page = $services->newPageGetter()->getFromTitle($pagetitle);
+	$tmp_revision = $tmp_page->getRevisions()->getLatest();
+
+	if($tmp_revision===NULL)
+	{
+		wikibot_writelog("$pagetitle page doesn't exist.", 2, $reportdate);
+
+		return 0;
+	}
+
+	wikibot_writelog("$pagetitle page exists, generating new page text if needed...", 2, $reportdate);
+
+	$page_text = $tmp_revision->getContent()->getData();
+
+	$section_pos = strpos($page_text, $table_search);
+	if($section_pos===FALSE)
+	{
+		wikibot_writelog("wikibot_edit_fuses($pagetitle): Failed to find the section/table start.", 0, $reportdate);
+		return 1;
+	}
+
+	$table_endpos = strpos($page_text, "|}", $section_pos);
+	if($table_endpos===FALSE)
+	{
+		wikibot_writelog("wikibot_edit_fuses($pagetitle): Failed to find the table end.", 0, $reportdate);
+		return 2;
+	}
+
+	$table_text = substr($page_text, $section_pos, $table_endpos-$section_pos);
+	if(strpos($table_text, $updateversion)!==FALSE)
+	{
+		wikibot_writelog("wikibot_edit_fuses($pagetitle): This entry already exists in the table.", 2, $reportdate);
+		return 0;
+	}
+
+	$new_text = "";
+	if(substr($page_text, $table_endpos-3, 3)!="|-\n")
+	{
+		$new_text.= "|-\n";
+	}
+
+	$lines = explode("\n", $table_text);
+	$found = False;
+	for($i=count($lines)-1; $i>=0; $i--)
+	{
+		if($i == count($lines)-1 && substr($lines[$i], 0, 2)==="|-")
+		{
+			continue;
+		}
+		if(substr($lines[$i], 0, 2)==="|-")
+		{
+			$linei = $i+1;
+			$found = True;
+			break;
+		}
+	}
+
+	if($found === False)
+	{
+		wikibot_writelog("wikibot_edit_fuses($pagetitle): Failed to find the last table entry.", 0, $reportdate);
+		return 2;
+	}
+
+	$last_retail_fuses = substr($lines[$linei+1], 2);
+	$last_dev_fuses = substr($lines[$linei+2], 2);
+
+	if(($retail_fuses!=="" && $dev_fuses!=="") && ($retail_fuses!==$last_retail_fuses || $dev_fuses!==$last_dev_fuses))
+	{
+		$new_text.= "| $updateversion\n";
+		$new_text.= "| $retail_fuses\n";
+		$new_text.= "| $dev_fuses\n";
+
+		$new_page_text = substr($page_text, 0, $table_endpos) . $new_text . substr($page_text, $table_endpos);
+	}
+	else
+	{
+		$new_text = "";
+		for($i=0; $i<count($lines); $i++)
+		{
+			$linetext = $lines[$i];
+			if($i==count($lines)-1 && strlen($linetext)==0) continue;
+			if($linei == $i)
+			{
+				$tmp = strpos($linetext, "-");
+				if($tmp===FALSE)
+				{
+					$linetext = "| $updateversion";
+				}
+				else
+				{
+					$linetext = substr($linetext, 0, $tmp+1) . "$updateversion";
+				}
+			}
+			$new_text.= $linetext . "\n";
+		}
+		$new_page_text = substr($page_text, 0, $section_pos) . $new_text . substr($page_text, $table_endpos);
+	}
+
+	wikibot_writelog("New $pagetitle page:\n$new_page_text", 1, $reportdate);
+
+	if($wikibot_loggedin == 1)
+	{
+		wikibot_writelog("Sending $pagetitle page edit request...", 2, $reportdate);
+
+		$newContent = new \Mediawiki\DataModel\Content($new_page_text);
+		$title = new \Mediawiki\DataModel\Title($pagetitle);
+		$identifier = new \Mediawiki\DataModel\PageIdentifier($title);
+		$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
+		$services->newRevisionSaver()->save($revision);
+
+		$text = "$pagetitle page edit request was successful.";
+		echo "$text\n";
+		wikibot_writelog($text, 1, $reportdate);
+	}
+
+	return 0;
+}
+
 function runwikibot_newsysupdate($updateversion, $reportdate)
 {
 	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $system;
@@ -1147,6 +1324,9 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 					if($ret!=0)return $ret;
 
 					wikibot_edit_systemversions($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+					if($ret!=0)return $ret;
+
+					wikibot_edit_fuses($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
 					if($ret!=0)return $ret;
 				}
 				else
