@@ -1369,6 +1369,19 @@ if($argc<3)
 
 dbconnection_start();
 
+$lock_fp = fopen("$sitecfg_workdir/wikibot_lock", "w");
+if($lock_fp===FALSE)
+{
+	echo "Failed to open lock file.\n";
+	exit(1);
+}
+
+if(!flock($lock_fp, LOCK_EX))
+{
+	echo "Failed to obtain the lock.\n";
+	exit(1);
+}
+
 if($wikibot_scheduledtask == 0)
 {
 	$updateversion = mysqli_real_escape_string($mysqldb, $argv[1]);
@@ -1402,6 +1415,8 @@ else
 		if($i != $numrows-1)echo "\n";
 	}
 }
+
+fclose($lock_fp);
 
 dbconnection_end();
 
