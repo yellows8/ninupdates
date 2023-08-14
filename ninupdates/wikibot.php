@@ -4,6 +4,7 @@ require_once(dirname(__FILE__) . "/config.php");
 require_once(dirname(__FILE__) . "/logs.php");
 require_once(dirname(__FILE__) . "/db.php");
 include_once(dirname(__FILE__) . "/api.php");
+require_once(dirname(__FILE__) . "/send_webhook.php");
 
 //require_once(dirname(__FILE__) . "/Wikimate/globals.php");
 
@@ -534,7 +535,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$text = "Sysupdate page edit request was successful.";
 		echo "$text\n";
 		wikibot_writelog($text, 1, $reportdate);
-		$text = "Sending tweet...";
+		$text = "Sending notif...";
 		echo "$text\n";
 		wikibot_writelog($text, 1, $reportdate);
 
@@ -1411,7 +1412,13 @@ else
 		echo "Starting wikibot processing with the following report: $reportdate-$system, updateversion=$updateversion.";
 		echo "\n";
 
-		runwikibot_newsysupdate($updateversion, $reportdate);
+		$ret = runwikibot_newsysupdate($updateversion, $reportdate);
+		if($ret!=0)
+		{
+			echo "Sending notif since an error occured...\n";
+			$msg = "wikibot: An error occured while processing $reportdate-$system.";
+			send_webhook($msg, 1);
+		}
 
 		echo "Wikibot processing for this report finished.\n";
 
