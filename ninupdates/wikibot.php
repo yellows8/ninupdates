@@ -43,15 +43,11 @@ function wikibot_writelog($str, $type, $reportdate)
 	return 0;
 }
 
-function wikibot_updatenewspages($api, $services, $updateversion, $reportdate, $timestamp, $newspage_text, $newsarchivepage_text, $newspage, $newsarchivepage)
+function wikibot_updatenewspages($api, $services, $updateversion, $reportdate, $timestamp, $newspage_text, $newsarchivepage_text, $newspage, $newsarchivepage, $insertstring)
 {
 	global $wikibot_loggedin, $wikibot_user, $wikibot_pass;
 
-	$sysupdate_date = gmdate("j F y", $timestamp);
-
-	$insertstring = "*'''$sysupdate_date''' Nintendo released system update [[$updateversion]].\n";
-
-	wikibot_writelog("insertstring: $insertstring", 1, $reportdate);
+	wikibot_writelog("wikibot_updatenewspages(): insertstring: $insertstring", 1, $reportdate);
 
 	$locatestr = "</noinclude>\n";
 
@@ -1184,12 +1180,15 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 	if(!isset($wiki_homemenutitle))$wiki_homemenutitle = "";
 
+	$updateversion_norebootless = $updateversion;
 	$rebootless_flag = False;
-	if(strpos($updateversion, "rebootless")!==FALSE)
+	$rebootless_pos = strpos($updateversion, "_rebootless");
+	if($rebootless_pos!==FALSE)
 	{
 		wikibot_writelog("This report updateversion is rebootless, skipping handling for the relevant pages.", 2, $reportdate);
 
 		$rebootless_flag = True;
+		$updateversion_norebootless = substr($updateversion, 0, $rebootless_pos);
 	}
 
 	//try
@@ -1240,35 +1239,43 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 	wikibot_writelog($text, 2, $reportdate);
 
-	if($rebootless_flag===False)
+	$newspage = $services->newPageGetter()->getFromTitle($wiki_newspagetitle);
+	$revision = $newspage->getRevisions()->getLatest();
+	$newspage_text = $revision->getContent()->getData();
+
+	$newsarchivepage = $services->newPageGetter()->getFromTitle($wiki_newsarchivepagetitle);
+	$revision = $newsarchivepage->getRevisions()->getLatest();
+	$newsarchivepage_text = $revision->getContent()->getData();
+
+	$updatelisted = 0;
+
+	$sysupdate_date = gmdate("j F y", $timestamp);
+
+	$news_searchtext = "update [[$updateversion]]";
+	$insertstring = "*'''$sysupdate_date''' Nintendo released system ".$news_searchtext.".";
+
+	if($rebootless_flag===True)
 	{
-		$newspage = $services->newPageGetter()->getFromTitle($wiki_newspagetitle);
-		$revision = $newspage->getRevisions()->getLatest();
-		$newspage_text = $revision->getContent()->getData();
+		$insertstring = "*'''$sysupdate_date''' Nintendo released a rebootless system update for [[".$updateversion_norebootless."]].";
+		$news_searchtext = $insertstring;
+	}
+	if(strstr($newspage_text, $news_searchtext)!==FALSE)
+	{
+		$updatelisted = 1;
+	}
+	else if(strstr($newsarchivepage_text, $news_searchtext)!==FALSE)
+	{
+		$updatelisted = 2;
+	}
 
-		$newsarchivepage = $services->newPageGetter()->getFromTitle($wiki_newsarchivepagetitle);
-		$revision = $newsarchivepage->getRevisions()->getLatest();
-		$newsarchivepage_text = $revision->getContent()->getData();
-
-		$updatelisted = 0;
-		if(strstr($newspage_text, $updateversion)!==FALSE)
-		{
-			$updatelisted = 1;
-		}
-		else if(strstr($newsarchivepage_text, $updateversion)!==FALSE)
-		{
-			$updatelisted = 2;
-		}
-
-		if($updatelisted)
-		{
+	if($updatelisted)
+	{
 			wikibot_writelog("This updatever is already listed on the wiki news.", 2, $reportdate);
-		}
-		else
-		{
-			$ret = wikibot_updatenewspages($api, $services, $updateversion, $reportdate, $timestamp, $newspage_text, $newsarchivepage_text, $newspage, $newsarchivepage);
-			if($ret!=0)return $ret;
-		}
+	}
+	else
+	{
+		$ret = wikibot_updatenewspages($api, $services, $updateversion, $reportdate, $timestamp, $newspage_text, $newsarchivepage_text, $newspage, $newsarchivepage, $insertstring."\n");
+		if($ret!=0)return $ret;
 	}
 
 	if($wiki_homemenutitle!="")
