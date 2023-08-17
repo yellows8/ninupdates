@@ -719,11 +719,21 @@ function main($reg)
 
 	$sendupdatelogs = 0;
 
-	$query = "SELECT ninupdates_titles.version FROM ninupdates_titles, ninupdates_consoles WHERE ninupdates_titles.region='".$region."' AND ninupdates_titles.systemid=ninupdates_consoles.id AND ninupdates_consoles.system='".$system."'";
+	$query = "SELECT COUNT(*) FROM ninupdates_titles, ninupdates_consoles WHERE ninupdates_titles.region='".$region."' AND ninupdates_titles.systemid=ninupdates_consoles.id AND ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 
-	if($numrows==0 && $newtotal_titles>0)
+	if($numrows>0)
+	{
+		$row = mysqli_fetch_row($result);
+		$count = $row[0];
+	}
+	else
+	{
+		$count = 0;
+	}
+
+	if($count==0 && $newtotal_titles>0)
 	{
 		$retval = titlelist_dbupdate_withcmd($curdate, $generation);
 		if($retval < 0)
