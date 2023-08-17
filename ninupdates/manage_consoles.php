@@ -29,12 +29,16 @@ else
 
 $path = "$sitecfg_workdir/soap$system";
 
-mkdir($path, 0760);
+if(!is_dir($path)) mkdir($path, 0760);
 
 for($i=0; $i<strlen($regions); $i++)
 {
-	mkdir("$path/" . substr($regions, $i, 1), 0760);
+	$regionpath = "$path/" . substr($regions, $i, 1);
+	if(!is_dir($regionpath)) mkdir($regionpath, 0760);
 }
+
+$path = "$sitecfg_workdir/updatedetails/$system";
+if(!is_dir($path)) mkdir($path, 0760);
 
 $query = "INSERT INTO ninupdates_consoles (system, sysname, clientcertfn, clientprivfn, nushttpsurl, platformid, regions) VALUES ('".$system."','".$sysname."','".$clientcertfn."','".$clientprivfn."','".$nushttpsurl."','".$platformid."','".$regions."')";
 $result=mysqli_query($mysqldb, $query);

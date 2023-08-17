@@ -3,6 +3,7 @@
 require_once(dirname(__FILE__) . "/config.php");
 require_once(dirname(__FILE__) . "/logs.php");
 require_once(dirname(__FILE__) . "/db.php");
+require_once(dirname(__FILE__) . "/setup.php");
 require_once(dirname(__FILE__) . "/get_officialchangelog.php");
 require_once(dirname(__FILE__) . "/tweet.php");
 require_once(dirname(__FILE__) . "/send_webhook.php");
@@ -42,6 +43,24 @@ function do_systems_soap()
 	global $mysqldb, $sitecfg_workdir;
 
 	dbconnection_start();
+	ninupdates_setup();
+
+	$query="SELECT COUNT(*) FROM ninupdates_management";
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
+
+	if($numrows>0)
+	{
+		$row = mysqli_fetch_row($result);
+		$count = $row[0];
+
+		if($count==0)
+		{
+			$query = "INSERT INTO ninupdates_management (maintenanceflag, lastscan) VALUES (0,'')";
+			$result=mysqli_query($mysqldb, $query);
+		}
+	}
+
 	if(!db_checkmaintenance(0))
 	{
 		init_curl();

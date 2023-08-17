@@ -1,2 +1,4 @@
 These scripts check for Nintendo system updates, and generate reports of the updated titles. The base URL for the scripts under this pub_html directory must be specified with $sitecfg_httpbase in site_cfg.php. A configuration file must be located at ninupdates/site_cfg.php, see ninupdates/config.php.
 
+The required database tables are automatically created when running ninsoap.php (see comments in setup.php). However, additional configuration must be done seperately: run manage_consoles.php for each console (and manually set additional fields in the table-row if needed). Manually insert database rows for: ninupdates_regions, ninupdates_officialchangelog_pages (if wanted), ninupdates_wikiconfig (if wanted).
+
