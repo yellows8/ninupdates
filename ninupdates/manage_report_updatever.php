@@ -131,7 +131,7 @@ else
 	if($cnt==0)
 	{
 		echo("Unrecognized args.\n");
-		$ret = 0;
+		$ret = 4;
 	}
 	else
 	{
