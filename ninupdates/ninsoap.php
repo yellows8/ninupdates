@@ -342,8 +342,11 @@ function dosystem($console)
 		sendircmsg($notif_msg);
 		sendtweet($notif_msg);
 		send_webhook($notif_msg);
-		echo "Sending email...\n";
-        	if(!mail($sitecfg_target_email, "$system sysupdates", $email_message, "From: ninsoap@$sitecfg_emailhost"))echo "Failed to send mail.\n";
+		if($sitecfg_target_email!="" && $sitecfg_emailhost!="")
+		{
+			echo "Sending email...\n";
+			if(!mail($sitecfg_target_email, "$system sysupdates", $email_message, "From: ninsoap@$sitecfg_emailhost"))echo "Failed to send mail.\n";
+		}
 
 		/*echo "Writing to the lastupdates_csvurls file...\n";
 		$msg = "$sitecfg_httpbase/titlelist.php?date=".$sysupdate_timestamp."&sys=".$system."&csv=1";

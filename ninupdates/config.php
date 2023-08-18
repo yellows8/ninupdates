@@ -3,9 +3,9 @@
 /*
 site_cfg.php Should set the following config params:
 $sitecfg_remotecmd Determines whether to use SSH for the IRC msgme(optional, default is 0 for disabled).
-$sitecfg_target_email Email address to send the report url to.
+$sitecfg_target_email Optional email address to send the report url to. Email is disabled if this isn't specified.
 $sitecfg_httpbase URL where the pub_html scripts are located.
-$sitecfg_emailhost Email host portion of the sender email address.
+$sitecfg_emailhost Optional email host portion of the sender email address. Email is disabled if this isn't specified.
 $sitecfg_sshhost SSH host used for the SSH IRC msgme(only needed when $sitecfg_remotecmd is non-zero).
 $sitecfg_workdir Absolute path to the location of these scripts.
 $sitecfg_logplainhttp200 This is optional, default is zero. When non-zero, the following is enabled: writeNormalLog("RESULT: 200")
@@ -30,6 +30,8 @@ $sitecfg_consoles_deviceid["{system}"]["{regioncode}"] = "{id}"; DeviceId to use
 require_once(dirname(__FILE__) . "/site_cfg.php");
 
 if(!isset($sitecfg_remotecmd))$sitecfg_remotecmd = 0;
+if(!isset($sitecfg_target_email))$sitecfg_target_email = "";
+if(!isset($sitecfg_emailhost))$sitecfg_emailhost = "";
 if(!isset($sitecfg_sshhost))$sitecfg_sshhost = "";
 if(!isset($sitecfg_logplainhttp200))$sitecfg_logplainhttp200 = 0;
 if(!isset($sitecfg_homepage_header))$sitecfg_homepage_header = "";
