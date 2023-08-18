@@ -4,9 +4,12 @@ require_once(dirname(__FILE__) . "/config.php");
 
 if($argc<3)
 {
-	die("Usage:\nphp send_irc.php <msg> <msgtarget>\n");
+	die("Usage:\nphp send_irc.php <msg> <msgtarget(s)>\n");
 }
 
-appendmsg_tofile($argv[1], $argv[2]);
+for($i=2; $i<$argc; $i++)
+{
+	appendmsg_tofile($argv[1], $argv[$i]);
+}
 
 ?>

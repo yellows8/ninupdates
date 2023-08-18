@@ -3,8 +3,6 @@
 require_once(dirname(__FILE__) . "/config.php");
 require_once(dirname(__FILE__) . "/logs.php");
 require_once(dirname(__FILE__) . "/db.php");
-require_once(dirname(__FILE__) . "/tweet.php");
-require_once(dirname(__FILE__) . "/send_webhook.php");
 
 function init_curl_pagelogger()
 {
@@ -64,9 +62,14 @@ function sendnotif_pagelogger($msg, $enable_notification, $msgtarget)
 {
 	if($enable_notification>=1)
 	{
-		if($enable_notification===1)appendmsg_tofile($msg, $msgtarget);
-		sendtweet($msg);
-		if($enable_notification===3)send_webhook($msg);
+		$args = [$msg, "--social"];
+		if($enable_notification===1)
+		{
+			$args[] = "--irc";
+			$args[] = "--irctarget=$msgtarget";
+		}
+		if($enable_notification===3) $args[] = "--webhook";
+		send_notif($args);
 	}
 }
 

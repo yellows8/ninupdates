@@ -92,8 +92,7 @@ else
 	dbconnection_end();
 
 	$msg = "title_setdesc.php: desc for TID $titleid changed to: $desc";
-	appendmsg_tofile($msg, "msgme");
-	send_webhook($msg, 1);
+	send_notif([$msg, "--irc", "--irctarget=msgme", "--webhook", "--webhooktarget=1"]);
 	header("Location: reports.php");
 	writeNormalLog("CHANGED TID $titleid DESC TO $desc. RESULT: 302");
 }

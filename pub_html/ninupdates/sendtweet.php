@@ -57,6 +57,6 @@ if($token_found === 0)
 	return;
 }
 
-sendtweet($msg_prefix . $msg);
+send_notif([$msg_prefix . $msg, "--social"]);
 
 ?>

@@ -5,8 +5,6 @@ require_once(dirname(__FILE__) . "/logs.php");
 require_once(dirname(__FILE__) . "/db.php");
 require_once(dirname(__FILE__) . "/setup.php");
 require_once(dirname(__FILE__) . "/get_officialchangelog.php");
-require_once(dirname(__FILE__) . "/tweet.php");
-require_once(dirname(__FILE__) . "/send_webhook.php");
 
 $curtime_override = 0;
 
@@ -161,7 +159,7 @@ function do_systems_soap()
 
 function dosystem($console)
 {
-	global $mysqldb, $region, $system, $sitecfg_emailhost, $sitecfg_target_email, $sitecfg_httpbase, $sitecfg_workdir, $sysupdate_available, $soap_timestamp, $dbcurdate, $sysupdate_regions, $sysupdate_timestamp, $sysupdate_systitlehashes, $curtime_override;
+	global $mysqldb, $region, $system, $sitecfg_irc_msg_dirpath, $sitecfg_irc_msgtarget, $sitecfg_irc_msgtargets, $sitecfg_emailhost, $sitecfg_target_email, $sitecfg_httpbase, $sitecfg_workdir, $sysupdate_available, $soap_timestamp, $dbcurdate, $sysupdate_regions, $sysupdate_timestamp, $sysupdate_systitlehashes, $curtime_override;
 
 	$system = $console;
 	$msgme_message = "";
@@ -235,8 +233,7 @@ function dosystem($console)
 			echo "Req status changed since last scan, sending msg...\n";
 			$msg = "Last " . getsystem_sysname($system) . " request status changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\". https://www.nintendo.co.jp/netinfo/en_US/index.html";
 			echo "msg: $msg\n";
-			sendtweet($msg);
-			send_webhook($msg);
+			send_notif([$msg, "--social", "--webhook"]);
 		}
 	}
 
@@ -339,9 +336,32 @@ function dosystem($console)
 		}
 
 		echo "\nSending notifications...\n";
-		sendircmsg($notif_msg);
-		sendtweet($notif_msg);
-		send_webhook($notif_msg);
+		$args = [$notif_msg, "--social", "--webhook"];
+		if($sitecfg_irc_msg_dirpath!="")
+		{
+			$targets = array();
+			if($sitecfg_irc_msgtarget!="") $targets[] = $sitecfg_irc_msgtarget;
+			if(isset($sitecfg_irc_msgtargets))
+			{
+				if(isset($sitecfg_irc_msgtargets["$system"]))
+				{
+					$targets[] = $sitecfg_irc_msgtargets["$system"];
+				}
+			}
+			if(count($targets)>0)
+			{
+				$args[] = "--irc";
+				$args[] = "--irctarget";
+				foreach($targets as $target)
+				{
+					if(strlen($target)>0)
+					{
+						$args[] = $target;
+					}
+				}
+			}
+		}
+		send_notif($args);
 		if($sitecfg_target_email!="" && $sitecfg_emailhost!="")
 		{
 			echo "Sending email...\n";
@@ -598,8 +618,8 @@ function titlelist_dbupdate_withcmd($curdate, $generation)
 		if($retval!=0)
 		{
 			$msg = "load_titlelist_withcmd() for $curdate-$system failed.";
-			appendmsg_tofile($msg, "msgme");
-			send_webhook($msg, 1);
+			echo "Sending notif: $msg\n";
+			send_notif([$msg, "--irc", "--irctarget=msgme", "--webhook", "--webhooktarget=1"]);
 			return $retval;
 		}
 	}

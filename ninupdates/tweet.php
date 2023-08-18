@@ -46,9 +46,6 @@ function sendtweet($msg)
 		}
 	}
 
-	$tmp_cmd = dirname(__FILE__) .  "/send_mastodon.py " . escapeshellarg($msg);
-	system($tmp_cmd);
-
 	return $ret;
 }
 

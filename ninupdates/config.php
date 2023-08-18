@@ -19,6 +19,11 @@ $sitecfg_reportupdatepage_header Optional HTML to include near the beginning of 
 $sitecfg_reportupdatepage_footer Optional HTML to include at the very end of the reports.php report update-pages <body>.
 $sitecfg_sitenav_header Optional HTML to include immediately before the site navigation-bar.
 
+$sitecfg_irc_msg_dirpath Dirpath used when sending IRC messages with appendmsg_tofile, if not specified this functionality is disabled.
+$sitecfg_irc_msgtargets["{system}"]= "{filename}"; IRC msgtarget filename to use with the specified system, if not specified IRC messages are disabled. This used for sysupdate-detected notifs.
+$sitecfg_irc_msgtarget Similar to sitecfg_irc_msgtargets, except this is an optional string filename to use for all systems.
+$sitecfg_irc_msgtargets_whitelist Array of strings for filenames allowed to be used by appendmsg_tofile. If not specified, this is loaded from sitecfg_irc_msgtarget(s). 'msgme' is hard-coded to be allowed regardless.
+
 $sitecfg_postproc_cmd This is the command which will be executed by postproc.php, if this is set. The full command passed to system() is: "$sitecfg_postproc_cmd $reportdate $system".
 
 $sitecfg_load_titlelist_cmd See ninsoap.php.
@@ -39,32 +44,73 @@ if(!isset($sitecfg_reportupdatepage_header))$sitecfg_reportupdatepage_header = "
 if(!isset($sitecfg_reportupdatepage_footer))$sitecfg_reportupdatepage_footer = "";
 if(!isset($sitecfg_sitenav_header))$sitecfg_sitenav_header = "";
 
+if(!isset($sitecfg_irc_msg_dirpath))$sitecfg_irc_msg_dirpath = "";
+if(!isset($sitecfg_irc_msgtargets))$sitecfg_irc_msgtargets = array();
+if(!isset($sitecfg_irc_msgtarget))$sitecfg_irc_msgtarget = "";
+
 function appendmsg_tofile($msg, $filename)
 {
-	global $sitecfg_remotecmd, $sitecfg_sshhost;
-	$tmp_cmd = "echo " . escapeshellarg($msg) . " >> " . escapeshellarg("/home/yellows8/.irssi/$filename");
-	$irc_syscmd = $tmp_cmd;
-	if($sitecfg_remotecmd==1)$irc_syscmd = "ssh yellows8@$sitecfg_sshhost \"".$tmp_cmd."\"";
-	system($irc_syscmd);
+	global $sitecfg_remotecmd, $sitecfg_sshhost, $sitecfg_irc_msg_dirpath, $sitecfg_irc_msgtarget, $sitecfg_irc_msgtargets, $sitecfg_irc_msgtargets_whitelist;
+
+	if($sitecfg_irc_msg_dirpath!="" && strlen($filename)>0)
+	{
+		if(!isset($sitecfg_irc_msgtargets_whitelist))
+		{
+			$sitecfg_irc_msgtargets_whitelist = array();
+			if(strlen($sitecfg_irc_msgtarget)>0) $sitecfg_irc_msgtargets_whitelist[] = $sitecfg_irc_msgtarget;
+			foreach($sitecfg_irc_msgtargets as $target)
+			{
+				if(strlen($target)>0)
+				{
+					$sitecfg_irc_msgtargets_whitelist[] = $target;
+				}
+			}
+		}
+
+		$found = False;
+		if($filename == "msgme")
+		{
+			$found = True;
+		}
+		else
+		{
+			foreach($sitecfg_irc_msgtargets_whitelist as $target)
+			{
+				if(strlen($target)>0 && $target == $filename)
+				{
+					$found = True;
+					break;
+				}
+			}
+		}
+		if($found===False)
+		{
+			echo "appendmsg_tofile(): The specified filename is not whitelisted, msg will not be sent: $filename\n";
+			return;
+		}
+
+		$tmp_cmd = "echo " . escapeshellarg($msg) . " >> " . escapeshellarg("$sitecfg_irc_msg_dirpath/$filename");
+		$irc_syscmd = $tmp_cmd;
+		if($sitecfg_remotecmd==1)$irc_syscmd = "ssh yellows8@$sitecfg_sshhost \"".$tmp_cmd."\"";
+		system($irc_syscmd);
+	}
 }
 
-function sendircmsg($msg)
+function send_notif($args)
 {
-	global $system;
+	global $sitecfg_workdir;
 
-	appendmsg_tofile($msg, "msg_yls8ninupdateschan");
-	if($system=="ctr" || $system=="ktr")
+	$cmd = "cd $sitecfg_workdir && ";
+	$cmd .= $sitecfg_workdir . "/send_notif.py";
+	foreach($args as $arg)
 	{
-		appendmsg_tofile($msg, "msg3dsdev");
+		if(strlen($arg)>0)
+		{
+			$cmd.= " " . escapeshellarg($arg);
+		}
 	}
-	else if($system=="wup" || $system=="wupv")
-	{
-		appendmsg_tofile($msg, "msgwiiudev");
-	}
-	else if($system=="hac")
-	{
-		appendmsg_tofile($msg, "msgswitchdev");
-	}
+	$cmd.= " >> $sitecfg_workdir/sendnotif_log 2>&1 &";
+	system($cmd);
 }
 
 ?>

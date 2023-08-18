@@ -4,9 +4,6 @@ require_once(dirname(__FILE__) . "/config.php");
 require_once(dirname(__FILE__) . "/logs.php");
 require_once(dirname(__FILE__) . "/db.php");
 include_once(dirname(__FILE__) . "/api.php");
-require_once(dirname(__FILE__) . "/send_webhook.php");
-
-//require_once(dirname(__FILE__) . "/Wikimate/globals.php");
 
 require_once(dirname(__FILE__) . "/vendor/autoload.php");
 
@@ -16,8 +13,6 @@ The above file must contain the following settings:
 $wikibot_user Account username for the wikibot.
 $wikibot_pass Account password for the wikibot.
 */
-
-require_once(dirname(__FILE__) . "/tweet.php");
 
 function wikibot_writelog($str, $type, $reportdate)
 {
@@ -541,7 +536,8 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$wiki_uribase = "wiki/";
 		if($apiprefixuri == "")$wiki_uribase = "index.php?title=";
 
-		sendtweet("The wiki page for the new $sysnames_list $updateversion sysupdate has been $msgtext: $serverbaseurl$wiki_uribase$updateversion");
+		$notif_msg = "The wiki page for the new $sysnames_list $updateversion sysupdate has been $msgtext: $serverbaseurl$wiki_uribase$updateversion";
+		send_notif([$notif_msg, "--social"]);
 	}
 
 	return 0;
@@ -1424,7 +1420,7 @@ else
 		{
 			echo "Sending notif since an error occured...\n";
 			$msg = "wikibot: An error occured while processing $reportdate-$system.";
-			send_webhook($msg, 1);
+			send_notif([$msg, "--webhook", "--webhooktarget=1"]);
 		}
 
 		echo "Wikibot processing for this report finished.\n";
