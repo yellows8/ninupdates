@@ -418,7 +418,8 @@ function initialize($generation)
 	}
 	else
 	{
-		die("Row doesn't exist in the db for system $system.\n");
+		echo("Row doesn't exist in the db for system $system.\n");
+		exit(1);
 	}
 
 	$query="SELECT regionid, countrycode FROM ninupdates_regions WHERE ninupdates_regions.regioncode='".$region."'";
@@ -432,7 +433,8 @@ function initialize($generation)
 	}
 	else
 	{
-		die("Row doesn't exist in the db for region $region.\n");
+		echo("Row doesn't exist in the db for region $region.\n");
+		exit(2);
 	}
 
 	if($generation==0)
@@ -441,8 +443,16 @@ function initialize($generation)
 	}
 	else
 	{
-		if($useragent_fw==="" || $useragent_fw===NULL)die("useragent_fw field isn't set for system $system.\n");
-		if($eid==="" || $eid===NULL)die("eid field isn't set for system $system.\n");
+		if($useragent_fw==="" || $useragent_fw===NULL)
+		{
+			echo("useragent_fw field isn't set for system $system.\n");
+			exit(3);
+		}
+		if($eid==="" || $eid===NULL)
+		{
+			echo("eid field isn't set for system $system.\n");
+			exit(4);
+		}
 
 		$httpreq_useragent = "NintendoSDK Firmware/" . $useragent_fw . " (platform:NX; did:" . $deviceid . "; eid:" . $eid . ")";
 	}

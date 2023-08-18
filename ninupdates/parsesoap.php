@@ -6,7 +6,8 @@ require_once(dirname(__FILE__) . "/db.php");
 
 if($argc<5)
 {
-	die("Usage:\nphp parsesoap.php <soaprelydata path> <system(internal name)> <reportdate> <region>\n");
+	echo("Usage:\nphp parsesoap.php <soaprelydata path> <system(internal name)> <reportdate> <region>\n");
+	exit(1);
 }
 
 dbconnection_start();
@@ -20,7 +21,7 @@ if($soapdata===FALSE)
 {
 	dbconnection_end();
 	echo "Failed to read the soapdata.\n";
-	exit;
+	exit(2);
 }
 
 $query="SELECT id FROM ninupdates_consoles WHERE system='".$system."'";
@@ -31,7 +32,7 @@ if($numrows==0)
 {
 	dbconnection_end();
 	echo "The specified system is invalid.\n";
-	exit;
+	exit(3);
 }
 
 $row = mysqli_fetch_row($result);
@@ -45,7 +46,7 @@ if($numrows==0)
 {
 	dbconnection_end();
 	echo "Failed to find the specified report.\n";
-	exit;
+	exit(4);
 }
 
 $row = mysqli_fetch_row($result);

@@ -9,7 +9,8 @@ $logging_dir = "$sitecfg_workdir/weblogs/titlesetdesc";
 
 if($argc<2)
 {
-	die("Usage:\nphp manage_titledesc.php <titleid> <description text when setting the desc>\n");
+	echo("Usage:\nphp manage_titledesc.php <titleid> <description text when setting the desc>\n");
+	exit(1);
 }
 
 dbconnection_start();
@@ -29,7 +30,7 @@ if($numrows==0)
 
 	echo "Row for titleid not found.\n";
 
-	return 1;
+	exit(2);
 }
 
 $row = mysqli_fetch_row($result);

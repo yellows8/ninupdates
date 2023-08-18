@@ -8,7 +8,8 @@ include_once("http_pagelogger.php");
 
 if($argc<6)
 {
-	die("Usage:\nphp http_pagelogger_cli.php <url> <datadir> <msgprefix> <msgurl> <enable_notification> [optional msgtarget]\n");
+	echo("Usage:\nphp http_pagelogger_cli.php <url> <datadir> <msgprefix> <msgurl> <enable_notification> [optional msgtarget]\n");
+	exit(1);
 }
 
 if($argc<7)

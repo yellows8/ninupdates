@@ -6,7 +6,8 @@ require_once(dirname(__FILE__) . "/db.php");
 
 if($argc<7)
 {
-	die("Usage:\nphp manage_consoles.php <system(internal name)> <sysname(display name)> <clientcertfn> <clientprivfn> <nushttpsurl> <platformid> {optional regions}\n");
+	echo("Usage:\nphp manage_consoles.php <system(internal name)> <sysname(display name)> <clientcertfn> <clientprivfn> <nushttpsurl> <platformid> {optional regions}\n");
+	exit(1);
 }
 
 dbconnection_start();

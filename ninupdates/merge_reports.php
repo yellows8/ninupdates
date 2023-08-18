@@ -6,7 +6,8 @@ require_once(dirname(__FILE__) . "/db.php");
 
 if($argc<4)
 {
-	die("This merges the specified reports and all related data in the mysql database.\nUsage:\nphp merge_reports.php <system(internal name)> <dst_reportdate> <src_reportdate>\n");
+	echo("This merges the specified reports and all related data in the mysql database.\nUsage:\nphp merge_reports.php <system(internal name)> <dst_reportdate> <src_reportdate>\n");
+	exit(1);
 }
 
 dbconnection_start();
@@ -22,7 +23,8 @@ $numrows=mysqli_num_rows($result);
 if($numrows==0)
 {
 	dbconnection_end();
-	die("Failed to find the specified system.\n");
+	echo("Failed to find the specified system.\n");
+	exit(2);
 }
 
 $row = mysqli_fetch_row($result);
@@ -35,7 +37,8 @@ $numrows=mysqli_num_rows($result);
 if($numrows==0)
 {
 	dbconnection_end();
-	die("Failed to find the specified dst-report with the input system.\n");
+	echo("Failed to find the specified dst-report with the input system.\n");
+	exit(3);
 }
 
 $row = mysqli_fetch_row($result);
@@ -50,7 +53,8 @@ $numrows=mysqli_num_rows($result);
 if($numrows==0)
 {
 	dbconnection_end();
-	die("Failed to find the specified src-report with the input system.\n");
+	echo("Failed to find the specified src-report with the input system.\n");
+	exit(4);
 }
 
 $row = mysqli_fetch_row($result);
@@ -65,7 +69,8 @@ $numrows=mysqli_num_rows($result);
 if($numrows==0)
 {
 	dbconnection_end();
-	die("Failed to load the regions field for this system.\n");
+	echo("Failed to load the regions field for this system.\n");
+	exit(5);
 }
 
 $row = mysqli_fetch_row($result);
@@ -76,7 +81,8 @@ $result=mysqli_query($mysqldb, $query);
 if($result===FALSE)
 {
 	dbconnection_end();
-	die("Failed to update ninupdates_titles.");
+	echo("Failed to update ninupdates_titles.\n");
+	exit(6);
 }
 
 $query = "UPDATE ninupdates_systitlehashes SET reportid='".$dst_reportid."' WHERE reportid='".$src_reportid."'";
@@ -84,7 +90,8 @@ $result=mysqli_query($mysqldb, $query);
 if($result===FALSE)
 {
 	dbconnection_end();
-	die("Failed to update ninupdates_systitlehashes.");
+	echo("Failed to update ninupdates_systitlehashes.\n");
+	exit(7);
 }
 
 $query = "UPDATE ninupdates_officialchangelogs SET reportid='".$dst_reportid."' WHERE reportid='".$src_reportid."'";
@@ -92,7 +99,8 @@ $result=mysqli_query($mysqldb, $query);
 if($result===FALSE)
 {
 	dbconnection_end();
-	die("Failed to update ninupdates_officialchangelogs.");
+	echo("Failed to update ninupdates_officialchangelogs.\n");
+	exit(8);
 }
 
 $new_regions = "";
@@ -141,7 +149,8 @@ $result=mysqli_query($mysqldb, $query);
 if($result===FALSE)
 {
 	dbconnection_end();
-	die("Failed to delete the report.");
+	echo("Failed to delete the report.\n");
+	exit(9);
 }
 
 $query = "UPDATE ninupdates_reports SET regions='".$new_regions."' WHERE id='".$dst_reportid."' && ninupdates_reports.systemid=$systemid";
@@ -149,7 +158,8 @@ $result=mysqli_query($mysqldb, $query);
 if($result===FALSE)
 {
 	dbconnection_end();
-	die("Failed to update ninupdates_reports regions.");
+	echo("Failed to update ninupdates_reports regions.\n");
+	exit(10);
 }
 
 dbconnection_end();

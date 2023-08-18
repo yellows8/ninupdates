@@ -6,7 +6,8 @@ require_once(dirname(__FILE__) . "/db.php");
 
 if($argc<3)
 {
-	die("Get/set the updatever, etc.\nUsage:\nphp manage_report_updatever.php <system(internal name)> <reportdate> [Options]\nOptions:\n--updatever=<ver>\n--updatever_autoset=<val>\n--wikibot_runfinished=<val>\n--wikipage_exists=<val>\n");
+	echo("Get/set the updatever, etc.\nUsage:\nphp manage_report_updatever.php <system(internal name)> <reportdate> [Options]\nOptions:\n--updatever=<ver>\n--updatever_autoset=<val>\n--wikibot_runfinished=<val>\n--wikipage_exists=<val>\n");
+	exit(1);
 }
 
 dbconnection_start();
@@ -54,7 +55,8 @@ $numrows=mysqli_num_rows($result);
 if($numrows==0)
 {
 	dbconnection_end();
-	die("Failed to find the specified system.\n");
+	echo("Failed to find the specified system.\n");
+	exit(2);
 }
 
 $row = mysqli_fetch_row($result);
@@ -67,12 +69,15 @@ $numrows=mysqli_num_rows($result);
 if($numrows==0)
 {
 	dbconnection_end();
-	die("Failed to find the specified report with the input system.\n");
+	echo("Failed to find the specified report with the input system.\n");
+	exit(3);
 }
 
 $row = mysqli_fetch_row($result);
 $reportid = $row[0];
 $report_updatever = $row[1];
+
+$ret=0;
 
 if($argc == 3)
 {
@@ -123,14 +128,21 @@ else
 		$cnt++;
 	}
 
-	if($cnt==0) die("Unrecognized args.\n");
+	if($cnt==0)
+	{
+		echo("Unrecognized args.\n");
+		$ret = 0;
+	}
+	else
+	{
+		$query.= " WHERE id=$reportid";
+		$result=mysqli_query($mysqldb, $query);
 
-	$query.= " WHERE id=$reportid";
-	$result=mysqli_query($mysqldb, $query);
-
-	writeNormalLog($logmsg);
+		writeNormalLog($logmsg);
+	}
 }
 
 dbconnection_end();
+exit($ret);
 
 ?>

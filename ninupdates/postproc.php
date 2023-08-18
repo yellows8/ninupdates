@@ -6,7 +6,8 @@ require_once(dirname(__FILE__) . "/db.php");
 
 if($argc<3)
 {
-	die("Usage:\nphp postproc.php <reportdate> <system(internal name)>\n");
+	echo("Usage:\nphp postproc.php <reportdate> <system(internal name)>\n");
+	exit(1);
 }
 
 dbconnection_start();
@@ -21,7 +22,8 @@ $numrows=mysqli_num_rows($result);
 if($numrows==0)
 {
 	dbconnection_end();
-	die("Failed to find the specified report with the input system, where the postproc_runfinished flag is set to 0.\n");
+	echo("Failed to find the specified report with the input system, where the postproc_runfinished flag is set to 0.\n");
+	exit(2);
 }
 
 $row = mysqli_fetch_row($result);

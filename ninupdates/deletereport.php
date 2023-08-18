@@ -6,7 +6,8 @@ require_once(dirname(__FILE__) . "/db.php");
 
 if($argc<3)
 {
-	die("This deletes the specified report and all data in the mysql database linked to it.\nUsage:\nphp deletereport.php <reportdate> <system(internal name)>\n");
+	echo("This deletes the specified report and all data in the mysql database linked to it.\nUsage:\nphp deletereport.php <reportdate> <system(internal name)>\n");
+	exit(1);
 }
 
 dbconnection_start();
@@ -21,7 +22,8 @@ $numrows=mysqli_num_rows($result);
 if($numrows==0)
 {
 	dbconnection_end();
-	die("Failed to find the specified report with the input system.\n");
+	echo("Failed to find the specified report with the input system.\n");
+	exit(2);
 }
 
 $row = mysqli_fetch_row($result);
