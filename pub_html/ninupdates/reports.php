@@ -318,8 +318,6 @@ if($reportdate=="")
 
 	$con.= "<br />$sitecfg_homepage_footer<br /><br />\n";
 
-	if($sitecfg_twitter_username!=="")$con.= "<a class=\"twitter-timeline\" data-width=\"300\" data-height=\"300\" data-dnt=\"true\" href=\"https://twitter.com/$sitecfg_twitter_username\">Tweets by $sitecfg_twitter_username</a> <script async src=\"https://platform.twitter.com/widgets.js\" charset=\"utf-8\"></script>";
-
 	$con.= "</body></html>";
 }
 else
