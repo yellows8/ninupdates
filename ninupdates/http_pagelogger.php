@@ -63,12 +63,13 @@ function sendnotif_pagelogger($msg, $enable_notification, $msgtarget)
 	if($enable_notification>=1)
 	{
 		$args = [$msg, "--social"];
-		if($enable_notification===1)
+		if($enable_notification & (1<<2)) // Previously val1. Use bit2 to avoid collisions with old values.
 		{
 			$args[] = "--irc";
 			$args[] = "--irctarget=$msgtarget";
 		}
-		if($enable_notification===3) $args[] = "--webhook";
+		if($enable_notification & (1<<1)) $args[] = "--webhook"; // Previously val3.
+		if($enable_notification & (1<<3)) $args[] = "--fedivisibility=unlisted";
 		send_notif($args);
 	}
 }
@@ -78,6 +79,8 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 	global $httpstat_pagelogger, $lastmod_dateid, $lastmod;
 
 	$enable_notification = intval($enable_notification);
+
+	if(!is_dir($datadir)) mkdir($datadir, 0775);
 
 	init_curl_pagelogger();
 	$buf = send_httprequest_pagelogger($url);
