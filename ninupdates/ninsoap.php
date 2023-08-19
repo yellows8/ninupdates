@@ -657,6 +657,13 @@ function compare_titlelists($curdate, $generation)
 
 		if($sysupdate_systitlehashes[$region]!=$titlehashold)
 		{
+			if(($titlehashold!=NULL && $titlehashold!="") && ($sysupdate_systitlehashes[$region]!=NULL && $sysupdate_systitlehashes[$region]!=""))
+			{
+				$msg = "Potential sysupdate detected for $system region $region, checking titlelist...";
+				echo "Sending notif: $msg\n";
+				send_notif([$msg, "--webhook"]);
+			}
+
 			return titlelist_dbupdate_withcmd($curdate, $generation);
 		}
 		else
