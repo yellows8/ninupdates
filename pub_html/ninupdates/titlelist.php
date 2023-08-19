@@ -118,18 +118,27 @@ if($soapreply=="1" && $reportdate!="" && $region!="")
 	dbconnection_end();
 
 	$path = "$sitecfg_workdir/soap$system/$region/$reportdate.html.soap";
-	$con = file_get_contents($path);
-
-	if($con!==FALSE)
+	if(!file_exists($path))
 	{
+		writeNormalLog("SOAPREPLY FILE DOESN'T EXIST: $path\n");
 		header("Content-Type: text/plain");
-		echo $con;
+		echo "The server reply data for this is not available.\n";
 	}
 	else
 	{
-		writeNormalLog("FAILED TO OPEN SOAPREPLY FILE: $path\n");
-		header("Content-Type: text/plain");
-		echo "The server reply data for this is not available.\n";
+		$con = file_get_contents($path);
+
+		if($con!==FALSE)
+		{
+			header("Content-Type: text/plain");
+			echo $con;
+		}
+		else
+		{
+			writeNormalLog("FAILED TO OPEN SOAPREPLY FILE: $path\n");
+			header("Content-Type: text/plain");
+			echo "The server reply data for this is not available.\n";
+		}
 	}
 
 	return;
