@@ -93,7 +93,10 @@ function do_systems_soap()
 
 				$get_officialchangelog_timestamp = gmdate("Y-m-d_H-i-s");
 
-				system("php $sitecfg_workdir/get_officialchangelog_cli.php > $sitecfg_workdir/get_officialchangelog_scheduled_out/$get_officialchangelog_timestamp 2>&1 &");
+				$dirpath = "$sitecfg_workdir/get_officialchangelog_scheduled_out";
+				if(!is_dir($dirpath)) mkdir($dirpath, 0700);
+
+				system("php ".escapeshellarg("$sitecfg_workdir/get_officialchangelog_cli.php")." > ".escapeshellarg("$dirpath/$get_officialchangelog_timestamp")." 2>&1 &");
 			}
 		}
 
@@ -112,7 +115,10 @@ function do_systems_soap()
 
 				$wikibot_timestamp = gmdate("Y-m-d_H-i-s");
 
-				system("php $sitecfg_workdir/wikibot.php scheduled > $sitecfg_workdir/wikibot_out/$wikibot_timestamp 2>&1 &");
+				$dirpath = "$sitecfg_workdir/wikibot_out";
+				if(!is_dir($dirpath)) mkdir($dirpath, 0700);
+
+				system("php ".escapeshellarg("$sitecfg_workdir/wikibot.php")." scheduled > ".escapeshellarg("$dirpath/$wikibot_timestamp")." 2>&1 &");
 			}
 		}
 
@@ -125,6 +131,9 @@ function do_systems_soap()
 			echo "Starting post-processing tasks for processing $numrows report(s)...\n";
 
 			$postproc_timestamp = gmdate("Y-m-d_H-i-s");
+
+			$dirpath = "$sitecfg_workdir/postproc_out";
+			if(!is_dir($dirpath)) mkdir($dirpath, 0700);
 
 			for($i=0; $i<$numrows; $i++)
 			{
@@ -144,7 +153,7 @@ function do_systems_soap()
 				if($proc_running==0)
 				{
 					echo "Starting postproc task for $reportdate-$sys...\n";
-					system("$maincmd_str > $sitecfg_workdir/postproc_out/$postproc_timestamp 2>&1 &");
+					system("$maincmd_str > $dirpath/$postproc_timestamp 2>&1 &");
 				}
 				else
 				{
@@ -492,7 +501,10 @@ function init_curl()
 {
 	global $curl_handle, $sitecfg_workdir, $error_FH;
 
-	$path = "$sitecfg_workdir/debuglogs/error.log";
+	$dirpath = "$sitecfg_workdir/debuglogs";
+	if(!is_dir($dirpath)) mkdir($dirpath, 0770);
+
+	$path = "$dirpath/error.log";
 	$error_FH = fopen($path, "w"); // truncate
 	fclose($error_FH);
 	$error_FH = fopen($path, "a"); // Use append-mode so that each curl request logs properly (otherwise only the last request is logged).
@@ -583,15 +595,21 @@ function load_titlelist_withcmd($reportdate)
 		return -2;
 	}
 
-	$titleid = escapeshellarg($newtitles[0]);
-	$titlever = escapeshellarg($newtitlesversions[0]);
+	$titleid = $newtitles[0];
+	$titlever = $newtitlesversions[0];
 
-	$filepath = "$sitecfg_workdir/load_titlelist_data/titlelist/$reportdate-$system";
-	$maincmd_str = "$sitecfg_load_titlelist_cmd $reportdate $system $region $filepath $sitecfg_workdir/load_titlelist_data $titleid,$titlever";
+	$dirpath = "$sitecfg_workdir/load_titlelist_data";
+	if(!is_dir($dirpath)) mkdir($dirpath, 0700);
+
+	$filepath = "$dirpath/titlelist";
+	if(!is_dir($filepath)) mkdir($filepath, 0700);
+
+	$filepath = "$filepath/$reportdate-$system";
+	$maincmd_str = "$sitecfg_load_titlelist_cmd ".escapeshellarg($reportdate)." ".escapeshellarg($system)." ".escapeshellarg($region)." ".escapeshellarg($filepath)." ".escapeshellarg($dirpath)." ".escapeshellarg("$titleid,$titlever");
 
 	echo "Running load_titlelist cmd...\n";
 	$retval = 0;
-	$ret = system("$maincmd_str > $sitecfg_workdir/load_titlelist_out/$reportdate-$system 2>&1", $retval);
+	$ret = system("$maincmd_str > ".escapeshellarg("$sitecfg_workdir/load_titlelist_out/$reportdate-$system")." 2>&1", $retval);
 	if($ret===FALSE || $retval!=0)
 	{
 		echo "cmd failed.\n";
