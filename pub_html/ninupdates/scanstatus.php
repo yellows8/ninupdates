@@ -12,9 +12,16 @@ $con .= "<head><meta charset=\"UTF-8\" /><title>Nintendo System Update Last Scan
 
 $query="SELECT lastscan FROM ninupdates_management";
 $result=mysqli_query($mysqldb, $query);
-$row = mysqli_fetch_row($result);
+$numrows=mysqli_num_rows($result);
 
-$con.= "Last scan datetime: " . $row[0] . "<br />\n";
+$lastscan = "N/A";
+if($numrows>0)
+{
+	$row = mysqli_fetch_row($result);
+	$lastscan = $row[0];
+}
+
+$con.= "Last scan datetime: " . $lastscan . "<br />\n";
 
 $con.= "</body></html>";
 
