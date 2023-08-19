@@ -204,7 +204,7 @@ $updateverquery = "GROUP_CONCAT(DISTINCT ninupdates_reports.updateversion ORDER 
 $filter_tid_query = "";
 if($filter_tid!="")$filter_tid_query = " && ninupdates_titleids.titleid='".$filter_tid."'";
 
-$query = "SELECT ninupdates_titleids.titleid, ninupdates_titleids.description, $versionquery ninupdates_titles.region, ninupdates_regions.regionid, $reportdatequery $updateverquery GROUP_CONCAT(fssize ORDER BY ninupdates_titles.version SEPARATOR ','), GROUP_CONCAT(tmdsize ORDER BY ninupdates_titles.version SEPARATOR ','), GROUP_CONCAT(tiksize ORDER BY ninupdates_titles.version SEPARATOR ','), ninupdates_titles.region FROM ninupdates_titles, ninupdates_titleids, ninupdates_reports, ninupdates_regions WHERE ninupdates_titles.systemid=$systemid && ninupdates_reports.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_reports.id=ninupdates_titles.reportid && ninupdates_regions.regioncode=ninupdates_titles.region$filter_tid_query";
+$query = "SELECT ninupdates_titles.tid, ninupdates_titleids.titleid, ninupdates_titleids.description, $versionquery ninupdates_titles.region, ninupdates_regions.regionid, $reportdatequery $updateverquery GROUP_CONCAT(fssize ORDER BY ninupdates_titles.version SEPARATOR ','), GROUP_CONCAT(tmdsize ORDER BY ninupdates_titles.version SEPARATOR ','), GROUP_CONCAT(tiksize ORDER BY ninupdates_titles.version SEPARATOR ','), ninupdates_titles.region FROM ninupdates_titles, ninupdates_titleids, ninupdates_reports, ninupdates_regions WHERE ninupdates_titles.systemid=$systemid && ninupdates_reports.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_reports.id=ninupdates_titles.reportid && ninupdates_regions.regioncode=ninupdates_titles.region$filter_tid_query";
 if($reportquery!="")$query.= $reportquery;
 if($soapquery!="")$query.= $soapquery;
 if($regionquery!="")$query.= $regionquery;
@@ -222,14 +222,15 @@ $updatesize = 0;
 for($i=0; $i<$numrows; $i++)
 {
 	$row = mysqli_fetch_row($result);
-	$titleid = $row[0];
-	$desctext = $row[1];
-	$versions = $row[2];
-	$reg = $row[3];
-	$regionid = $row[4];
-	$reportdates = $row[5];
-	$updateversions = $row[6];
-	$regioncode = $row[10];
+	$tid = $row[0];
+	$titleid = $row[1];
+	$desctext = $row[2];
+	$versions = $row[3];
+	$reg = $row[4];
+	$regionid = $row[5];
+	$reportdates = $row[6];
+	$updateversions = $row[7];
+	$regioncode = $row[8];
 
 	$versiontext = $versions;
 	$updatevers = $updateversions;
@@ -300,7 +301,7 @@ for($i=0; $i<$numrows; $i++)
 		$versiontext = "v$versions";
 	}
 
-	for($sizei=7; $sizei<=9; $sizei++)
+	for($sizei=8; $sizei<=10; $sizei++)
 	{
 		$tmpsizes = $row[$sizei];
 		$tmpsize = strtok($tmpsizes, ",");
@@ -337,42 +338,45 @@ for($i=0; $i<$numrows; $i++)
 	if($desctext == NULL || $desctext == "")$desctext = "<a href=\"title_setdesc.php?titleid=$titleid\">N/A</a>";
 
 	$titlelist_array[] = array();
-	$titlelist_array[$i][0] = $titleid;
+	$titlelist_array[$i][0] = $tid;
+	$titlelist_array[$i][1] = $titleid;
 	if($genwiki!="" || $gencsv!="")
 	{
-		$titlelist_array[$i][1] = $regionid;
+		$titlelist_array[$i][2] = $regionid;
 	}
 	else
 	{
-		$titlelist_array[$i][1] = $regtext;
+		$titlelist_array[$i][2] = $regtext;
 	}
 
-	$titlelist_array[$i][2] = $desctext;
-	$titlelist_array[$i][3] = $versiontext;
-	$titlelist_array[$i][4] = $updatevers;
-	$titlelist_array[$i][5] = $versions;
-	$titlelist_array[$i][6] = $regioncode;
-	$titlelist_array[$i][8] = $titleid_text;
+	$titlelist_array[$i][3] = $desctext;
+	$titlelist_array[$i][4] = $versiontext;
+	$titlelist_array[$i][5] = $updatevers;
+	$titlelist_array[$i][6] = $versions;
+	$titlelist_array[$i][7] = $regioncode;
+	$titlelist_array[$i][9] = $titleid_text;
 }
 
 $count = 0;
 for($i=0; $i<$titlelist_array_numentries; $i++)
 {
-	$titleid = $titlelist_array[$i][0];
-	$regtext = $titlelist_array[$i][1];
-	$desctext = $titlelist_array[$i][2];
-	$versiontext = $titlelist_array[$i][3];
-	$updatevers = $titlelist_array[$i][4];
-	$versions = $titlelist_array[$i][5];
-	$regioncode = $titlelist_array[$i][6];
-	$titleid_text = $titlelist_array[$i][8];
+	$tid = $titlelist_array[$i][0];
+	$titleid = $titlelist_array[$i][1];
+	$regtext = $titlelist_array[$i][2];
+	$desctext = $titlelist_array[$i][3];
+	$versiontext = $titlelist_array[$i][4];
+	$updatevers = $titlelist_array[$i][5];
+	$versions = $titlelist_array[$i][6];
+	$regioncode = $titlelist_array[$i][7];
+	$titleid_text = $titlelist_array[$i][9];
 
 	$titlestatus = "";
 	if($reportdate!="" && $usesoap=="")
 	{
 		$titlestatus = "N/A";
 
-		$query = "SELECT MIN(ninupdates_titles.version) FROM ninupdates_titles, ninupdates_titleids WHERE ninupdates_titles.systemid=$systemid && ninupdates_titles.tid=ninupdates_titleids.id && ninupdates_titleids.titleid='$titleid' && ninupdates_titles.region='$regioncode'";
+		// Get the lowest version for the specified title. NOTE: this is slow with the query being done $titlelist_array_numentries times.
+		$query = "SELECT MIN(ninupdates_titles.version) FROM ninupdates_titles WHERE ninupdates_titles.systemid=$systemid && ninupdates_titles.tid=$tid && ninupdates_titles.region='$regioncode'";
 		$result=mysqli_query($mysqldb, $query);
 		if(mysqli_num_rows($result)>0)
 		{
@@ -390,7 +394,7 @@ for($i=0; $i<$titlelist_array_numentries; $i++)
 		}
 	}
 
-	$titlelist_array[$i][7] = $titlestatus;
+	$titlelist_array[$i][8] = $titlestatus;
 
 	if($genwiki!="")
 	{
@@ -423,14 +427,14 @@ if($gentext!="" && $titlelist_array_updatedtitles>0)
 	$count = 0;
 	for($i=0; $i<$titlelist_array_numentries; $i++)
 	{
-		$titleid = $titlelist_array[$i][0];
-		$regtext = $titlelist_array[$i][1];
-		$desctext = $titlelist_array[$i][2];
-		$versiontext = $titlelist_array[$i][3];
-		$updatevers = $titlelist_array[$i][4];
-		$versions = $titlelist_array[$i][5];
-		$regioncode = $titlelist_array[$i][6];
-		$titlestatus = $titlelist_array[$i][7];
+		$titleid = $titlelist_array[$i][1];
+		$regtext = $titlelist_array[$i][2];
+		$desctext = $titlelist_array[$i][3];
+		$versiontext = $titlelist_array[$i][4];
+		$updatevers = $titlelist_array[$i][5];
+		$versions = $titlelist_array[$i][6];
+		$regioncode = $titlelist_array[$i][7];
+		$titlestatus = $titlelist_array[$i][8];
 
 		if($titlestatus!="Changed")continue;
 
@@ -464,14 +468,14 @@ if($gentext!="" && $titlelist_array_newtitles>0)
 	$count = 0;
 	for($i=0; $i<$titlelist_array_numentries; $i++)
 	{
-		$titleid = $titlelist_array[$i][0];
-		$regtext = $titlelist_array[$i][1];
-		$desctext = $titlelist_array[$i][2];
-		$versiontext = $titlelist_array[$i][3];
-		$updatevers = $titlelist_array[$i][4];
-		$versions = $titlelist_array[$i][5];
-		$regioncode = $titlelist_array[$i][6];
-		$titlestatus = $titlelist_array[$i][7];
+		$titleid = $titlelist_array[$i][1];
+		$regtext = $titlelist_array[$i][2];
+		$desctext = $titlelist_array[$i][3];
+		$versiontext = $titlelist_array[$i][4];
+		$updatevers = $titlelist_array[$i][5];
+		$versions = $titlelist_array[$i][6];
+		$regioncode = $titlelist_array[$i][7];
+		$titlestatus = $titlelist_array[$i][8];
 
 		if($titlestatus=="Changed")continue;
 
@@ -540,10 +544,11 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="")
 		$con.= "<br/>\nTitle info: <br/>\n<br/>\n";
 		$titleinfo_count = 0;
 
-		$titledata_base = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system/";
+		$titledata_base = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system";
 
-		if(file_exists($titledata_base)!==FALSE)
+		if(is_dir($titledata_base))
 		{
+			$titledata_base.= "/";
 			try {
 				$diriter = new RecursiveDirectoryIterator($titledata_base);
 				$iter = new RecursiveIteratorIterator($diriter);
