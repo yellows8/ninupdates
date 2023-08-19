@@ -371,7 +371,7 @@ for($i=0; $i<$titlelist_array_numentries; $i++)
 	$titleid_text = $titlelist_array[$i][9];
 
 	$titlestatus = "";
-	if($reportdate!="" && $usesoap=="")
+	if($reportdate!="" && $usesoap=="" && ($genwiki=="" && $gencsv==""))
 	{
 		$titlestatus = "N/A";
 
