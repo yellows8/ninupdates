@@ -10,6 +10,7 @@ parser.add_argument('msg', help='Notification message text.')
 parser.add_argument('--irctarget', nargs='*', dest='irctarget', help='Target IRC filename. Multiple filenames can be specified as seperate args following --irctarget.')
 parser.add_argument('--irc', nargs='?', dest='irc', const='', help='Send IRC notification, with optional message text which overrides msg.')
 parser.add_argument('--fedi', nargs='?', dest='fedi', const='', help='Send Fediverse/Mastodon-API-compatible notification, with optional message text which overrides msg.')
+parser.add_argument('--fedivisibility', nargs='?', dest='fedivisibility', help='String value for the visibility field (with --fedi), otherwise the account default is used.')
 parser.add_argument('--twitter', nargs='?', dest='twitter', const='', help='Send Twitter notification, with optional message text which overrides msg.')
 parser.add_argument('--webhook', nargs='?', dest='webhook', const='', help='Send webhook notification, with optional message text which overrides msg.')
 parser.add_argument('--webhooktarget', dest='webhooktarget', help='Webhook target_hook id.')
@@ -41,6 +42,10 @@ if args.fedi is not None:
     if fedi_msg is not None and len(fedi_msg)==0:
         fedi_msg = msg
 
+fedivisibility = args.fedivisibility
+if fedivisibility is not None and len(fedivisibility)==0:
+    fedivisibility = None
+
 if args.twitter is not None:
     twitter_msg = args.twitter
     if twitter_msg is not None and len(twitter_msg)==0:
@@ -61,7 +66,12 @@ if irc_msg is not None:
     asyncio.run(run_notif("php", "send_irc.php", irc_msg, *irc_target))
 
 if fedi_msg is not None:
-    asyncio.run(run_notif(sys.executable, "./send_mastodon.py", fedi_msg))
+    args = [sys.executable, "./send_mastodon.py"]
+    if fedivisibility is not None:
+        args.append("--visibility")
+        args.append(fedivisibility)
+    args.append(fedi_msg)
+    asyncio.run(run_notif(*args))
 
 if twitter_msg is not None:
     asyncio.run(run_notif("php", "tweet.php", twitter_msg))
