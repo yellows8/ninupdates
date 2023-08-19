@@ -49,4 +49,15 @@ function sendtweet($msg)
 	return $ret;
 }
 
+if($_SERVER['SCRIPT_NAME'] === "tweet.php")
+{
+	if($argc<2)
+	{
+		echo("Usage:\nphp tweet.php <msg>\n");
+		exit(1);
+	}
+
+	sendtweet($argv[1]);
+}
+
 ?>

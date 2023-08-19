@@ -64,7 +64,7 @@ if fedi_msg is not None:
     asyncio.run(run_notif(sys.executable, "./send_mastodon.py", fedi_msg))
 
 if twitter_msg is not None:
-    asyncio.run(run_notif("php", "tweet_cli.php", twitter_msg))
+    asyncio.run(run_notif("php", "tweet.php", twitter_msg))
 
 if webhook_msg is not None:
     args = ["./webhook.py", webhook_msg]
