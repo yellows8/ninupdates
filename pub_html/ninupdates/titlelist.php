@@ -576,6 +576,7 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="")
 			try {
 				$diriter = new RecursiveDirectoryIterator($titledata_base);
 				$iter = new RecursiveIteratorIterator($diriter);
+				$iter->setMaxDepth(4);
 				$regex_iter = new RegexIterator($iter, '/^.*\..*info$/', RecursiveRegexIterator::GET_MATCH);
 				foreach($regex_iter as $path => $pathobj)
 				{
