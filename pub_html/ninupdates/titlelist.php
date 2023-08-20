@@ -239,7 +239,7 @@ for($i=0; $i<$numrows; $i++)
 	$regionid = $row[5];
 	$reportdates = $row[6];
 	$updateversions = $row[7];
-	$regioncode = $row[8];
+	$regioncode = $row[11];
 
 	$versiontext = $versions;
 	$updatevers = $updateversions;
@@ -363,7 +363,47 @@ for($i=0; $i<$numrows; $i++)
 	$titlelist_array[$i][5] = $updatevers;
 	$titlelist_array[$i][6] = $versions;
 	$titlelist_array[$i][7] = $regioncode;
+	$titlelist_array[$i][8] = "N/A";
 	$titlelist_array[$i][9] = $titleid_text;
+}
+
+if($reportdate!="" && $usesoap=="" && ($genwiki=="" && $gencsv==""))
+{
+	$query = "SELECT ninupdates_titles.tid, ninupdates_titles.region, MIN(ninupdates_titles.version) FROM ninupdates_titles WHERE ninupdates_titles.systemid=$systemid".$regionquery." GROUP BY ninupdates_titles.tid, ninupdates_titles.region";
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
+	for($rowi=0; $rowi<$numrows; $rowi++)
+	{
+		$row = mysqli_fetch_row($result);
+		$min_tid = $row[0];
+		$min_region = $row[1];
+		$min_version = $row[2];
+
+		for($i=0; $i<$titlelist_array_numentries; $i++)
+		{
+			$tid = $titlelist_array[$i][0];
+			$versions = $titlelist_array[$i][6];
+			$regioncode = $titlelist_array[$i][7];
+
+			if($tid == $min_tid && $regioncode == $min_region)
+			{
+				$titlestatus = "Changed";
+				if($versions==$min_version)
+				{
+					$titlestatus = "New";
+					$titlelist_array_newtitles++;
+				}
+				else
+				{
+					$titlelist_array_updatedtitles++;
+				}
+
+				$titlelist_array[$i][8] = $titlestatus;
+
+				break;
+			}
+		}
+	}
 }
 
 $count = 0;
@@ -377,33 +417,8 @@ for($i=0; $i<$titlelist_array_numentries; $i++)
 	$updatevers = $titlelist_array[$i][5];
 	$versions = $titlelist_array[$i][6];
 	$regioncode = $titlelist_array[$i][7];
+	$titlestatus = $titlelist_array[$i][8];
 	$titleid_text = $titlelist_array[$i][9];
-
-	$titlestatus = "";
-	if($reportdate!="" && $usesoap=="" && ($genwiki=="" && $gencsv==""))
-	{
-		$titlestatus = "N/A";
-
-		// Get the lowest version for the specified title. NOTE: this is slow with the query being done $titlelist_array_numentries times.
-		$query = "SELECT MIN(ninupdates_titles.version) FROM ninupdates_titles WHERE ninupdates_titles.systemid=$systemid && ninupdates_titles.tid=$tid && ninupdates_titles.region='$regioncode'";
-		$result=mysqli_query($mysqldb, $query);
-		if(mysqli_num_rows($result)>0)
-		{
-			$row = mysqli_fetch_row($result);
-			$titlestatus = "Changed";
-			if($versions==$row[0])
-			{
-				$titlestatus = "New";
-				$titlelist_array_newtitles++;
-			}
-			else
-			{
-				$titlelist_array_updatedtitles++;
-			}
-		}
-	}
-
-	$titlelist_array[$i][8] = $titlestatus;
 
 	if($genwiki!="")
 	{
