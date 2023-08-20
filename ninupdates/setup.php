@@ -29,7 +29,7 @@ function ninupdates_setup()
   `eid` varchar(8) DEFAULT NULL,
   `generation` int DEFAULT '0',
   PRIMARY KEY (`id`)
-)";
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
 	$result=mysqli_query($mysqldb, $query);
 
@@ -40,7 +40,7 @@ function ninupdates_setup()
   `lastreqstatus` varchar(256) DEFAULT NULL,
   `prevreqstatus` varchar(256) DEFAULT NULL,
   PRIMARY KEY (`id`)
-)";
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
 	$result=mysqli_query($mysqldb, $query);
 
@@ -50,7 +50,7 @@ function ninupdates_setup()
   `url` varchar(256) DEFAULT NULL,
   `systemid` int DEFAULT NULL,
   PRIMARY KEY (`id`)
-)";
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
 	$result=mysqli_query($mysqldb, $query);
 
@@ -58,11 +58,11 @@ function ninupdates_setup()
   `id` int NOT NULL AUTO_INCREMENT,
   `pageid` int DEFAULT NULL,
   `reportid` int DEFAULT NULL,
-  `ninsite_html` varchar(10240) DEFAULT NULL,
-  `display_html` varchar(10240) DEFAULT NULL,
-  `wiki_text` varchar(10240) DEFAULT NULL,
+  `ninsite_html` mediumtext DEFAULT NULL,
+  `display_html` mediumtext DEFAULT NULL,
+  `wiki_text` mediumtext DEFAULT NULL,
   PRIMARY KEY (`id`)
-)";
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
 	$result=mysqli_query($mysqldb, $query);
 
@@ -72,7 +72,7 @@ function ninupdates_setup()
   `regionid` varchar(3) DEFAULT NULL,
   `countrycode` varchar(2) DEFAULT NULL,
   PRIMARY KEY (`id`)
-)";
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
 	$result=mysqli_query($mysqldb, $query);
 
@@ -91,7 +91,7 @@ function ninupdates_setup()
   `wikipage_exists` int DEFAULT NULL,
   `postproc_runfinished` int DEFAULT NULL,
   PRIMARY KEY (`id`)
-)";
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
 	$result=mysqli_query($mysqldb, $query);
 
@@ -101,7 +101,7 @@ function ninupdates_setup()
   `region` varchar(4) DEFAULT NULL,
   `titlehash` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`id`)
-)";
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
 	$result=mysqli_query($mysqldb, $query);
 
@@ -110,7 +110,7 @@ function ninupdates_setup()
   `titleid` varchar(16) DEFAULT NULL,
   `description` varchar(256) DEFAULT NULL,
   PRIMARY KEY (`id`)
-)";
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
 	$result=mysqli_query($mysqldb, $query);
 
@@ -126,7 +126,7 @@ function ninupdates_setup()
   `curdate` datetime DEFAULT NULL,
   `reportid` int DEFAULT NULL,
   PRIMARY KEY (`id`)
-)";
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
 	$result=mysqli_query($mysqldb, $query);
 
@@ -140,7 +140,7 @@ function ninupdates_setup()
   `newsarchive_pagetitle` varchar(32) DEFAULT NULL,
   `homemenu_pagetitle` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`id`)
-)";
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
 	$result=mysqli_query($mysqldb, $query);
 
