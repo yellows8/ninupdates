@@ -332,7 +332,7 @@ else
   <th>Titlelist</th>
 </tr>\n";
 
-	$query="SELECT ninupdates_reports.regions, ninupdates_reports.reportdaterfc, ninupdates_reports.updateversion, ninupdates_reports.id, ninupdates_reports.wikipage_exists FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id && log='report'";
+	$query="SELECT ninupdates_reports.regions, ninupdates_reports.reportdaterfc, ninupdates_reports.updateversion, ninupdates_reports.id, ninupdates_reports.wikipage_exists, ninupdates_reports.postproc_runfinished, ninupdates_consoles.generation FROM ninupdates_reports, ninupdates_consoles WHERE reportdate='".$reportdate."' AND ninupdates_consoles.system='".$system."' AND ninupdates_reports.systemid=ninupdates_consoles.id AND log='report'";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 	if($numrows==0)
@@ -351,6 +351,8 @@ else
 	$updateversion = $row[2];
 	$reportid = $row[3];
 	$wikipage_exists = $row[4];
+	$postproc_runfinished = $row[5];
+	$generation = $row[6];
 
 	if(strlen($regions)==0)
 	{
@@ -458,6 +460,10 @@ else
 	if(file_exists("$sitecfg_workdir/updatedetails/$system/$reportdate")===TRUE)
 	{
 		$con.= "Update details are available <a href=\"updatedetails.php?date=$reportdate&sys=$system\">here</a>.<br/>\n<br/>\n";
+	}
+	else if($generation!=0 && $postproc_runfinished==0)
+	{
+		$con.= "Update details are not yet available, this should be available soon.<br/>\n<br/>\n";
 	}
 
 	if($wikipage_exists==="1")
