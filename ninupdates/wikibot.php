@@ -316,13 +316,14 @@ function wikibot_edit_navboxversions($api, $services, $updateversion, $reportdat
 	return 0;
 }
 
-function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag)
+function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless)
 {
 	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
 
 	$page_text = "";
 
-	$page_exists = 0;
+	$page_exists = False;
+	$page_updated = False;
 
 	if($rebootless_flag===False)
 	{
@@ -335,35 +336,30 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		{
 			wikibot_writelog("Updating NavboxVersions if needed...", 2, $reportdate);
 			$navbox_text = $navbox_revision->getContent()->getData();
-			wikibot_edit_navboxversions($api, $services, $updateversion, $reportdate, $navbox_pagename, $navbox_text);
+			wikibot_edit_navboxversions($api, $services, $updateversion_norebootless, $reportdate, $navbox_pagename, $navbox_text);
 		}
 	}
-	else
-	{
-		wikibot_writelog("Skipping sysupdate page handling since this report is rebootless.", 2, $reportdate);
 
-		$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikipage_exists=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
-		$result=mysqli_query($mysqldb, $query);
-
-		return 0;
-	}
-
-	$tmp_page = $services->newPageGetter()->getFromTitle($updateversion);
+	$tmp_page = $services->newPageGetter()->getFromTitle($updateversion_norebootless);
 	$tmp_revision = $tmp_page->getRevisions()->getLatest();
 
 	if($tmp_revision!==NULL)
 	{
-		wikibot_writelog("Sysupdate page already exists, skipping editing.", 2, $reportdate);
-
-		$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikipage_exists=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
-		$result=mysqli_query($mysqldb, $query);
-
-		$page_exists = 1;
-
-		return 0;
+		wikibot_writelog("Sysupdate page already exists, updating the page if needed...", 2, $reportdate);
+		$page_exists = True;
+		$page_text = $tmp_revision->getContent()->getData();
 	}
 
-	wikibot_writelog("Sysupdate page doesn't exist, generating a page...", 2, $reportdate);
+	if(!$page_exists)
+	{
+		wikibot_writelog("Sysupdate page doesn't exist, generating a page...", 2, $reportdate);
+
+		if($rebootless_flag)
+		{
+			wikibot_writelog("Sysupdate page doesn't exist but this report is rebootless, skipping page creation.", 0, $reportdate);
+			return 0;
+		}
+	}
 
 	$query="SELECT ninupdates_reports.regions, ninupdates_reports.id, ninupdates_consoles.sysname, ninupdates_consoles.system, ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updateversion='".$updateversion."' && ninupdates_reports.systemid=ninupdates_consoles.id && wikibot_runfinished=0";
 	$result_systems=mysqli_query($mysqldb, $query);
@@ -371,7 +367,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 
 	if($numrows==0)
 	{
-		wikibot_writelog("wikibot_edit_updatepage(): Failed to get regions field from the report row.", 0, $reportdate);
+		wikibot_writelog("wikibot_edit_updatepage(): Failed to load the report info where wikibot_runfinished=0.", 0, $reportdate);
 		return 1;
 	}
 
@@ -400,7 +396,12 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		if($system_index>0)$regions_list.=" ";
 		$regions_list.= "This $cursysname update was released for the following regions: ";
 
-		$reportlinks_list.= "* [$sitecfg_httpbase/reports.php?date=$curreportdate&sys=$cursystem]\n";
+		$searchtext = "/reports.php?date=$curreportdate&sys=$cursystem]";
+		$text = "[$sitecfg_httpbase$searchtext";
+		if(!$page_exists || strpos($page_text, $searchtext)===FALSE)
+		{
+			$reportlinks_list.= "* $text\n";
+		}
 
 		$regions_count = 0;
 		$region = strtok($regions, ",");
@@ -477,30 +478,97 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$regions_list.= ".";
 	}
 
-	$page_text.= "The $sysnames_list $updateversion system update was released on ".gmdate("F j, Y", $timestamp)." (UTC). $regions_list\n\n";
-	$page_text.= "Security flaws fixed: <fill this in manually later, see the updatedetails page from the ninupdates-report page(s) once available for now>.\n\n";
+	$timestamp_str = gmdate("F j, Y", $timestamp);
+	$changelog_hdr = "==Change-log==";
 
-	$page_text.= "==Change-log==\n";
-	$page_text.= "$changelog_text\n";
-
-	$page_text.= "==System Titles==\n";
-	$page_text.= "<fill this in (manually) later>\n";
-	$page_text.= "\n";
-
-	$page_text.= "==See Also==\n";
-	$page_text.= "System update report(s):\n";
-	$page_text.= $reportlinks_list;
-	$page_text.= "\n";
-
-	if($navbox_revision!==NULL)
+	if(!$page_exists)
 	{
-		$page_text.= "\n{{NavboxVersions}}\n\n";
-		$page_text.= "[[Category:System versions]]\n";
+		$page_updated = True;
+
+		$page_text.= "The $sysnames_list ".$updateversion_norebootless." system update was released on ".$timestamp_str." (UTC). $regions_list\n\n";
+		$page_text.= "Security flaws fixed: <fill this in manually later, see the updatedetails page from the ninupdates-report page(s) once available for now>.\n\n";
+
+		$page_text.= $changelog_hdr."\n";
+		$page_text.= "$changelog_text\n";
+
+		$page_text.= "==System Titles==\n";
+		$page_text.= "<fill this in (manually) later>\n";
+		$page_text.= "\n";
+
+		$page_text.= "==See Also==\n";
+		$page_text.= "System update report(s):\n";
+		$page_text.= $reportlinks_list;
+		$page_text.= "\n";
+
+		if($navbox_revision!==NULL)
+		{
+			$page_text.= "\n{{NavboxVersions}}\n\n";
+			$page_text.= "[[Category:System versions]]\n";
+		}
+	}
+	else
+	{
+		if($rebootless_flag===True)
+		{
+			if(strpos($page_text, $timestamp_str)===FALSE)
+			{
+				$insert_pos = strpos($page_text, $changelog_hdr);
+				if($insert_pos===FALSE)
+				{
+					wikibot_writelog("wikibot_edit_updatepage(): Failed to locate the changelog_hdr, skipping adding the rebootless text.", 0, $reportdate);
+				}
+				else
+				{
+					$new_text = "Additionally, a rebootless $sysnames_list system update was released for ".$updateversion_norebootless." on ".$timestamp_str." (UTC). $regions_list\n\n";
+
+					$page_updated = True;
+					$page_text = substr($page_text, 0, $insert_pos) . $new_text . substr($page_text, $insert_pos);
+				}
+			}
+		}
+
+		if(strlen($reportlinks_list)>0)
+		{
+			$insert_pos = strpos($page_text, "System update report(s)");
+			if($insert_pos!==FALSE)
+			{
+				$tmp_pos = $insert_pos;
+				while($tmp_pos!==FALSE)
+				{
+					$tmp_pos = strpos($page_text, "\n", $tmp_pos);
+					if($tmp_pos!==FALSE && $page_text[$tmp_pos+1]=="\n")
+					{
+						$tmp_pos++;
+						break;
+					}
+					if($tmp_pos!==FALSE)
+					{
+						$tmp_pos++;
+					}
+				}
+				if($tmp_pos!==FALSE)
+				{
+					$new_text = $reportlinks_list;
+
+					$insert_pos = $tmp_pos;
+					$page_text = substr($page_text, 0, $insert_pos) . $new_text . substr($page_text, $insert_pos);
+
+					$page_updated = True;
+				}
+			}
+		}
 	}
 
-	wikibot_writelog("New sysupdate page:\n$page_text", 1, $reportdate);
+	if($page_updated)
+	{
+		wikibot_writelog("New sysupdate page:\n$page_text", 1, $reportdate);
+	}
+	else
+	{
+		wikibot_writelog("Sysupdate page edit isn't needed, skipping sending the edit request.", 2, $reportdate);
+	}
 
-	if($wikibot_loggedin == 1)
+	if($wikibot_loggedin == 1 && $page_updated)
 	{
 		wikibot_writelog("Sending sysupdate page edit request...", 2, $reportdate);
 
@@ -531,12 +599,17 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		wikibot_writelog($text, 1, $reportdate);
 
 		$msgtext = "created";
-		if($page_exists==1)$msgtext = "updated";
+		$msgtextnew = "new";
+		if($page_exists==1)
+		{
+			$msgtext = "updated";
+			$msgtextnew = "";
+		}
 
 		$wiki_uribase = "wiki/";
 		if($apiprefixuri == "")$wiki_uribase = "index.php?title=";
 
-		$notif_msg = "The wiki page for the new $sysnames_list $updateversion sysupdate has been $msgtext: $serverbaseurl$wiki_uribase$updateversion";
+		$notif_msg = "The wiki page for the $msgtextnew $sysnames_list $updateversion sysupdate has been $msgtext: $serverbaseurl$wiki_uribase$updateversion";
 		send_notif([$notif_msg, "--social"]);
 	}
 
@@ -1304,7 +1377,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 		//wikibot_writelog("Sysupdate page:\n".$sysupdate_page, 1, $reportdate);
 	//}
 
-	/*if($sysupdate_page!==FALSE)*/wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag);
+	/*if($sysupdate_page!==FALSE)*/wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless);
 
 	$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
 	$result=mysqli_query($mysqldb, $query);
