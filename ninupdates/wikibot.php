@@ -317,7 +317,7 @@ function wikibot_edit_navboxversions($api, $services, $updateversion, $reportdat
 	return 0;
 }
 
-function wikibot_generate_titlelist_text(&$titles, &$new_text, $prefix)
+function wikibot_generate_titlelist_text(&$titles, &$new_text, $prefix, $print_titleid, $strip_desc)
 {
 	if(count($titles)>0)
 	{
@@ -329,6 +329,24 @@ function wikibot_generate_titlelist_text(&$titles, &$new_text, $prefix)
 			if($title["description"]!="" && $title["description"]!="N/A")
 			{
 				$desc = $title["description"];
+				if($strip_desc)
+				{
+					$tmp_pos = strpos($desc, "-sysmodule");
+					if($tmp_pos!==FALSE)
+					{
+						$desc = substr($desc, 0, $tmp_pos);
+					}
+					else
+					{
+						$start_pos = strpos($desc, '"');
+						$end_pos = strpos($desc, '" applet');
+						if($start_pos!==FALSE && $end_pos!==FALSE)
+						{
+							$desc = substr($desc, $start_pos+1, $end_pos-$start_pos-1);
+						}
+					}
+				}
+				if($print_titleid) $desc.= " (".$title["titleid"].")";
 			}
 			if($cnt>0)$new_text.= ", ";
 			$new_text.= "$desc";
@@ -372,6 +390,64 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 			wikibot_writelog("Updating NavboxVersions if needed...", 2, $reportdate);
 			$navbox_text = $navbox_revision->getContent()->getData();
 			wikibot_edit_navboxversions($api, $services, $updateversion_norebootless, $reportdate, $navbox_pagename, $navbox_text);
+		}
+	}
+
+	$titlelist_text = "";
+	if($system_generation!=0 && $rebootless_flag===False)
+	{
+		$out_titlestatus_changed_other = array();
+		$out_titlestatus_changed_sysmodules = array();
+		$out_titlestatus_changed_systemdata = array();
+		$out_titlestatus_changed_applets = array();
+
+		foreach($out_titlestatus_changed as &$title)
+		{
+			if(substr($title["titleid"], 0, 14)==="01000000000000")
+			{
+				$out_titlestatus_changed_sysmodules[] = $title;
+			}
+			else if(substr($title["titleid"], 0, 14)==="01000000000008")
+			{
+				$out_titlestatus_changed_systemdata[] = $title;
+			}
+			else if(substr($title["titleid"], 0, 13)==="0100000000001")
+			{
+				$out_titlestatus_changed_applets[] = $title;
+			}
+			else
+			{
+				$out_titlestatus_changed_other[] = $title;
+			}
+		}
+		if(count($out_titlestatus_new)>0)
+		{
+			wikibot_generate_titlelist_text($out_titlestatus_new, $titlelist_text, "* The following new titles were added: ", True, False);
+			$titlelist_text.= "\n";
+		}
+		if(count($out_titlestatus_changed)>0)
+		{
+			$titlelist_text.= "* The following titles were updated:\n";
+			if(count($out_titlestatus_changed_sysmodules)>0)
+			{
+				wikibot_generate_titlelist_text($out_titlestatus_changed_sysmodules, $titlelist_text, "** Sysmodules: ", False, True);
+				$titlelist_text.= "\n";
+			}
+			if(count($out_titlestatus_changed_systemdata)>0)
+			{
+				wikibot_generate_titlelist_text($out_titlestatus_changed_systemdata, $titlelist_text, "** SystemData (non-sysver): ", False, True);
+				$titlelist_text.= "\n";
+			}
+			if(count($out_titlestatus_changed_applets)>0)
+			{
+				wikibot_generate_titlelist_text($out_titlestatus_changed_applets, $titlelist_text, "** Applets: ", False, True);
+				$titlelist_text.= "\n";
+			}
+			if(count($out_titlestatus_changed_other)>0)
+			{
+				wikibot_generate_titlelist_text($out_titlestatus_changed_other, $titlelist_text, "** ", False, True);
+				$titlelist_text.= "\n";
+			}
 		}
 	}
 
@@ -527,7 +603,14 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$page_text.= "$changelog_text\n";
 
 		$page_text.= "==System Titles==\n";
-		$page_text.= "<fill this in (manually) later>\n";
+		if($titlelist_text==="")
+		{
+			$page_text.= "<fill this in (manually) later>\n";
+		}
+		else
+		{
+			$page_text.= $titlelist_text;
+		}
 		$page_text.= "\n";
 
 		$page_text.= "==See Also==\n";
@@ -558,8 +641,8 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 
 					if(count($report_titlelist)>0)
 					{
-						wikibot_generate_titlelist_text($out_titlestatus_new, $new_text, " The following titles were added: ");
-						wikibot_generate_titlelist_text($out_titlestatus_changed, $new_text, " The following titles were updated: ");
+						wikibot_generate_titlelist_text($out_titlestatus_new, $new_text, " The following new titles were added: ", True, False);
+						wikibot_generate_titlelist_text($out_titlestatus_changed, $new_text, " The following (non-sysver) titles were updated: ", False, False);
 					}
 
 					$new_text.= "\n\n";
