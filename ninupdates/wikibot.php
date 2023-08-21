@@ -4,6 +4,7 @@ require_once(dirname(__FILE__) . "/config.php");
 require_once(dirname(__FILE__) . "/logs.php");
 require_once(dirname(__FILE__) . "/db.php");
 include_once(dirname(__FILE__) . "/api.php");
+include_once(dirname(__FILE__) . "/logs.php");
 
 require_once(dirname(__FILE__) . "/vendor/autoload.php");
 
@@ -316,7 +317,28 @@ function wikibot_edit_navboxversions($api, $services, $updateversion, $reportdat
 	return 0;
 }
 
-function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless)
+function wikibot_generate_titlelist_text(&$titles, &$new_text, $prefix)
+{
+	if(count($titles)>0)
+	{
+		$new_text.= $prefix;
+		$cnt=0;
+		foreach($titles as $title)
+		{
+			$desc = $title["titleid"];
+			if($title["description"]!="" && $title["description"]!="N/A")
+			{
+				$desc = $title["description"];
+			}
+			if($cnt>0)$new_text.= ", ";
+			$new_text.= "$desc";
+			$cnt++;
+		}
+		$new_text.= ".";
+	}
+}
+
+function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation)
 {
 	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
 
@@ -324,6 +346,19 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 
 	$page_exists = False;
 	$page_updated = False;
+
+	$out_titlestatus_new = array();
+	$out_titlestatus_changed = array();
+	$ignore_titles = array();
+
+	if($system_generation!=0) // Ignore the SystemUpdate/sysver titles.
+	{
+		$ignore_titles[] = "0100000000000816";
+		$ignore_titles[] = "0100000000000809";
+		$ignore_titles[] = "0100000000000826";
+	}
+
+	$report_titlelist = report_get_titlelist($system, $reportdate, out_titlestatus_new: $out_titlestatus_new, out_titlestatus_changed: $out_titlestatus_changed, ignore_titles: $ignore_titles);
 
 	if($rebootless_flag===False)
 	{
@@ -519,7 +554,15 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 				}
 				else
 				{
-					$new_text = "Additionally, a rebootless $sysnames_list system update was released for ".$updateversion_norebootless." on ".$timestamp_str." (UTC). $regions_list\n\n";
+					$new_text = "Additionally, a rebootless $sysnames_list system update was released for ".$updateversion_norebootless." on ".$timestamp_str." (UTC). $regions_list";
+
+					if(count($report_titlelist)>0)
+					{
+						wikibot_generate_titlelist_text($out_titlestatus_new, $new_text, " The following titles were added: ");
+						wikibot_generate_titlelist_text($out_titlestatus_changed, $new_text, " The following titles were updated: ");
+					}
+
+					$new_text.= "\n\n";
 
 					$page_updated = True;
 					$page_text = substr($page_text, 0, $insert_pos) . $new_text . substr($page_text, $insert_pos);
@@ -1377,7 +1420,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 		//wikibot_writelog("Sysupdate page:\n".$sysupdate_page, 1, $reportdate);
 	//}
 
-	/*if($sysupdate_page!==FALSE)*/wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless);
+	/*if($sysupdate_page!==FALSE)*/wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation);
 
 	$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
 	$result=mysqli_query($mysqldb, $query);

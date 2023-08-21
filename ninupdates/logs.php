@@ -345,6 +345,92 @@ function parse_json_resp($buf)
 	return 0;
 }
 
+// Get a title-listing for the specified report (changed/added titles). Duplicate titles in different regions are grouped together.
+function report_get_titlelist($system, $reportdate, &$out_titlestatus_new = NULL, &$out_titlestatus_changed = NULL, $ignore_titles = NULL)
+{
+	global $mysqldb;
+
+	$query="SELECT ninupdates_titles.tid, ninupdates_titleids.titleid, ninupdates_titleids.description, ninupdates_titles.version, GROUP_CONCAT(DISTINCT ninupdates_regions.regionid SEPARATOR ','), GROUP_CONCAT(DISTINCT ninupdates_titles.region ORDER BY ninupdates_regions.regionid SEPARATOR ',') FROM ninupdates_titles, ninupdates_titleids, ninupdates_regions, ninupdates_consoles, ninupdates_reports WHERE ninupdates_consoles.system='".$system."' AND ninupdates_titles.systemid=ninupdates_consoles.id AND ninupdates_titles.tid=ninupdates_titleids.id AND ninupdates_titles.reportid=ninupdates_reports.id AND ninupdates_reports.reportdate='".$reportdate."' AND ninupdates_regions.regioncode=ninupdates_titles.region GROUP BY ninupdates_titles.tid, ninupdates_titles.version";
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
+	$out = array();
+
+	for($i=0; $i<$numrows; $i++)
+	{
+		$row = mysqli_fetch_row($result);
+
+		$tmp = array();
+		$tmp["tid"] = $row[0];
+		$tmp["titleid"] = $row[1];
+		$tmp["description"] = $row[2];
+		$tmp["version"] = $row[3];
+		$tmp["regions"] = $row[4];
+		$tmp["regionids"] = $row[5];
+		$tmp["status"] = "N/A";
+
+		$found = False;
+		if($ignore_titles!==NULL)
+		{
+			foreach($ignore_titles as $ignore_titleid)
+			{
+				if($tmp["titleid"] == $ignore_titleid)
+				{
+					$found = True;
+					break;
+				}
+			}
+		}
+		if(!$found)
+		{
+			$out[] = $tmp;
+		}
+	}
+
+	$query = "SELECT ninupdates_titles.tid, ninupdates_titles.region, MIN(ninupdates_titles.version) FROM ninupdates_titles, ninupdates_consoles WHERE ninupdates_consoles.system='".$system."' AND ninupdates_titles.systemid=ninupdates_consoles.id GROUP BY ninupdates_titles.tid, ninupdates_titles.region";
+	$result=mysqli_query($mysqldb, $query);
+	$numrows=mysqli_num_rows($result);
+	for($rowi=0; $rowi<$numrows; $rowi++)
+	{
+		$row = mysqli_fetch_row($result);
+		$min_tid = $row[0];
+		$min_region = $row[1];
+		$min_version = $row[2];
+
+		foreach($out as &$title)
+		{
+			$tid = $title["tid"];
+			$versions = $title["version"];
+			$regionids = $title["regionids"];
+
+			if($tid == $min_tid && strpos($regionids, $min_region)!==FALSE && $title["status"]==="N/A")
+			{
+				$titlestatus = "Changed";
+				if($versions==$min_version)
+				{
+					$titlestatus = "New";
+					if($out_titlestatus_new!==NULL)
+					{
+						$out_titlestatus_new[] = $title;
+					}
+				}
+				else
+				{
+					if($out_titlestatus_changed!==NULL)
+					{
+						$out_titlestatus_changed[] = $title;
+					}
+				}
+
+				$title["status"] = $titlestatus;
+
+				break;
+			}
+		}
+	}
+
+	return $out;
+}
+
 function titlelist_dbupdate()
 {
 	global $mysqldb, $dbcurdate, $system, $region, $newtitles, $newtitlesversions, $newtitles_sizes, $newtitles_tiksizes, $newtitles_tmdsizes, $newtotal_titles;
