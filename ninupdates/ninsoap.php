@@ -168,7 +168,7 @@ function do_systems_soap()
 
 function dosystem($console)
 {
-	global $mysqldb, $region, $system, $sitecfg_irc_msg_dirpath, $sitecfg_irc_msgtarget, $sitecfg_irc_msgtargets, $sitecfg_emailhost, $sitecfg_target_email, $sitecfg_httpbase, $sitecfg_workdir, $sysupdate_available, $soap_timestamp, $dbcurdate, $sysupdate_regions, $sysupdate_timestamp, $sysupdate_systitlehashes, $curtime_override;
+	global $mysqldb, $region, $system, $sitecfg_irc_msg_dirpath, $sitecfg_irc_msgtarget, $sitecfg_irc_msgtargets, $sitecfg_emailhost, $sitecfg_target_email, $sitecfg_httpbase, $sitecfg_workdir, $sitecfg_notif_fedi_append, $sitecfg_notif_fedi_append_system, $sysupdate_available, $soap_timestamp, $dbcurdate, $sysupdate_regions, $sysupdate_timestamp, $sysupdate_systitlehashes, $curtime_override;
 
 	$system = $console;
 	$msgme_message = "";
@@ -368,6 +368,23 @@ function dosystem($console)
 						$args[] = $target;
 					}
 				}
+			}
+		}
+		if($initialscan==0 && $reuse_report===False)
+		{
+			$notif_fedi = "";
+			if(isset($sitecfg_notif_fedi_append)) $notif_fedi.= " ".$sitecfg_notif_fedi_append;
+			if(isset($sitecfg_notif_fedi_append_system))
+			{
+				if(isset($sitecfg_notif_fedi_append_system["$system"]))
+				{
+					$notif_fedi.= " ".$sitecfg_notif_fedi_append_system["$system"];
+				}
+			}
+			if($notif_fedi!="")
+			{
+				$args[] = "--fedi";
+				$args[] = $notif_msg.$notif_fedi;
 			}
 		}
 		send_notif($args);

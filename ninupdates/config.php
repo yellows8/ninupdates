@@ -20,9 +20,12 @@ $sitecfg_reportupdatepage_footer Optional HTML to include at the very end of the
 $sitecfg_sitenav_header Optional HTML to include immediately before the site navigation-bar.
 
 $sitecfg_irc_msg_dirpath Dirpath used when sending IRC messages with appendmsg_tofile, if not specified this functionality is disabled.
-$sitecfg_irc_msgtargets["{system}"]= "{filename}"; IRC msgtarget filename to use with the specified system, if not specified IRC messages are disabled. This used for sysupdate-detected notifs.
+$sitecfg_irc_msgtargets["{system}"]= "{filename}"; IRC msgtarget filename to use with the specified system, if not specified IRC messages are disabled. This is used for most sysupdate-detected notifs.
 $sitecfg_irc_msgtarget Similar to sitecfg_irc_msgtargets, except this is an optional string filename to use for all systems.
 $sitecfg_irc_msgtargets_whitelist Array of strings for filenames allowed to be used by appendmsg_tofile. If not specified, this is loaded from sitecfg_irc_msgtarget(s). 'msgme' is hard-coded to be allowed regardless.
+
+$sitecfg_notif_fedi_append Optional string, if set " " followed by this string is appended to fedi notifications. Only used for the sysupdate-detected notif. This can be used for hashtags for example.
+$sitecfg_notif_fedi_append_system["{system}"]= "{str}"; Similar to sitecfg_notif_fedi_append, except this is an array of append-strings to use with the specified system. Handled following sitecfg_notif_fedi_append.
 
 $sitecfg_postproc_cmd This is the command which will be executed by postproc.php, if this is set. The full command passed to system() is: "$sitecfg_postproc_cmd $reportdate $system".
 
