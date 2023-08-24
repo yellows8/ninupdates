@@ -563,12 +563,33 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="")
 		$con.= "<br/>$titlehash_text: $hashval<br/>\n";
 	}
 
-	if($reportdate!="" && $usesoap=="" && $filter_tid=="")
+	if($reportdate!="" && $usesoap=="")
 	{
 		$con.= "<br/>\nTitle info: <br/>\n<br/>\n";
 		$titleinfo_count = 0;
 
 		$titledata_base = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system";
+		$maxdepth = 4;
+		if(is_dir($titledata_base) && $filter_tid!="")
+		{
+			if($titlelist_array_numentries>0) // Use the titleid/regtext from the db and not the user input for safety.
+			{
+				$titleid = $titlelist_array[0][1];
+				$regtext = $titlelist_array[0][2];
+
+				$maxdepth--;
+				$titledata_base.= "/".$titleid;
+				if($region!="")
+				{
+					$tmp_path = $titledata_base . "/".$regtext;
+					if(is_dir($tmp_path))
+					{
+						$titledata_base = $tmp_path;
+						$maxdepth--;
+					}
+				}
+			}
+		}
 
 		if(is_dir($titledata_base))
 		{
@@ -576,7 +597,7 @@ if($genwiki=="" && $gencsv=="" && $reportdate!="")
 			try {
 				$diriter = new RecursiveDirectoryIterator($titledata_base);
 				$iter = new RecursiveIteratorIterator($diriter);
-				$iter->setMaxDepth(4);
+				$iter->setMaxDepth($maxdepth);
 				$regex_iter = new RegexIterator($iter, '/^.*\..*info$/', RecursiveRegexIterator::GET_MATCH);
 				foreach($regex_iter as $path => $pathobj)
 				{
