@@ -1329,6 +1329,192 @@ function wikibot_edit_fuses($api, $services, $updateversion, $reportdate, $times
 	return 0;
 }
 
+function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri)
+{
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_workdir;
+
+	$updatedir = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system";
+
+	$path = "$updatedir/wikigen.json";
+
+	if(file_exists($path)===FALSE)
+	{
+		wikibot_writelog("wikibot_process_wikigen(): The wikigen file doesn't exist.", 2, $reportdate);
+		return 0;
+	}
+
+	$wikigen = file_get_contents($path);
+
+	if($wikigen===FALSE)
+	{
+		wikibot_writelog("wikibot_process_wikigen(): Failed to load the wikigen file.", 0, $reportdate);
+		return 3;
+	}
+
+	$wikigen = json_decode($wikigen, true);
+
+	if($wikigen===NULL)
+	{
+		wikibot_writelog("wikibot_process_wikigen(): Failed to decode the wikigen file.", 0, $reportdate);
+		return 4;
+	}
+
+	foreach($wikigen as $wikigen_page)
+	{
+		if(isset($wikigen_page["page_title"]))
+		{
+			$pagetitle = $wikigen_page["page_title"];
+		}
+		else
+		{
+			wikibot_writelog("wikibot_process_wikigen(): json page_title field isn't set, skipping this page entry.", 2, $reportdate);
+			continue;
+		}
+
+		$tmp_page = $services->newPageGetter()->getFromTitle($pagetitle);
+		$tmp_revision = $tmp_page->getRevisions()->getLatest();
+
+		if($tmp_revision===NULL)
+		{
+			wikibot_writelog("wikibot_process_wikigen(): $pagetitle page doesn't exist, skipping this page entry.", 2, $reportdate);
+
+			continue;
+		}
+
+		wikibot_writelog("wikibot_process_wikigen(): $pagetitle page exists, generating new page text if needed...", 2, $reportdate);
+
+		$page_text = $tmp_revision->getContent()->getData();
+
+		if(isset($wikigen_page["search_section"]))
+		{
+			$search_section = $wikigen_page["search_section"];
+		}
+		else
+		{
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): json search_section field isn't set, skipping this page entry.", 2, $reportdate);
+
+			continue;
+		}
+
+		if(isset($wikigen_page["table"]))
+		{
+			$wikigen_table = &$wikigen_page["table"];
+		}
+		else
+		{
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): json table isn't set, skipping this page entry.", 2, $reportdate);
+
+			continue;
+		}
+
+		$section_pos = strpos($page_text, $search_section);
+		if($section_pos===FALSE)
+		{
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the section/table start.", 0, $reportdate);
+			return 1;
+		}
+
+		$table_endpos = strpos($page_text, "|}", $section_pos);
+		if($table_endpos===FALSE)
+		{
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the table end.", 0, $reportdate);
+			return 2;
+		}
+
+		$table_text = substr($page_text, $section_pos, $table_endpos-$section_pos);
+
+		if(isset($wikigen_table["list_target_text_prefix"]))
+		{
+			$list_target_text_prefix = $wikigen_table["list_target_text_prefix"];
+		}
+		else
+		{
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): json list_target_text_prefix isn't set, skipping this page entry.", 2, $reportdate);
+
+			continue;
+		}
+
+		$list_insert_before_text = "";
+		if(isset($wikigen_table["list_insert_before_text"]))
+		{
+			$list_insert_before_text = $wikigen_table["list_insert_before_text"];
+		}
+
+		if(isset($wikigen_table["list_search_text"]) && isset($wikigen_table["list_insert_text"]))
+		{
+			$list_search_text = $wikigen_table["list_search_text"];
+			$list_insert_text = $wikigen_table["list_insert_text"];
+		}
+		else
+		{
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): json fields used by list_target_text_prefix aren't set, skipping this page entry.", 2, $reportdate);
+
+			continue;
+		}
+
+		$prefix_pos = strpos($table_text, "| $list_target_text_prefix");
+		if($prefix_pos===FALSE)
+		{
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the list_target_text_prefix.", 0, $reportdate);
+			return 2;
+		}
+
+		$line_endpos = strpos($table_text, "\n", $prefix_pos);
+		if($line_endpos===FALSE)
+		{
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the target line end.", 0, $reportdate);
+			return 2;
+		}
+
+		$line = substr($table_text, $prefix_pos, $line_endpos-$prefix_pos);
+
+		if(strpos($line, $list_search_text)!==FALSE)
+		{
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): This entry already exists in the table.", 2, $reportdate);
+			continue;
+		}
+
+		if($list_insert_before_text!="")
+		{
+			$insert_pos = strpos($line, $list_insert_before_text);
+			if($insert_pos===FALSE)
+			{
+				wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the list_insert_before_text.", 0, $reportdate);
+				return 2;
+			}
+			$list_insert_text.= ", ";
+		}
+		else
+		{
+			$list_insert_text = ", " . $list_insert_text;
+			$insert_pos = strlen($line);
+		}
+
+		$new_line = substr($line, 0, $insert_pos) . $list_insert_text . substr($line, $insert_pos);
+		$new_table_text = substr($table_text, 0, $prefix_pos) . $new_line . substr($table_text, $line_endpos);
+		$new_page_text = substr($page_text, 0, $section_pos) . $new_table_text . substr($page_text, $table_endpos);
+
+		wikibot_writelog("New $pagetitle page:\n$new_page_text", 1, $reportdate);
+
+		if($wikibot_loggedin == 1)
+		{
+			wikibot_writelog("Sending $pagetitle page edit request...", 2, $reportdate);
+
+			$newContent = new \Mediawiki\DataModel\Content($new_page_text);
+			$title = new \Mediawiki\DataModel\Title($pagetitle);
+			$identifier = new \Mediawiki\DataModel\PageIdentifier($title);
+			$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
+			$services->newRevisionSaver()->save($revision);
+
+			$text = "$pagetitle page edit request was successful.";
+			echo "$text\n";
+			wikibot_writelog($text, 1, $reportdate);
+		}
+	}
+
+	return 0;
+}
+
 function runwikibot_newsysupdate($updateversion, $reportdate)
 {
 	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $system;
@@ -1533,6 +1719,9 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 					if($ret!=0)return $ret;
 
 					wikibot_edit_fuses($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+					if($ret!=0)return $ret;
+
+					wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
 					if($ret!=0)return $ret;
 				}
 				else
