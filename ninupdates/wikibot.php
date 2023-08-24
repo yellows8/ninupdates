@@ -1520,6 +1520,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $system;
 
 	$wikibot_loggedin = 0;
+	$ret=0;
 
 	$query="SELECT ninupdates_wikiconfig.serverbaseurl, ninupdates_wikiconfig.apiprefixuri, ninupdates_wikiconfig.news_pagetitle, ninupdates_wikiconfig.newsarchive_pagetitle, ninupdates_wikiconfig.homemenu_pagetitle FROM ninupdates_wikiconfig, ninupdates_consoles WHERE ninupdates_wikiconfig.wikibot_enabled=1 && ninupdates_wikiconfig.id=ninupdates_consoles.wikicfgid && ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
@@ -1655,8 +1656,8 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	}
 	else
 	{
-		$ret = wikibot_updatenewspages($api, $services, $updateversion, $reportdate, $timestamp, $newspage_text, $newsarchivepage_text, $newspage, $newsarchivepage, $insertstring."\n");
-		if($ret!=0)return $ret;
+		$tmpret = wikibot_updatenewspages($api, $services, $updateversion, $reportdate, $timestamp, $newspage_text, $newsarchivepage_text, $newspage, $newsarchivepage, $insertstring."\n");
+		if($ret==0) $ret = $tmpret;
 	}
 
 	if($wiki_homemenutitle!="")
@@ -1670,8 +1671,8 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 		}
 		else
 		{*/
-			$ret = wikibot_updatepage_homemenu($api, $services, $updateversion, $reportdate, $timestamp, $page, $homemenu_page_text);
-			if($ret!=0)return $ret;
+			$tmpret = wikibot_updatepage_homemenu($api, $services, $updateversion, $reportdate, $timestamp, $page, $homemenu_page_text);
+			if($ret==0) $ret = $tmpret;
 		//}
 	}
 
@@ -1689,7 +1690,8 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 		//wikibot_writelog("Sysupdate page:\n".$sysupdate_page, 1, $reportdate);
 	//}
 
-	/*if($sysupdate_page!==FALSE)*/wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation);
+	$tmpret = wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation);
+	if($ret==0) $ret = $tmpret;
 
 	$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
 	$result=mysqli_query($mysqldb, $query);
@@ -1704,25 +1706,25 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 		{
 			if($rebootless_flag===False)
 			{
-				$ret = wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
-				if($ret!=0)return $ret;
+				$tmpret = wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+				if($ret==0) $ret = $tmpret;
 			}
 
 			if($system_generation!=0)
 			{
 				if($postproc_runfinished!=0 && $rebootless_flag===False)
 				{
-					$ret = wikibot_edit_systemversiondata($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
-					if($ret!=0)return $ret;
+					$tmpret = wikibot_edit_systemversiondata($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+					if($ret==0) $ret = $tmpret;
 
-					wikibot_edit_systemversions($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
-					if($ret!=0)return $ret;
+					$tmpret = wikibot_edit_systemversions($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+					if($ret==0) $ret = $tmpret;
 
-					wikibot_edit_fuses($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
-					if($ret!=0)return $ret;
+					$tmpret = wikibot_edit_fuses($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+					if($ret==0) $ret = $tmpret;
 
-					wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
-					if($ret!=0)return $ret;
+					$tmpret = wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+					if($ret==0) $ret = $tmpret;
 				}
 				else
 				{
@@ -1744,7 +1746,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 	echo "Wikibot run finished.\n";
 
-	return 0;
+	return $ret;
 }
 
 $wikibot_scheduledtask = 0;
