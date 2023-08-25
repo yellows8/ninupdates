@@ -356,7 +356,7 @@ function wikibot_generate_titlelist_text(&$titles, &$new_text, $prefix, $print_t
 	}
 }
 
-function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation)
+function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation, $postproc_runfinished)
 {
 	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
 
@@ -685,9 +685,12 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		}
 	}
 
-	$out_page_updated = False;
-	wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $page_text, $out_page_updated);
-	if($out_page_updated) $page_updated = $out_page_updated;
+	if($postproc_runfinished!=0)
+	{
+		$out_page_updated = False;
+		wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $page_text, $out_page_updated);
+		if($out_page_updated) $page_updated = $out_page_updated;
+	}
 
 	if($page_updated)
 	{
@@ -739,7 +742,8 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$wiki_uribase = "wiki/";
 		if($apiprefixuri == "")$wiki_uribase = "index.php?title=";
 
-		$notif_msg = "The wiki page for the $msgtextnew $sysnames_list $updateversion sysupdate has been $msgtext: $serverbaseurl$wiki_uribase$updateversion";
+		$notif_msg = "The wiki page for the $msgtextnew $sysnames_list $updateversion_norebootless sysupdate has been $msgtext: $serverbaseurl$wiki_uribase$updateversion_norebootless";
+		if($rebootless_flag===False) $notif_msg.= " See also: ".$serverbaseurl.$wiki_uribase."Special:RecentChanges";
 		send_notif([$notif_msg, "--social"]);
 	}
 
@@ -1940,7 +1944,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 		//wikibot_writelog("Sysupdate page:\n".$sysupdate_page, 1, $reportdate);
 	//}
 
-	$tmpret = wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation);
+	$tmpret = wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation, $postproc_runfinished);
 	if($ret==0) $ret = $tmpret;
 
 	$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
