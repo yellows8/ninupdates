@@ -1487,6 +1487,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 			$text_sections = array();
 			$table_lists = array();
+			$tables_updatever_range = array();
 
 			if(isset($wikigen_target["text_sections"]))
 			{
@@ -1498,9 +1499,14 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$table_lists = $wikigen_target["table_lists"];
 			}
 
-			if(!isset($wikigen_target["text_sections"]) && !isset($wikigen_target["table_lists"]))
+			if(isset($wikigen_target["tables_updatever_range"]))
 			{
-				wikibot_writelog("wikibot_process_wikigen($pagetitle): json text_sections/table_lists isn't set, skipping this entry.", 2, $reportdate);
+				$tables_updatever_range = $wikigen_target["tables_updatever_range"];
+			}
+
+			if(!isset($wikigen_target["text_sections"]) && !isset($wikigen_target["table_lists"]) && !isset($wikigen_target["tables_updatever_range"]))
+			{
+				wikibot_writelog("wikibot_process_wikigen($pagetitle): json text_sections/table_lists/tables_updatever_range isn't set, skipping this entry.", 2, $reportdate);
 
 				continue;
 			}
@@ -1623,6 +1629,112 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$new_line = substr($line, 0, $insert_pos) . $insert_text . substr($line, $insert_pos);
 				$section_text = substr($section_text, 0, $prefix_pos) . $new_line . substr($section_text, $line_endpos);
 				$page_text = substr($page_text_org, 0, $section_pos) . $section_text . substr($page_text_org, $section_endpos);
+				$page_updated = True;
+			}
+
+			foreach($tables_updatever_range as $table_updatever_range)
+			{
+				if(strpos($section_text, $updateversion)!==FALSE)
+				{
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): This entry already exists in the table for tables_updatever_range.", 2, $reportdate);
+					continue;
+				}
+
+				if(isset($table_updatever_range["columns"]))
+				{
+					$columns = $table_updatever_range["columns"];
+				}
+				else
+				{
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): json table_updatever_range columns isn't set, skipping this entry.", 2, $reportdate);
+
+					continue;
+				}
+				$columns_count = count($columns);
+
+				$new_text = "";
+				if(substr($page_text, $section_endpos-3, 3)!="|-\n")
+				{
+					$new_text.= "|-\n";
+				}
+
+				$lines = explode("\n", $section_text);
+				$found = False;
+				$num_columns=0;
+				for($i=count($lines)-1; $i>=0; $i--)
+				{
+					if(($i == count($lines)-1 && substr($lines[$i], 0, 2)==="|-") || strlen($lines[$i])==0)
+					{
+						continue;
+					}
+					if(substr($lines[$i], 0, 2)==="|-")
+					{
+						$linei = $i+1;
+						$found = True;
+						break;
+					}
+					$num_columns++;
+				}
+
+				if($found === False)
+				{
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the last table entry for table_updatever_range.", 0, $reportdate);
+					if($ret==0) $ret=2;
+					continue;
+				}
+
+				if($num_columns>0) $num_columns--; // Don't include updatever in this value.
+				if($columns_count != $num_columns)
+				{
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): The number of json columns for table_updatever_range ($columns_count) doesn't match table num_columns ($num_columns). Whichever value is smaller will be used for the entrycount.", 2, $reportdate);
+				}
+
+				// Check whether the json data and the table doesn't match, skipping the updatever in the table.
+				$entrycount = min($columns_count, $num_columns);
+				$found = False;
+				for($i=0; $i<$entrycount; $i++)
+				{
+					$tmp_line = substr($lines[$linei+1+$i], 2);
+					if($tmp_line!==$columns[$i])
+					{
+						$found = True;
+						break;
+					}
+				}
+
+				if($found)
+				{
+					$new_text.= "| [$updateversion]\n";
+					for($i=0; $i<$entrycount; $i++)
+					{
+						$new_text.= "| ".$columns[$i]."\n";
+					}
+
+					$page_text = substr($page_text_org, 0, $section_endpos) . $new_text . substr($page_text_org, $section_endpos);
+				}
+				else // When data matches, just update the updatever in the table. This will also be reached when the json columns is empty.
+				{
+					$new_text = "";
+					for($i=0; $i<count($lines); $i++)
+					{
+						$linetext = $lines[$i];
+						if($i==count($lines)-1 && strlen($linetext)==0) continue;
+						if($linei == $i)
+						{
+							$tmp = strpos($linetext, "-");
+							if($tmp===FALSE)
+							{
+								$linetext = "| [$updateversion]";
+							}
+							else
+							{
+								$linetext = substr($linetext, 0, $tmp+1) . "$updateversion]";
+							}
+						}
+						$new_text.= $linetext . "\n";
+					}
+					$page_text = substr($page_text_org, 0, $section_pos) . $new_text . substr($page_text_org, $section_endpos);
+				}
 				$page_updated = True;
 			}
 		}
