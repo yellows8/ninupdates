@@ -1976,19 +1976,22 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 
 					$tmpret = wikibot_edit_fuses($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
 					if($ret==0) $ret = $tmpret;
-
-					$tmpret = wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
-					if($ret==0) $ret = $tmpret;
 				}
 				else
 				{
 					wikibot_writelog("Skipping generation1 page handling since the report post-processing isn't finished / updateversion is rebootless.", 2, $reportdate);
 				}
 			}
+
+			if($postproc_runfinished!=0)
+			{
+				$tmpret = wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+				if($ret==0) $ret = $tmpret;
+			}
 		}
 		else
 		{
-			wikibot_writelog("Skipping FirmwareNews and generation1 page handling since this report isn't the latest one.", 2, $reportdate);
+			wikibot_writelog("Skipping FirmwareNews and generation1/wikigen page handling since this report isn't the latest one.", 2, $reportdate);
 		}
 	}
 
