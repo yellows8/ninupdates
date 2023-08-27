@@ -1337,18 +1337,34 @@ function wikibot_edit_fuses($api, $services, $updateversion, $reportdate, $times
 	return 0;
 }
 
-function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, &$in_page_text = NULL, &$out_page_updated = NULL)
+function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, &$in_page_text=NULL, &$out_page_updated=NULL, $wikigen_path="")
 {
 	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_workdir;
 
-	$updatedir = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system";
-
-	$path = "$updatedir/wikigen.json";
+	$path = $wikigen_path;
+	if($wikigen_path=="")
+	{
+		$updatedir = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system";
+		$path = "$updatedir/wikigen.json";
+	}
+	else
+	{
+		wikibot_writelog("wikibot_process_wikigen(): Processing wikigen with path: $wikigen_path", 2, $reportdate);
+	}
 
 	if(file_exists($path)===FALSE)
 	{
-		wikibot_writelog("wikibot_process_wikigen(): The wikigen file doesn't exist.", 2, $reportdate);
-		return 0;
+		$msg = "wikibot_process_wikigen(): The wikigen file doesn't exist.";
+		if($wikigen_path=="") // Only throw an error when processing an input file.
+		{
+			wikibot_writelog($msg, 2, $reportdate);
+			return 0;
+		}
+		else
+		{
+			wikibot_writelog($msg, 0, $reportdate);
+			return 3;
+		}
 	}
 
 	$wikigen = file_get_contents($path);
@@ -1638,6 +1654,12 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 			foreach($tables_updatever_range as $table_updatever_range)
 			{
+				if($updateversion==="N/A")
+				{
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): json tables_updatever_range is not available when the updateversion isn't set ('N/A').", 2, $reportdate);
+					continue;
+				}
+
 				if(strpos($section_text, $updateversion)!==FALSE)
 				{
 					wikibot_writelog("wikibot_process_wikigen($pagetitle): This entry already exists in the table for tables_updatever_range.", 2, $reportdate);
@@ -1769,7 +1791,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 	return $ret;
 }
 
-function runwikibot_newsysupdate($updateversion, $reportdate)
+function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 {
 	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $system;
 
@@ -1784,8 +1806,11 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	{
 		echo "Wiki config is not available for this system($system), or wikibot processing is disabled for this wiki, skipping wikibot processing for it.\n";
 
-		$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikibot_runfinished=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
-		$result=mysqli_query($mysqldb, $query);
+		if($wikigen_path=="")
+		{
+			$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.wikibot_runfinished=1 WHERE reportdate='".$reportdate."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
+			$result=mysqli_query($mysqldb, $query);
+		}
 
 		return 0;
 	}
@@ -1797,24 +1822,33 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	$wiki_newsarchivepagetitle = $row[3];
 	$wiki_homemenutitle = $row[4];
 
+	if(!isset($wiki_homemenutitle))$wiki_homemenutitle = "";
+
 	$wiki_apibaseurl = $serverbaseurl . $apiprefixuri;
 
-	$query="SELECT ninupdates_reports.reportdaterfc, ninupdates_consoles.generation, ninupdates_reports.postproc_runfinished FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.reportdate='".$reportdate."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."'";
-	$result=mysqli_query($mysqldb, $query);
-	$numrows=mysqli_num_rows($result);
-
-	if($numrows==0)
+	if($wikigen_path=="")
 	{
-		wikibot_writelog("Failed to find the report with reportdate $reportdate.", 0, $reportdate);
-		return 12;
+		$query="SELECT ninupdates_reports.reportdaterfc, ninupdates_consoles.generation, ninupdates_reports.postproc_runfinished FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.log='report' && ninupdates_reports.reportdate='".$reportdate."' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."'";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+
+		if($numrows==0)
+		{
+			wikibot_writelog("Failed to find the report with reportdate $reportdate.", 0, $reportdate);
+			return 12;
+		}
+
+		$row = mysqli_fetch_row($result);
+		$timestamp = date_timestamp_get(date_create_from_format(DateTimeInterface::RFC822, $row[0]));
+		$system_generation = $row[1];
+		$postproc_runfinished = $row[2];
 	}
-
-	$row = mysqli_fetch_row($result);
-	$timestamp = date_timestamp_get(date_create_from_format(DateTimeInterface::RFC822, $row[0]));
-	$system_generation = $row[1];
-	$postproc_runfinished = $row[2];
-
-	if(!isset($wiki_homemenutitle))$wiki_homemenutitle = "";
+	else
+	{
+		$timestamp = time();
+		$system_generation = 0;
+		$postproc_runfinished = 0;
+	}
 
 	$updateversion_norebootless = $updateversion;
 	$rebootless_flag = False;
@@ -1874,6 +1908,19 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	}
 
 	wikibot_writelog($text, 2, $reportdate);
+
+	$page = NULL;
+	if($wikigen_path!="")
+	{
+		$tmpret = wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, wikigen_path: $wikigen_path);
+		if($ret==0) $ret = $tmpret;
+
+		if($wikibot_loggedin == 1)$api->logout();
+
+		echo "Wikibot run finished.\n";
+
+		return $ret;
+	}
 
 	$newspage = $services->newPageGetter()->getFromTitle($wiki_newspagetitle);
 	$revision = $newspage->getRevisions()->getLatest();
@@ -2006,18 +2053,33 @@ function runwikibot_newsysupdate($updateversion, $reportdate)
 	return $ret;
 }
 
-$wikibot_scheduledtask = 0;
+$wikibot_cmdtype = 0;
 
 if($argc<3)
 {
 	if($argc != 2 || $argv[1]!=="scheduled")
 	{
 		echo "Usage:\nphp wikibot.php <updateversion> <reportdate> <system>\n";
+		echo "php wikibot.php scheduled\n";
+		echo "php wikibot.php <system> <--wikigen=path>\n";
 		return 0;
 	}
 	else
 	{
-		$wikibot_scheduledtask = 1;
+		$wikibot_cmdtype = 1;
+	}
+}
+else if($argc==3)
+{
+	if(substr($argv[2], 0, 10)=="--wikigen=")
+	{
+		$wikibot_cmdtype = 2;
+		$wikibot_wikigen_path = substr($argv[2], 10);
+	}
+	else
+	{
+		echo "Usage:\nphp wikibot.php <system> <--wikigen=path>\n";
+		return 0;
 	}
 }
 
@@ -2036,13 +2098,27 @@ if(!flock($lock_fp, LOCK_EX))
 	exit(1);
 }
 
-if($wikibot_scheduledtask == 0)
+if($wikibot_cmdtype == 0)
 {
 	$updateversion = mysqli_real_escape_string($mysqldb, $argv[1]);
 	$reportdate = mysqli_real_escape_string($mysqldb, $argv[2]);
 	$system = mysqli_real_escape_string($mysqldb, $argv[3]);
 
 	runwikibot_newsysupdate($updateversion, $reportdate);
+}
+else if($wikibot_cmdtype == 2)
+{
+	$updateversion = "N/A";
+	$reportdate = "wikigen";
+	$system = mysqli_real_escape_string($mysqldb, $argv[1]);
+
+	$ret = runwikibot_newsysupdate($updateversion, $reportdate, $wikibot_wikigen_path);
+	if($ret!=0)
+	{
+		echo "Sending notif since an error occured...\n";
+		$msg = "wikibot: An error occured while processing --wikigen for $system.";
+		send_notif([$msg, "--webhook", "--webhooktarget=1"]);
+	}
 }
 else
 {
