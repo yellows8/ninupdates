@@ -7,6 +7,7 @@ import argparse
 import json
 import csv
 import re
+from datetime import datetime, date, time, timezone
 
 from proc_config import *
 
@@ -45,7 +46,9 @@ if len(title_id) != 16 or re.search('[0-9a-f]{16}$', title_id) is None:
 lastmod = None
 if "last-modified" in aqua_resp["headers"]:
     lastmod = aqua_resp["headers"]["last-modified"]
-print(lastmod)
+    print(lastmod)
+    lastmod_datetime = datetime.strptime(lastmod, '%a, %d %b %Y %H:%M:%S %Z')
+    lastmod_datestr = '{0:%B} {1}, {0:%Y}'.format(lastmod_datetime, lastmod_datetime.day)
 
 found = False
 for entry in storage["data"]:
@@ -70,6 +73,9 @@ if len(storage["data"]) <= 1:
 
 msg = "The required sysver returned by aqua for eShop content download changed: v%d" % (title_ver)
 
+reportdate = None
+updateversion = None
+
 ret = os.system("php /home/yellows8/ninupdates/api_cli.php gettitleversions hac ALL %s 0 --format=csv > %s" % (title_id, csvpath))
 if ret!=0:
     print("api_cli failed: %d" % (ret))
@@ -87,11 +93,49 @@ else:
                 ver = ver[1:]
             ver = int(ver)
             if ver == title_ver:
-                msg += ", for sysupdate: https://yls8.mtheall.com/ninupdates/reports.php?date=%s&sys=hac" % (row[1])
+                reportdate = row[1]
+                updateversion = row[2]
+                msg += ", for sysupdate: https://yls8.mtheall.com/ninupdates/reports.php?date=%s&sys=hac" % (reportdate)
                 break
 
 if lastmod is not None:
     msg += " Last-Modified: %s" % (lastmod)
+
+if lastmod is not None and reportdate is not None and updateversion is not None:
+    wikigen_path = "%s/%s_wikigen.json" % (datadir, reportdate)
+    print("Writing wikigen to the following path, and then running the wikibot: %s" % (wikigen_path))
+
+    pos = updateversion.find('_rebootless')
+    if pos!=-1:
+        updateversion_norebootless = updateversion[:pos]
+    else:
+        updateversion_norebootless = updateversion
+
+    prefix = "On %s (UTC), the required" % (lastmod_datestr)
+
+    wikigen = []
+
+    page = {
+        "page_title": updateversion_norebootless,
+        "search_section": "update was released",
+        "targets": [
+            {
+                "search_section_end": "\n==Change-log==",
+                "text_sections": [
+                    {
+                        "search_text": prefix,
+                        "insert_text": "%s system-version returned by [[Network|aqua]] for eShop contents-download was updated to this sysver (%s).\n" % (prefix, updateversion),
+                    },
+                ],
+            },
+        ],
+    }
+    wikigen.append(page)
+
+    with open(wikigen_path, 'w') as json_f:
+        json.dump(wikigen, json_f)
+
+    os.system("php /home/yellows8/ninupdates/wikibot.php hac '--wikigen=%s' >> /home/yellows8/ninupdates/debuglogs/wikibot_aqua_wikigen_log 2>&1 &" % (wikigen_path))
 
 print("Sending notifs with msg: %s" % msg)
 
