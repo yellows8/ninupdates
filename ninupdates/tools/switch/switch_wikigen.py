@@ -496,12 +496,19 @@ bt_bsa_version_info_string = None
 bt_config_str = None
 wifi_fwstr = None
 
+bootpkg_line_found = False
+bootpkg_masterkey_str = None # Extract this from updatedetails since it's present anyway, even though this script has no use for it currently.
+bootpkg_retail_fuses = None
+bootpkg_devunit_fuses = None
+
 cmpstr = "bluetooth-sysmodule"
 cmpstr2 = "wlan-sysmodule"
+cmpstr3 = "BootImagePackage"
 
 if updatedetails is not None:
     cnt=0
     cnt2=0
+    cnt3=0
     for line in updatedetails:
         line = line.strip("\n")
         if len(line)>0:
@@ -509,13 +516,19 @@ if updatedetails is not None:
                 cnt=3
             elif line[:len(cmpstr2)] == cmpstr2:
                 cnt2=1
-            elif cnt>0 or cnt2>0:
+            elif line[:len(cmpstr3)] == cmpstr3:
+                cnt3=3
+                bootpkg_line_found = True
+            elif cnt>0 or cnt2>0 or cnt3>0:
                 if cnt>0:
                     cnt = cnt-1
                     line_type=0
                 elif cnt2>0:
                     cnt2 = cnt2-1
                     line_type=1
+                elif cnt3>0:
+                    cnt3 = cnt3-1
+                    line_type=2
 
                 pos = line.find(': ')
                 if pos!=-1:
@@ -532,6 +545,35 @@ if updatedetails is not None:
                     elif line_type==1:
                         if cmpline == "Firmware string":
                             wifi_fwstr = val_line
+                    elif line_type==2:
+                        if cmpline == "Using master-key":
+                            bootpkg_masterkey_str = val_line
+                        elif cmpline == "Total retail blown fuses":
+                            bootpkg_retail_fuses = val_line
+                        elif cmpline == "Total devunit blown fuses":
+                            bootpkg_devunit_fuses = val_line
+
+if bootpkg_line_found is False or (bootpkg_line_found is True and bootpkg_retail_fuses is not None and bootpkg_devunit_fuses is not None):
+    fuse_columns = []
+    if bootpkg_retail_fuses is not None and bootpkg_devunit_fuses is not None:
+        fuse_columns.append(bootpkg_retail_fuses)
+        fuse_columns.append(bootpkg_devunit_fuses)
+
+    page = {
+        "page_title": "Fuses",
+        "search_section": "= Anti-downgrade =",
+        "targets": [
+            {
+                "search_section": "{|",
+                "tables_updatever_range": [
+                    {
+                        "columns": fuse_columns,
+                    },
+                ],
+            },
+        ],
+    }
+    storage.append(page)
 
 if bt_bsa_version_string is not None and bt_bsa_version_info_string is not None and bt_config_str is not None:
     page = {

@@ -1160,182 +1160,48 @@ function wikibot_edit_systemversions($api, $services, $updateversion, $reportdat
 	return wikibot_edit_pagetable($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $pagetitle, "{| ", "| [[$updateversion]]\n", $entrydata);
 }
 
-function wikibot_edit_fuses($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri)
-{
-	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_workdir;
+/*
+This parses a json file for editing wiki pages, with the below format.
+When any errors occur, it will skip processing the current array-entry, with the error only being returned after processing the rest of the json. This includes fields not being found which are not listed as optional, and when most text-search functionality (excluding search_text) fails.
 
-	$pagetitle = "Fuses";
-
-	$table_search = "= Anti-downgrade =";
-
-	$page_text = "";
-
-	$updatedetails = "";
-	$retail_fuses = "";
-	$dev_fuses = "";
-
-	$updatedir = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system";
-
-	$updatedir_path = "$updatedir/updatedetails";
-
-	if(file_exists($updatedir_path)===FALSE)
+[ # Array of page
 	{
-		wikibot_writelog("wikibot_edit_fuses(): The updatedetails file doesn't exist.", 0, $reportdate);
-		return 3;
-	}
+		"page_title": "{wiki page title}", # The specified page must exist on the wiki, otherwise this page is skipped. If value is "!UPDATEVER", this page is used during editing the updatepage (wikibot_edit_updatepage), otherwise this page is skipped.
+		"search_section": "{search text}", # Must be specified either here or in the below target entry. If both are specified, the search starting pos for the target search_section is the pos of the page search_section. The located text is used as the starting pos for the section to edit.
 
-	$updatedetails = file_get_contents($updatedir_path);
-
-	if($updatedetails===FALSE)
-	{
-		wikibot_writelog("wikibot_edit_fuses(): Failed to load the updatedetails file.", 0, $reportdate);
-		return 3;
-	}
-
-	if(strpos($updatedetails, "BootImagePackage")!==FALSE)
-	{
-		$searchstr = "Total retail blown fuses: ";
-		$tmp = strstr($updatedetails, $searchstr);
-		if($tmp!==FALSE)
-		{
-			$line_end = strpos($tmp, "\n");
-			$tmp = substr($tmp, strlen($searchstr), $line_end-strlen($searchstr));
-			$retail_fuses = $tmp;
-		}
-
-		$searchstr = "Total devunit blown fuses: ";
-		$tmp = strstr($updatedetails, $searchstr);
-		if($tmp!==FALSE)
-		{
-			$line_end = strpos($tmp, "\n");
-			$tmp = substr($tmp, strlen($searchstr), $line_end-strlen($searchstr));
-			$dev_fuses = $tmp;
-		}
-
-		if($retail_fuses==="" || $dev_fuses==="")
-		{
-			wikibot_writelog("wikibot_edit_fuses(): Failed to load the fuse values from the updatedetails file.", 0, $reportdate);
-			return 4;
-		}
-	}
-
-	$tmp_page = $services->newPageGetter()->getFromTitle($pagetitle);
-	$tmp_revision = $tmp_page->getRevisions()->getLatest();
-
-	if($tmp_revision===NULL)
-	{
-		wikibot_writelog("$pagetitle page doesn't exist.", 2, $reportdate);
-
-		return 0;
-	}
-
-	wikibot_writelog("$pagetitle page exists, generating new page text if needed...", 2, $reportdate);
-
-	$page_text = $tmp_revision->getContent()->getData();
-
-	$section_pos = strpos($page_text, $table_search);
-	if($section_pos===FALSE)
-	{
-		wikibot_writelog("wikibot_edit_fuses($pagetitle): Failed to find the section/table start.", 0, $reportdate);
-		return 1;
-	}
-
-	$table_endpos = strpos($page_text, "|}", $section_pos);
-	if($table_endpos===FALSE)
-	{
-		wikibot_writelog("wikibot_edit_fuses($pagetitle): Failed to find the table end.", 0, $reportdate);
-		return 2;
-	}
-
-	$table_text = substr($page_text, $section_pos, $table_endpos-$section_pos);
-	if(strpos($table_text, $updateversion)!==FALSE)
-	{
-		wikibot_writelog("wikibot_edit_fuses($pagetitle): This entry already exists in the table.", 2, $reportdate);
-		return 0;
-	}
-
-	$new_text = "";
-	if(substr($page_text, $table_endpos-3, 3)!="|-\n")
-	{
-		$new_text.= "|-\n";
-	}
-
-	$lines = explode("\n", $table_text);
-	$found = False;
-	for($i=count($lines)-1; $i>=0; $i--)
-	{
-		if($i == count($lines)-1 && substr($lines[$i], 0, 2)==="|-")
-		{
-			continue;
-		}
-		if(substr($lines[$i], 0, 2)==="|-")
-		{
-			$linei = $i+1;
-			$found = True;
-			break;
-		}
-	}
-
-	if($found === False)
-	{
-		wikibot_writelog("wikibot_edit_fuses($pagetitle): Failed to find the last table entry.", 0, $reportdate);
-		return 2;
-	}
-
-	$last_retail_fuses = substr($lines[$linei+1], 2);
-	$last_dev_fuses = substr($lines[$linei+2], 2);
-
-	if(($retail_fuses!=="" && $dev_fuses!=="") && ($retail_fuses!==$last_retail_fuses || $dev_fuses!==$last_dev_fuses))
-	{
-		$new_text.= "| $updateversion\n";
-		$new_text.= "| $retail_fuses\n";
-		$new_text.= "| $dev_fuses\n";
-
-		$new_page_text = substr($page_text, 0, $table_endpos) . $new_text . substr($page_text, $table_endpos);
-	}
-	else
-	{
-		$new_text = "";
-		for($i=0; $i<count($lines); $i++)
-		{
-			$linetext = $lines[$i];
-			if($i==count($lines)-1 && strlen($linetext)==0) continue;
-			if($linei == $i)
+		"targets": [ # Array of target
 			{
-				$tmp = strpos($linetext, "-");
-				if($tmp===FALSE)
-				{
-					$linetext = "| $updateversion";
-				}
-				else
-				{
-					$linetext = substr($linetext, 0, $tmp+1) . "$updateversion";
-				}
-			}
-			$new_text.= $linetext . "\n";
-		}
-		$new_page_text = substr($page_text, 0, $section_pos) . $new_text . substr($page_text, $table_endpos);
-	}
+				"search_section": {see above}
+				"search_section_end": "{search end text}", # Defaults to "|}" if not specified (wikitable end). This is the text to search for relative to search_section which is used as the end-pos for the section to edit (that is, the edit-section will be the text immediately before this).
 
-	wikibot_writelog("New $pagetitle page:\n$new_page_text", 1, $reportdate);
+				"text_sections": [ # Optional array of text_section. Insert raw text.
+					{
+						"search_text": "{text}", # Text to search for within the edit-section to determine whether editing is needed. If found, editing this text_section is skipped.
+						"insert_text": "{text}", # Text to insert. If insert_before_text is not specified, "\n" is added prior to the insert_text.
+						"insert_before_text": "{text}" # Optional. By default insert_text is inserted at the end of the edit-section. If this is specified, the text is inserted at the pos of the specified text.
+					},
+				],
 
-	if($wikibot_loggedin == 1)
-	{
-		wikibot_writelog("Sending $pagetitle page edit request...", 2, $reportdate);
+				"table_lists": [ # Optional array of table_list. Insert text into a table column.
+					{
+						"target_text_prefix": "{text}", # Line to update is located by searching for "| " followed by the specified target_text_prefix.
+						"insert_before_text": "{text}", # Optional. By default insert_text is inserted at the end of the table line. If this is specified, the text is inserted at the pos of the specified text.
+						"search_text": "{text}", # Text to search for within the table line to determine whether editing is needed. If found, editing this table_list is skipped.
+						"insert_text": "{text}", # Text to insert. If insert_before_text is not specified, ", " is added before insert_text, otherwise it's appended afterwards.
+					},
+				],
 
-		$newContent = new \Mediawiki\DataModel\Content($new_page_text);
-		$title = new \Mediawiki\DataModel\Title($pagetitle);
-		$identifier = new \Mediawiki\DataModel\PageIdentifier($title);
-		$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
-		$services->newRevisionSaver()->save($revision);
-
-		$text = "$pagetitle page edit request was successful.";
-		echo "$text\n";
-		wikibot_writelog($text, 1, $reportdate);
-	}
-
-	return 0;
-}
+				"tables_updatever_range": [ # Optional array of table_updatever_range. Not available when the updateversion isn't set ('N/A'), hence this is also disabled when running wikibot with a wikigen file from argv. Updates a table where the first column has the form "[updateversion]" or "[updateversion_min-updateversion_max]", with the input updateversion being used as the search_text to determine whether editing is required. "[]" around updateversion is only used if it's present in the table.
+					{
+						"columns": [ # Array of text strings for each column (following "| "), skipping the updateversion column. When the last row in the table matches the data specified here (ignoring updateversion), only the table updateversion is updated (also happens when the columns array is empty). Otherwise, a new row is inserted at the end of the table with the updateversion and the specified data.
+						],
+					},
+				],
+			},
+		],
+	},
+]
+*/
 
 function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, &$in_page_text=NULL, &$out_page_updated=NULL, $wikigen_path="")
 {
@@ -1715,6 +1581,14 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					wikibot_writelog("wikibot_process_wikigen($pagetitle): The number of json columns for table_updatever_range ($columns_count) doesn't match table num_columns ($num_columns). Whichever value is smaller will be used for the entrycount.", 2, $reportdate);
 				}
 
+				$updatever_prefix = "";
+				$updatever_append = "";
+				if(substr($lines[$linei], 2, 1)==="[")
+				{
+					$updatever_prefix = "[";
+					$updatever_append = "]";
+				}
+
 				// Check whether the json data and the table doesn't match, skipping the updatever in the table.
 				$entrycount = min($columns_count, $num_columns);
 				$found = False;
@@ -1730,7 +1604,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 				if($found)
 				{
-					$new_text.= "| [$updateversion]\n";
+					$new_text.= "| ".$updatever_prefix.$updateversion.$updatever_append."\n";
 					for($i=0; $i<$entrycount; $i++)
 					{
 						$new_text.= "| ".$columns[$i]."\n";
@@ -1750,11 +1624,11 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 							$tmp = strpos($linetext, "-");
 							if($tmp===FALSE)
 							{
-								$linetext = "| [$updateversion]";
+								$linetext = "| ".$updatever_prefix.$updateversion.$updatever_append;
 							}
 							else
 							{
-								$linetext = substr($linetext, 0, $tmp+1) . "$updateversion]";
+								$linetext = substr($linetext, 0, $tmp+1) . $updateversion.$updatever_append;
 							}
 						}
 						$new_text.= $linetext . "\n";
@@ -2019,9 +1893,6 @@ function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 					if($ret==0) $ret = $tmpret;
 
 					$tmpret = wikibot_edit_systemversions($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
-					if($ret==0) $ret = $tmpret;
-
-					$tmpret = wikibot_edit_fuses($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
 					if($ret==0) $ret = $tmpret;
 				}
 				else
