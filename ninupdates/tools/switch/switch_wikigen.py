@@ -21,6 +21,10 @@ insystem = args.system
 updatever = args.updatever
 outpath = args.outpath
 
+if updatever.find('_rebootless')!=-1:
+    print("This updatever is rebootless, aborting.")
+    sys.exit(0)
+
 updatedetails = "%s/updatedetails" % (updatedir)
 if os.path.exists(updatedetails):
     with open(updatedetails, 'r') as updatef:
