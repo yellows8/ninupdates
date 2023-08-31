@@ -5,6 +5,7 @@ import argparse
 import json
 import subprocess
 from os.path import exists
+from datetime import datetime, date, time, timezone
 
 parser = argparse.ArgumentParser(description='Generate wiki data.')
 parser.add_argument('updatedir', help='Updatedir path.')
@@ -124,6 +125,128 @@ def get_titledesc(titleid):
         return "N/A"
     else:
         return proc.stdout
+
+sysver_fullversionstr_path = "%s/sysver_fullversionstr" % (updatedir)
+sysver_hexstr_path = "%s/sysver_hexstr" % (updatedir)
+sysver_digest_path = "%s/sysver_digest" % (updatedir)
+if os.path.exists(sysver_fullversionstr_path) and os.path.exists(sysver_hexstr_path):
+    with open(sysver_fullversionstr_path, 'r') as tmpf:
+        sysver_fullversionstr = tmpf.read()
+    with open(sysver_hexstr_path, 'r') as tmpf:
+        sysver_hexstr = tmpf.read()
+
+    if os.path.exists(sysver_digest_path):
+        with open(sysver_digest_path, 'r') as tmpf:
+            sysver_digest = tmpf.read()
+    else:
+        sysver_digest = "N/A"
+        print("The sysver digest file doesn't exist, using 'N/A' for the digest instead.")
+
+    page = {
+        "page_title": "System_Version_Title",
+        "search_section": "== Retail ==",
+        "targets": [
+            {
+                "search_section": "{|",
+                "insert_row_tables": [
+                    {
+                        "search_text": updatever,
+                        "columns": [
+                            updatever,
+                            sysver_fullversionstr,
+                            sysver_hexstr,
+                            sysver_digest,
+                            ""
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
+    storage.append(page)
+
+else:
+    print("The sysver files don't exist, skipping page handling for that.")
+
+info_path = "%s/sdk_versions.info" % (updatedir)
+if os.path.exists(info_path):
+    with open(info_path, 'r') as infof:
+        info_lines = infof.readlines()
+
+    first_line = None
+    for line in info_lines:
+        line = line.strip("\n")
+        if len(line)>0:
+            pos = line.find(" (.0)")
+            if pos!=-1:
+                line = line[:pos]
+
+            if first_line is None:
+                first_line = line
+            last_line = line
+
+    if last_line == first_line:
+        sdk_versions = first_line
+    else:
+        sdk_versions = "%s-%s" % (first_line, last_line)
+
+    build_date = None
+    titledirpath = "%s/0100000000000819" % (updatedir)
+    if os.path.isdir(titledirpath) is True:
+        pkg1_info_path = None
+        for dirpath, dirnames, filenames in os.walk(titledirpath):
+            for f in filenames:
+                if f == "nx_package1_hactool.info":
+                    pkg1_info_path = os.path.join(dirpath, f)
+                    break
+            if pkg1_info_path is not None:
+                break
+
+        if pkg1_info_path is not None:
+            with open(pkg1_info_path, 'r') as infof:
+                info_lines = infof.readlines()
+            for line in info_lines:
+                line = line.strip("\n")
+                if len(line)>0:
+                    if line.find("Build Date")!=-1:
+                        pos = line.rfind(" ")
+                        if pos!=-1:
+                            tmpstr = line[pos+1:]
+                            build_datetime = datetime.strptime(tmpstr, '%Y%m%d%H%M%S')
+                            build_date = build_datetime.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            print("Failed to find the bootpkg nx_package1_hactool.info.")
+    else:
+        build_date = "!LAST"
+        print("This updatedir doesn't include bootpkg, using build_date from the last wiki entry.")
+
+    if build_date is None:
+        print("Loading the build_date failed, skipping the System_Versions page.")
+    else:
+        updatever_link = "[[%s]]" % (updatever)
+        page = {
+            "page_title": "System_Versions",
+            "search_section": "{| ",
+            "targets": [
+                {
+                    "insert_row_tables": [
+                        {
+                            "search_text": updatever_link,
+                            "columns": [
+                                updatever_link,
+                                "!TIMESTAMP",
+                                build_date,
+                                sdk_versions,
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+        storage.append(page)
+
+else:
+    print("Skipping System_Versions page since the sdk_versions.info file doesn't exist.")
 
 info_path = "%s/nca_masterkey.info" % (updatedir)
 if os.path.exists(info_path):
