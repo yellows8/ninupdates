@@ -664,7 +664,7 @@ function titlelist_dbupdate_withcmd($curdate, $generation)
 		{
 			$msg = "load_titlelist_withcmd() for $curdate-$system failed.";
 			echo "Sending notif: $msg\n";
-			send_notif([$msg, "--irc", "--irctarget=msgme", "--webhook", "--webhooktarget=1"]);
+			send_notif([$msg, "--admin"]);
 			return $retval;
 		}
 	}

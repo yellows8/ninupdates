@@ -1743,7 +1743,7 @@ else if($wikibot_cmdtype == 2)
 	{
 		echo "Sending notif since an error occured...\n";
 		$msg = "wikibot: An error occured while processing --wikigen for $system.";
-		send_notif([$msg, "--webhook", "--webhooktarget=1"]);
+		send_notif([$msg, "--admin"]);
 	}
 }
 else
@@ -1769,7 +1769,7 @@ else
 		{
 			echo "Sending notif since an error occured...\n";
 			$msg = "wikibot: An error occured while processing $reportdate-$system.";
-			send_notif([$msg, "--webhook", "--webhooktarget=1"]);
+			send_notif([$msg, "--admin"]);
 		}
 
 		echo "Wikibot processing for this report finished.\n";
