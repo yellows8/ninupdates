@@ -544,14 +544,6 @@ if len(diff_titles)>0:
         "text_sections": []
     }
 
-    text_section = {
-        "insert_before_text": "\n=",
-        "search_text": "IPC Interface Changes",
-        "insert_text": "\n=== IPC Interface Changes ===\n* TODO\n"
-    }
-
-    #target["text_sections"].append(text_section)
-
     if len(bootpkgs_text)>0:
         insert_text = "\n=== BootImagePackages ===\nRomFs changes:\n"
 
@@ -578,6 +570,56 @@ if len(diff_titles)>0:
 
         target["text_sections"].append(text_section)
         #print(insert_text)
+
+    if os.path.exists("%s/swipcgen_server_ready" % (updatedir)):
+        info_path = "%s/swipcgen_server_modern_alltitles.diff.info" % (updatedir)
+        if os.path.exists(info_path):
+            with open(info_path, 'r') as infof:
+                info_lines = infof.readlines()
+
+            insert_text = "\n=== IPC Interface Changes ===\n"
+
+            #unkintf_prev_cnt=0
+            #unkintf_cur_cnt=0
+            #for line in info_lines:
+            #    line = line.strip("\n")
+            #    if len(line)>0:
+            #        if line.find("Unknown Interface prev-version:")!=-1:
+            #            unkintf_prev_cnt=unkintf_prev_cnt+1
+            #        if line.find("Unknown Interface cur-version:")!=-1:
+            #            unkintf_cur_cnt=unkintf_cur_cnt+1
+
+            linecnt=0
+            for line in info_lines:
+                line = line.strip("\n")
+                if len(line)>0:
+                    line_text = "* "
+                    tmpcnt=0
+                    for i in range(len(line)):
+                        if line[i].isspace():
+                            tmpcnt=tmpcnt+1
+                            if tmpcnt==1:
+                                line_text = "*" + line_text
+                        else:
+                            #if line.find("Unknown Interface ")==-1 or unkintf_prev_cnt!=unkintf_cur_cnt:
+                            line_text = line_text + line[i:] + "\n"
+                            insert_text = insert_text + line_text
+                            linecnt=linecnt+1
+                            break
+
+            if linecnt==0:
+                line_text = "No changes.\n"
+                insert_text = insert_text + line_text
+
+            text_section = {
+                "insert_before_text": "\n=",
+                "search_text": "IPC Interface Changes",
+                "insert_text": insert_text
+            }
+
+            target["text_sections"].append(text_section)
+        else:
+            print("The swipcgen .info file doesn't exist even though the ready file exists, skipping IPC section.")
 
     page["targets"].append(target)
 
