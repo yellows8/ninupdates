@@ -38,7 +38,7 @@ do_systems_soap();
 
 function do_systems_soap()
 {
-	global $mysqldb, $sitecfg_workdir;
+	global $mysqldb, $sitecfg_workdir, $scanstatus_notif;
 
 	dbconnection_start();
 	ninupdates_setup();
@@ -67,6 +67,8 @@ function do_systems_soap()
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);
 
+		$scanstatus_notif="";
+
 		for($i=0; $i<$numrows; $i++)
 		{
 			$row = mysqli_fetch_row($result);
@@ -77,6 +79,13 @@ function do_systems_soap()
 		$result=mysqli_query($mysqldb, $query);
 
 		close_curl();
+
+		if(strlen($scanstatus_notif)>0)
+		{
+			$scanstatus_notif.= " https://www.nintendo.co.jp/netinfo/en_US/index.html";
+			send_notif([$scanstatus_notif, "--fedi", "--fedivisibility=unlisted"]);
+			$scanstatus_notif="";
+		}
 
 		$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles, ninupdates_officialchangelog_pages WHERE ninupdates_reports.updatever_autoset=0 AND ninupdates_reports.systemid=ninupdates_consoles.id AND ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id";
 		$result=mysqli_query($mysqldb, $query);
@@ -168,7 +177,7 @@ function do_systems_soap()
 
 function dosystem($console)
 {
-	global $mysqldb, $region, $system, $sitecfg_irc_msg_dirpath, $sitecfg_irc_msgtarget, $sitecfg_irc_msgtargets, $sitecfg_emailhost, $sitecfg_target_email, $sitecfg_httpbase, $sitecfg_workdir, $sitecfg_notif_fedi_append, $sitecfg_notif_fedi_append_system, $sysupdate_available, $soap_timestamp, $dbcurdate, $sysupdate_regions, $sysupdate_timestamp, $sysupdate_systitlehashes, $curtime_override;
+	global $mysqldb, $region, $system, $sitecfg_irc_msg_dirpath, $sitecfg_irc_msgtarget, $sitecfg_irc_msgtargets, $sitecfg_emailhost, $sitecfg_target_email, $sitecfg_httpbase, $sitecfg_workdir, $sitecfg_notif_fedi_append, $sitecfg_notif_fedi_append_system, $sysupdate_available, $soap_timestamp, $dbcurdate, $sysupdate_regions, $sysupdate_timestamp, $sysupdate_systitlehashes, $curtime_override, $scanstatus_notif;
 
 	$system = $console;
 	$msgme_message = "";
@@ -240,9 +249,15 @@ function dosystem($console)
 		if($lastreqstatus !== $lastreqstatus_new)
 		{
 			echo "Req status changed since last scan, sending msg...\n";
-			$msg = "Last " . getsystem_sysname($system) . " request status changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\". https://www.nintendo.co.jp/netinfo/en_US/index.html";
+			$base_msg = "Last " . getsystem_sysname($system) . " request status changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\".";
+			$msg = $base_msg . " https://www.nintendo.co.jp/netinfo/en_US/index.html";
 			echo "msg: $msg\n";
-			send_notif([$msg, "--social", "--webhook", "--fedivisibility=unlisted"]);
+
+			// Batch these notifs together for sending with --fedi later. The webhook is used immediately to avoid any char-limit issues (unlikely, but just in case).
+			if(strlen($scanstatus_notif)>0) $scanstatus_notif.= "\n";
+			$scanstatus_notif.= $base_msg;
+
+			send_notif([$msg, "--webhook"]);
 		}
 	}
 
