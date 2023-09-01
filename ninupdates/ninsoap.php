@@ -242,7 +242,7 @@ function dosystem($console)
 			echo "Req status changed since last scan, sending msg...\n";
 			$msg = "Last " . getsystem_sysname($system) . " request status changed. Previous: \"$lastreqstatus\". Current: \"$lastreqstatus_new\". https://www.nintendo.co.jp/netinfo/en_US/index.html";
 			echo "msg: $msg\n";
-			send_notif([$msg, "--social", "--webhook"]);
+			send_notif([$msg, "--social", "--webhook", "--fedivisibility=unlisted"]);
 		}
 	}
 
@@ -338,14 +338,16 @@ function dosystem($console)
 		if($initialscan==0)echo "System $system: System update available for regions $sysupdate_regions.\n";
 		if($initialscan)echo "System $system: Initial scan successful for regions $sysupdate_regions.\n";
 
+		echo "\nSending notifications...\n";
+		$args = [$notif_msg, "--social", "--webhook"];
+
 		$notif_msg = "Sysupdate detected for " . getsystem_sysname($system) . ": $msgme_message";
 		if($reuse_report === True)
 		{
 			$notif_msg = "Sysupdate detected for " . getsystem_sysname($system) . " for an existing report with additional region(s): $msgme_message";
+			$args[] = "--fedivisibility=unlisted";
 		}
 
-		echo "\nSending notifications...\n";
-		$args = [$notif_msg, "--social", "--webhook"];
 		if($sitecfg_irc_msg_dirpath!="")
 		{
 			$targets = array();
