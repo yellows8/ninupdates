@@ -856,9 +856,11 @@ When any errors occur, it will skip processing the current array-entry, with the
 				"table_lists": [ # Optional array of table_list. Insert text into a table column.
 					{
 						"target_text_prefix": "{text}", # Line to update is located by searching for "| " followed by the specified target_text_prefix.
+						"delimiter": "{text}", # Optional delimiter to use with insert_text, defaults to ", ".
 						"insert_before_text": "{text}", # Optional. By default insert_text is inserted at the end of the table line. If this is specified, the text is inserted at the pos of the specified text.
+						"target_column": {integer}, # Optional column to edit within the same line, seperated by " ||". If specified, insert_before_text is ignored and the text will be inserted at the end of the specified column. The first column (before the first " ||") is value 0, which is the default. This is only enabled when >0.
 						"search_text": "{text}", # Text to search for within the table line to determine whether editing is needed. If found, editing this table_list is skipped.
-						"insert_text": "{text}", # Text to insert. If insert_before_text is not specified, ", " is added before insert_text, otherwise it's appended afterwards.
+						"insert_text": "{text}", # Text to insert. If insert_before_text is not specified, delimiter is added before insert_text, otherwise it's appended afterwards. With target_column, delimiter is only used for adding before insert_text when the column isn't empty.
 					},
 				],
 
@@ -1220,10 +1222,22 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					continue;
 				}
 
+				$delimiter = ", ";
+				if(isset($table_list["delimiter"]))
+				{
+					$delimiter = $table_list["delimiter"];
+				}
+
 				$insert_before_text = "";
 				if(isset($table_list["insert_before_text"]))
 				{
 					$insert_before_text = $table_list["insert_before_text"];
+				}
+
+				$target_column = 0;
+				if(isset($table_list["target_column"]))
+				{
+					$target_column = $table_list["target_column"];
 				}
 
 				if(isset($table_list["search_text"]) && isset($table_list["insert_text"]))
@@ -1262,21 +1276,62 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					continue;
 				}
 
-				if($insert_before_text!="")
+				if($target_column>0)
 				{
-					$insert_pos = strpos($line, $insert_before_text);
-					if($insert_pos===FALSE)
+					$curpos=0;
+					$errorflag = False;
+					for($i=0; $i<=$target_column; $i++)
 					{
-						wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the insert_before_text, search_text: $search_text", 0, $reportdate);
-						if($ret==0) $ret=2;
-						continue;
+						$curpos = strpos($line, " ||", $curpos);
+						if($curpos===FALSE)
+						{
+							if($i==$target_column)
+							{
+								$curpos = strlen($line);
+							}
+							else
+							{
+								wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find ' ||' for target_column=$target_column with table_list, target_text_prefix: $target_text_prefix", 0, $reportdate);
+								if($ret==0) $ret=2;
+								$errorflag = True;
+								break;
+							}
+						}
+						else if($i<$target_column)
+						{
+							$curpos+=3;
+						}
 					}
-					$insert_text.= ", ";
+					if($errorflag) continue;
+					$insert_pos = $curpos;
+
+					if(substr($line, $curpos-3, 3)!==" ||") // If the column isn't empty, add delimiter.
+					{
+						$insert_text = $delimiter . $insert_text;
+					}
+					else
+					{
+						$insert_text = " " . $insert_text;
+					}
 				}
 				else
 				{
-					$insert_text = ", " . $insert_text;
-					$insert_pos = strlen($line);
+					if($insert_before_text!="")
+					{
+						$insert_pos = strpos($line, $insert_before_text);
+						if($insert_pos===FALSE)
+						{
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the insert_before_text, search_text: $search_text", 0, $reportdate);
+							if($ret==0) $ret=2;
+							continue;
+						}
+						$insert_text.= $delimiter;
+					}
+					else
+					{
+						$insert_text = $delimiter . $insert_text;
+						$insert_pos = strlen($line);
+					}
 				}
 
 				$new_line = substr($line, 0, $insert_pos) . $insert_text . substr($line, $insert_pos);
