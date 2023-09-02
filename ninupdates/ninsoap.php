@@ -87,7 +87,7 @@ function do_systems_soap()
 			$reqstatus_timestamp = gmdate("Y-m-d_H-i-s");
 
 			$dirpath = "$sitecfg_workdir/reqstatus";
-			if(!is_dir($dirpath)) mkdir($dirpath, 0760);
+			if(!is_dir($dirpath)) mkdir($dirpath, 0750);
 
 			$ftmp = fopen("$dirpath/$reqstatus_timestamp", "w");
 			fwrite($ftmp, $reqstatus_notif);
