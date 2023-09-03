@@ -848,8 +848,10 @@ When any errors occur, it will skip processing the current array-entry, with the
 				],
 
 				"insert_row_tables": [ # Optional array of insert_row_table. Insert a row at the end of a table.
-					"search_text": "{text}", # Row text to search for within the edit-section to determine whether editing is needed. If found, editing this insert_row_table is skipped. The text searched for is "| " followed by the search_text value, then newline.
-					"columns": [ # Array of text strings for each column. The inserted text is "| " followed by the string then newline. If the string is "!LAST", the value from the last table row is used for this column. If the string is "!TIMESTAMP", an UTC date is used as the column string (report timestamp, otherwise for wikigen-argv it's from time()).
+					"search_text": "{text}", # Row text to search for within the edit-section to determine whether editing is needed. If found, editing this insert_row_table is skipped. The text searched for is "| " followed by the search_text value.
+					"sort": {value unused}, # If specified, search_text is used for comparing against the first column in each table row. This is used for determining where to insert the row, with fallback to table-end if not found.
+					"sort_columnlen": {integer}, # If specified, the column value used by sort must match the specified length otherwise an error is thrown.
+					"columns": [ # Array of text strings for each column. The inserted text is "| " followed by the string then newline. If the string is "!LAST", the value from the table row prior to the inserted row is used for this column. If the string is "!TIMESTAMP", an UTC date is used as the column string (report timestamp, otherwise for wikigen-argv it's from time()).
 					],
 				],
 
@@ -1133,12 +1135,24 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					continue;
 				}
 
+				$enable_sort = FALSE;
+				if(isset($insert_row_table["sort"]))
+				{
+					$enable_sort = TRUE;
+				}
+
+				$sort_columnlen = 0;
+				if(isset($insert_row_table["sort_columnlen"]))
+				{
+					$sort_columnlen = $insert_row_table["sort_columnlen"];
+				}
+
 				$columns_count = count($columns);
 
-				$search_text = "| $search_text\n";
-				if(strpos($section_text, $search_text)!==FALSE)
+				$tmpsearch = "| $search_text";
+				if(strpos($section_text, $tmpsearch)!==FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the section for insert_row_table, search_text: $search_text", 2, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the section for insert_row_table, tmpsearch: $tmpsearch", 2, $reportdate);
 					continue;
 				}
 
@@ -1159,27 +1173,91 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$lines = explode("\n", $section_text);
 				$found = False;
 				$num_columns=0;
-				for($i=count($lines)-1; $i>=0; $i--)
+
+				$tmpdata = array();
+				$linepos = $section_pos;
+				$tmpdata_pos = NULL;
+				$errorflag = False;
+				$table_columns = array();
+				$table_columns_pos = array();
+				$use_single_line = False;
+				$lines_count = count($lines);
+
+				for($i=0; $i<$lines_count; $i++)
 				{
-					if(($i == count($lines)-1 && substr($lines[$i], 0, 2)==="|-") || strlen($lines[$i])==0)
+					$line_prefix = substr($lines[$i], 0, 2);
+					if($line_prefix==="{|" || $line_prefix==="! ")
 					{
+						$linepos+= strlen($lines[$i])+1;
 						continue;
 					}
-					if(substr($lines[$i], 0, 2)==="|-")
+					if($line_prefix==="|-" || $line_prefix==="|}" || ($i==$lines_count-1 && strlen($lines[$i])==0))
 					{
-						$linei = $i+1;
-						$found = True;
-						break;
+						if(count($tmpdata)>0)
+						{
+							$table_columns[] = $tmpdata;
+							$table_columns_pos[] = $tmpdata_pos;
+							$tmpdata = array();
+							$tmpdata_pos = NULL;
+						}
+						if($line_prefix==="|}") break;
 					}
-					$num_columns++;
+					else
+					{
+						$curline = substr($lines[$i], 2);
+						$curpos = strpos($curline, " ||");
+						$colpos = 0;
+						if($curpos!==FALSE)
+						{
+							if($use_single_line===False) $use_single_line = True;
+							while($curpos!==FALSE)
+							{
+								$tmpdata[] = substr($curline, $colpos, $curpos-$colpos);
+								$colpos = $curpos+3;
+								$curpos = strpos($curline, " ||", $colpos);
+							}
+							$tmp = substr($curline, $colpos);
+							if(strlen($tmp)>0) $tmpdata[] = $tmp;
+						}
+						else
+						{
+							$tmp = substr($curline, $colpos);
+							$tmpdata[] = $tmp;
+						}
+
+						if($tmpdata_pos===NULL)
+						{
+							$tmpdata_pos = $linepos;
+							$tmpdata_len = strlen($tmpdata[0]);
+							if($sort_columnlen>0 && $tmpdata_len!=$sort_columnlen)
+							{
+								wikibot_writelog("wikibot_process_wikigen($pagetitle): The column length is invalid for insert_row_table: sort_columnlen=$sort_columnlen, but actual column len = $tmpdata_len.", 0, $reportdate);
+								if($ret==0) $ret=2;
+								$errorflag = True;
+								break;
+							}
+						}
+					}
+					$linepos+= strlen($lines[$i])+1;
+				}
+				if($errorflag) continue;
+
+				if(count($tmpdata)>0)
+				{
+					$table_columns[] = $tmpdata;
+					$table_columns_pos[] = $tmpdata_pos;
+					$tmpdata = array();
 				}
 
-				if($found === False)
+				$table_columns_count = count($table_columns);
+				if($table_columns_count==0)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the last table entry for insert_row_table.", 0, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): The table for insert_row_table is empty.", 0, $reportdate);
 					if($ret==0) $ret=2;
 					continue;
 				}
+				$last_table_column = $table_columns[$table_columns_count-1];
+				$num_columns = count($last_table_column);
 
 				if($columns_count != $num_columns)
 				{
@@ -1187,22 +1265,96 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				}
 				$entrycount = min($columns_count, $num_columns);
 
+				if($enable_sort===TRUE)
+				{
+					$target_pos = NULL;
+					for($i=0; $i<$table_columns_count; $i++)
+					{
+						$tmpent = $table_columns[$i][0];
+						if($i!=$table_columns_count-1)
+						{
+							if($tmpent<=$search_text && $table_columns[$i+1][0]>=$search_text)
+							{
+								$target_pos = $table_columns_pos[$i+1];
+								$last_table_column = $table_columns[$i];
+							}
+						}
+						else
+						{
+							if($tmpent<=$search_text)
+							{
+								$target_pos = NULL;
+								$last_table_column = $table_columns[$table_columns_count-1];
+							}
+							else
+							{
+								$target_pos = $table_columns_pos[$i];
+								if($table_columns_count>1)
+								{
+									$last_table_column = $table_columns[$i-1];
+								}
+								else
+								{
+									$last_table_column = NULL;
+									wikibot_writelog("wikibot_process_wikigen($pagetitle): !LAST will output '' for this insert_row_table entry since the inserted row is at the start of the table.", 2, $reportdate);
+								}
+							}
+						}
+					}
+					if($target_pos!==NULL)
+					{
+						$table_endpos = $target_pos;
+						$new_text = "";
+					}
+				}
+
 				$i=0;
 				for($i=0; $i<$entrycount; $i++)
 				{
 					$linetext = $columns[$i];
+
+					if($i==0 || $use_single_line===False)
+					{
+						$column_prefix = "| ";
+						if($use_single_line===False)
+						{
+							$column_append = "\n";
+						}
+						else
+						{
+							$column_append = "";
+						}
+					}
+					else if($i>0 && $use_single_line===True)
+					{
+						$column_prefix = " || ";
+						$column_append = "";
+					}
+					if($i==$entrycount-1 && $use_single_line===True)
+					{
+						$column_append = "\n";
+					}
+
 					if($linetext === "!LAST")
 					{
-						$new_text.= $lines[$linei+$i] . "\n";
+						$tmp = "";
+						if($last_table_column!==NULL) $tmp = $last_table_column[$i];
+						$new_text.= $column_prefix . $tmp . $column_append;
 					}
 					else if($linetext === "!TIMESTAMP")
 					{
-						$new_text.= "| " . gmdate("F j, Y", $timestamp)." (UTC)" . "\n";
+						$new_text.= $column_prefix . gmdate("F j, Y", $timestamp)." (UTC)" . $column_append;
 					}
 					else
 					{
-						$new_text.= "| $linetext\n";
+						$new_text.= $column_prefix . $linetext . $column_append;
 					}
+				}
+
+				$tmp = substr($page_text_org, $table_endpos, 2);
+				if($tmp!="|-" && $tmp!="|}")
+				{
+					$new_text.= "|-\n";
 				}
 
 				$page_text = substr($page_text_org, 0, $table_endpos) . $new_text . substr($page_text_org, $table_endpos);
