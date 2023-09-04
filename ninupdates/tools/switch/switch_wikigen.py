@@ -151,6 +151,7 @@ if os.path.exists(sysver_fullversionstr_path) and os.path.exists(sysver_hexstr_p
                 "insert_row_tables": [
                     {
                         "search_text": updatever,
+                        "search_column": 0,
                         "columns": [
                             updatever,
                             sysver_fullversionstr,
@@ -232,6 +233,7 @@ if os.path.exists(info_path):
                     "insert_row_tables": [
                         {
                             "search_text": updatever_link,
+                            "search_column": 0,
                             "columns": [
                                 updatever_link,
                                 "!TIMESTAMP",

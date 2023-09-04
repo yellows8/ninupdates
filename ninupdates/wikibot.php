@@ -848,7 +848,8 @@ When any errors occur, it will skip processing the current array-entry, with the
 				],
 
 				"insert_row_tables": [ # Optional array of insert_row_table. Insert a row at the end of a table.
-					"search_text": "{text}", # Row text to search for within the edit-section to determine whether editing is needed. If found, editing this insert_row_table is skipped. The text searched for is "| " followed by the search_text value.
+					"search_text": "{text}", # Raw text to search for within the edit-section to determine whether editing is needed. If found, editing this insert_row_table is skipped.
+					"search_column": {integer}, # Optional. Normally search_text is used raw for the text-search. If this is specified, the search is instead done on each table row with the specified column (0 is the first column).
 					"sort": {value unused}, # If specified, search_text is used for comparing against the first column in each table row. This is used for determining where to insert the row, with fallback to table-end if not found.
 					"sort_columnlen": {integer}, # If specified, the column value used by sort must match the specified length otherwise an error is thrown.
 					"columns": [ # Array of text strings for each column. The inserted text is "| " followed by the string then newline. If the string is "!LAST", the value from the table row prior to the inserted row is used for this column. If the string is "!TIMESTAMP", an UTC date is used as the column string (report timestamp, otherwise for wikigen-argv it's from time()).
@@ -1135,6 +1136,12 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					continue;
 				}
 
+				$search_column = -1;
+				if(isset($insert_row_table["search_column"]))
+				{
+					$search_column = $insert_row_table["search_column"];
+				}
+
 				$enable_sort = FALSE;
 				if(isset($insert_row_table["sort"]))
 				{
@@ -1149,10 +1156,9 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 				$columns_count = count($columns);
 
-				$tmpsearch = "| $search_text";
-				if(strpos($section_text, $tmpsearch)!==FALSE)
+				if($search_column==-1 && strpos($section_text, $search_text)!==FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the section for insert_row_table, tmpsearch: $tmpsearch", 2, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the section for insert_row_table, search_text: $search_text", 2, $reportdate);
 					continue;
 				}
 
@@ -1258,6 +1264,30 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				}
 				$last_table_column = $table_columns[$table_columns_count-1];
 				$num_columns = count($last_table_column);
+
+				if($search_column!=-1)
+				{
+					$errorflag=False;
+					for($i=0; $i<$table_columns_count; $i++)
+					{
+						$tmpcount = count($table_columns[$i]);
+						if($search_column >= $tmpcount)
+						{
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): search_column = $search_column but the count for this table row is $tmpcount, search_text: $search_text", 0, $reportdate);
+							if($ret==0) $ret=2;
+							$errorflag=True;
+							break;
+						}
+
+						if(strpos($table_columns[$i][$search_column], $search_text)!==FALSE)
+						{
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the column for search_column=$search_column insert_row_table, search_text: $search_text", 2, $reportdate);
+							$errorflag = True;
+							break;
+						}
+					}
+					if($errorflag) continue;
+				}
 
 				if($columns_count != $num_columns)
 				{
