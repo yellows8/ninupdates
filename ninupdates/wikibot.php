@@ -317,6 +317,25 @@ function wikibot_edit_navboxversions($api, $services, $updateversion, $reportdat
 	return 0;
 }
 
+function wikibot_strip_titledesc($desc)
+{
+	$tmp_pos = strpos($desc, "-sysmodule");
+	if($tmp_pos!==FALSE)
+	{
+		$desc = substr($desc, 0, $tmp_pos);
+	}
+	else
+	{
+		$start_pos = strpos($desc, '"');
+		$end_pos = strpos($desc, '" applet');
+		if($start_pos!==FALSE && $end_pos!==FALSE)
+		{
+			$desc = substr($desc, $start_pos+1, $end_pos-$start_pos-1);
+		}
+	}
+	return $desc;
+}
+
 function wikibot_generate_titlelist_text(&$titles, &$new_text, $prefix, $print_titleid, $strip_desc)
 {
 	if(count($titles)>0)
@@ -331,20 +350,7 @@ function wikibot_generate_titlelist_text(&$titles, &$new_text, $prefix, $print_t
 				$desc = $title["description"];
 				if($strip_desc)
 				{
-					$tmp_pos = strpos($desc, "-sysmodule");
-					if($tmp_pos!==FALSE)
-					{
-						$desc = substr($desc, 0, $tmp_pos);
-					}
-					else
-					{
-						$start_pos = strpos($desc, '"');
-						$end_pos = strpos($desc, '" applet');
-						if($start_pos!==FALSE && $end_pos!==FALSE)
-						{
-							$desc = substr($desc, $start_pos+1, $end_pos-$start_pos-1);
-						}
-					}
+					$desc = wikibot_strip_titledesc($desc);
 				}
 				if($print_titleid) $desc.= " (".$title["titleid"].")";
 			}
@@ -354,6 +360,114 @@ function wikibot_generate_titlelist_text(&$titles, &$new_text, $prefix, $print_t
 		}
 		$new_text.= ".";
 	}
+}
+
+function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $updateversion_norebootless)
+{
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
+
+	wikibot_writelog("wikibot_edit_titlelist(): Loading report titlelisting, then generating the titlelist wikigen...", 2, $reportdate);
+
+	$wikigen_data = array();
+
+	$report_titlelist = report_get_titlelist($system, $reportdate);
+	if(count($report_titlelist)==0)
+	{
+		wikibot_writelog("wikibot_edit_titlelist(): report_titlelist is empty.", 0, $reportdate);
+		return 1;
+	}
+
+	$wikigen_page = array();
+	$wikigen_page["page_title"] = "Title_list";
+
+	$targets = array();
+
+	for($i=0; $i<4; $i++)
+	{
+		$search_section = "= System Modules =";
+		if($i==1) $search_section = "= System Data Archives =";
+		else if($i==2) $search_section = "= System Applets =";
+		else if($i==3) $search_section = "= System Applications =";
+
+		$target["search_section"] = $search_section;
+
+		$target["insert_row_tables"] = array();
+		$target["table_lists"] = array();
+
+		$targets[] = $target;
+	}
+
+	foreach($report_titlelist as &$title)
+	{
+		$title_type=NULL;
+		if(substr($title["titleid"], 0, 14)==="01000000000000")
+		{
+			$title_type=0;
+			$target = &$targets[0];
+		}
+		else if(substr($title["titleid"], 0, 14)==="01000000000008")
+		{
+			$title_type=1;
+			$target = &$targets[1];
+		}
+		else if(substr($title["titleid"], 0, 13)==="0100000000001")
+		{
+			$title_type=2;
+			$target = &$targets[2];
+		}
+		else
+		{
+			$title_type=3;
+			$target = &$targets[3];
+		}
+
+		$tmpdata = array();
+		$ver = "v" . $title["version"];
+		$intver = intval($title["version"]);
+		$verparse = (($intver>>26)&0x3F) . "." . (($intver>>20)&0x3F) . "." . (($intver>>16)&0xF) . "." . ($intver&0xFFFF);
+		$ver_entry = "[[".$updateversion_norebootless."|$ver]] ($verparse)";
+
+		$desc = $title["description"];
+		if($desc==="N/A")
+		{
+			$desc = "";
+		}
+		else
+		{
+			$desc = wikibot_strip_titledesc($desc);
+		}
+
+		if($title["status"]==="New")
+		{
+			$desc = "[".$updateversion."+] " . $desc;
+
+			$tmpdata["search_text"] = $title["titleid"];
+			$tmpdata["search_column"] = 0;
+			$tmpdata["sort"] = True;
+			$tmpdata["sort_columnlen"] = 16;
+			$tmpdata["columns"] = [$title["titleid"], $ver_entry, $desc];
+			if($title_type!=0) $tmpdata["columns"][] = "";
+			$target["insert_row_tables"][] = $tmpdata;
+		}
+		else if($title["status"]==="Changed")
+		{
+			$tmpdata["target_text_prefix"] = $title["titleid"];
+			$tmpdata["delimiter"] = "<br/> ";
+			$tmpdata["target_column"] = 1;
+			$tmpdata["search_text"] = $ver;
+			$tmpdata["insert_text"] = $ver_entry;
+			$target["table_lists"][] = $tmpdata;
+		}
+		else
+		{
+			wikibot_writelog("wikibot_edit_titlelist(): Invalid status for titleid $titleid: $status", 0, $reportdate);
+		}
+	}
+
+	$wikigen_page["targets"] = $targets;
+	$wikigen_data[] = $wikigen_page;
+
+	return wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, wikigen_data: $wikigen_data);
 }
 
 function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation, $postproc_runfinished)
@@ -879,45 +993,52 @@ When any errors occur, it will skip processing the current array-entry, with the
 ]
 */
 
-function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, &$in_page_text=NULL, &$out_page_updated=NULL, $wikigen_path="")
+function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, &$in_page_text=NULL, &$out_page_updated=NULL, $wikigen_path="", $wikigen_data=NULL)
 {
 	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_workdir;
 
-	$path = $wikigen_path;
-	if($wikigen_path=="")
+	if($wikigen_data===NULL)
 	{
-		$updatedir = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system";
-		$path = "$updatedir/wikigen.json";
-	}
-	else
-	{
-		wikibot_writelog("wikibot_process_wikigen(): Processing wikigen with path: $wikigen_path", 2, $reportdate);
-	}
-
-	if(file_exists($path)===FALSE)
-	{
-		$msg = "wikibot_process_wikigen(): The wikigen file doesn't exist.";
-		if($wikigen_path=="") // Only throw an error when processing an input file.
+		$path = $wikigen_path;
+		if($wikigen_path=="")
 		{
-			wikibot_writelog($msg, 2, $reportdate);
-			return 0;
+			$updatedir = "$sitecfg_workdir/sysupdatedl/autodl_sysupdates/$reportdate-$system";
+			$path = "$updatedir/wikigen.json";
 		}
 		else
 		{
-			wikibot_writelog($msg, 0, $reportdate);
+			wikibot_writelog("wikibot_process_wikigen(): Processing wikigen with path: $wikigen_path", 2, $reportdate);
+		}
+
+		if(file_exists($path)===FALSE)
+		{
+			$msg = "wikibot_process_wikigen(): The wikigen file doesn't exist.";
+			if($wikigen_path=="") // Only throw an error when processing an input file.
+			{
+				wikibot_writelog($msg, 2, $reportdate);
+				return 0;
+			}
+			else
+			{
+				wikibot_writelog($msg, 0, $reportdate);
+				return 3;
+			}
+		}
+
+		$wikigen = file_get_contents($path);
+
+		if($wikigen===FALSE)
+		{
+			wikibot_writelog("wikibot_process_wikigen(): Failed to load the wikigen file.", 0, $reportdate);
 			return 3;
 		}
+
+		$wikigen = json_decode($wikigen, true);
 	}
-
-	$wikigen = file_get_contents($path);
-
-	if($wikigen===FALSE)
+	else
 	{
-		wikibot_writelog("wikibot_process_wikigen(): Failed to load the wikigen file.", 0, $reportdate);
-		return 3;
+		$wikigen = $wikigen_data;
 	}
-
-	$wikigen = json_decode($wikigen, true);
 
 	if($wikigen===NULL)
 	{
@@ -1893,15 +2014,21 @@ function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 			{
 				$tmpret = wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
 				if($ret==0) $ret = $tmpret;
+
+				if($system_generation!=0)
+				{
+					$tmpret = wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $updateversion_norebootless);
+					if($ret==0) $ret = $tmpret;
+				}
 			}
 			else
 			{
-				wikibot_writelog("Skipping wikigen handling since the report post-processing isn't finished.", 2, $reportdate);
+				wikibot_writelog("Skipping wikigen/titlelist handling since the report post-processing isn't finished.", 2, $reportdate);
 			}
 		}
 		else
 		{
-			wikibot_writelog("Skipping FirmwareNews and wikigen page handling since this report isn't the latest one.", 2, $reportdate);
+			wikibot_writelog("Skipping FirmwareNews and wikigen/titlelist page handling since this report isn't the latest one.", 2, $reportdate);
 		}
 	}
 
