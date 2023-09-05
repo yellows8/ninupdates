@@ -4,6 +4,7 @@ import os
 import argparse
 import json
 import subprocess
+import csv
 from os.path import exists
 from datetime import datetime, date, time, timezone
 
@@ -33,6 +34,8 @@ if os.path.exists(updatedetails):
 else:
     updatedetails = None
     print("Updatedetails file doesn't exist, skipping pages which require it.")
+
+updatedetails_info = {}
 
 storage = []
 
@@ -125,6 +128,101 @@ def get_titledesc(titleid):
         return "N/A"
     else:
         return proc.stdout
+
+def api_cli(region, titleid, args=[]):
+    proc = subprocess.run(["php", "/home/yellows8/ninupdates/api_cli.php", "gettitleversions", insystem, region, titleid, "2", "--format=csv", *args], capture_output=True, encoding='utf8')
+    if proc.returncode!=0:
+        print("api_cli failed, stderr: %s" % (proc.stderr))
+        return ""
+    else:
+        return proc.stdout
+
+def parse_updatedetails(inlines):
+    bootpkg_line_found = False
+    cmpstr = "bluetooth-sysmodule"
+    cmpstr2 = "wlan-sysmodule"
+    cmpstr3 = "BootImagePackage"
+
+    cnt=0
+    cnt2=0
+    cnt3=0
+
+    out = {}
+    out['bootpkg_line_found'] = False
+
+    for line in inlines:
+        line = line.strip("\n")
+        if len(line)>0:
+            if line[:len(cmpstr)] == cmpstr:
+                cnt=3
+            elif line[:len(cmpstr2)] == cmpstr2:
+                cnt2=1
+            elif line[:len(cmpstr3)] == cmpstr3:
+                cnt3=3
+                out['bootpkg_line_found'] = True
+            elif cnt>0 or cnt2>0 or cnt3>0:
+                if cnt>0:
+                    cnt = cnt-1
+                    line_type=0
+                elif cnt2>0:
+                    cnt2 = cnt2-1
+                    line_type=1
+                elif cnt3>0:
+                    cnt3 = cnt3-1
+                    line_type=2
+
+                pos = line.find(': ')
+                if pos!=-1:
+                    cmpline = line[:pos]
+                    val_line = line[pos+2:]
+
+                    if line_type==0:
+                        if cmpline == "bsa_version_string":
+                            out['bt_bsa_version_string'] = val_line
+                        elif cmpline == "bsa_version_info_string":
+                            out['bt_bsa_version_info_string'] = val_line
+                        elif cmpline == "Config string":
+                            out['bt_config_str'] = val_line
+                    elif line_type==1:
+                        if cmpline == "Firmware string":
+                            out['wifi_fwstr'] = val_line
+                    elif line_type==2:
+                        if cmpline == "Using master-key":
+                            out['bootpkg_masterkey_str'] = val_line
+                        elif cmpline == "Total retail blown fuses":
+                            out['bootpkg_retail_fuses'] = val_line
+                        elif cmpline == "Total devunit blown fuses":
+                            out['bootpkg_devunit_fuses'] = val_line
+    return out
+
+if updatedetails is not None:
+    updatedetails_info = parse_updatedetails(updatedetails)
+
+bootpkg_masterkey = None
+
+if 'bootpkg_masterkey_str' in updatedetails_info:
+    apiout = api_cli("G", "0100000000000819", args=["--prevreport=%s" % (reportdate)])
+    if apiout!="":
+        apilines = apiout.split("\n")
+        reader = csv.DictReader(apilines, delimiter=',', quoting=csv.QUOTE_NONE)
+        tmprow = None
+        for row in reader:
+            tmprow = row # Only handle the last row.
+        if tmprow is not None:
+            prev_reportdate = tmprow['Report date']
+            filepath = "/home/yellows8/ninupdates/updatedetails/%s/%s" % (insystem, prev_reportdate)
+            if os.path.exists(filepath):
+                with open(filepath, 'r') as updatef:
+                    updatedetails_prev = updatef.readlines()
+                    updatedetails_prev_info = parse_updatedetails(updatedetails_prev)
+                    if 'bootpkg_masterkey_str' in updatedetails_prev_info:
+                        if updatedetails_prev_info['bootpkg_masterkey_str'] != updatedetails_info['bootpkg_masterkey_str']:
+                            bootpkg_masterkey = {'prev': updatedetails_prev_info['bootpkg_masterkey_str'], 'cur': updatedetails_info['bootpkg_masterkey_str']}
+                    else:
+                        print("bootpkg_masterkey_str in updatedetails_prev_info not found.")
+            else:
+                updatedetails_prev = None
+                print("Updatedetails file for prev_reportdate %s doesn't exist, skipping processing for it.")
 
 sysver_fullversionstr_path = "%s/sysver_fullversionstr" % (updatedir)
 sysver_hexstr_path = "%s/sysver_hexstr" % (updatedir)
@@ -250,6 +348,8 @@ if os.path.exists(info_path):
 else:
     print("Skipping System_Versions page since the sdk_versions.info file doesn't exist.")
 
+nca_info_set = False
+
 info_path = "%s/nca_masterkey.info" % (updatedir)
 if os.path.exists(info_path):
     val = None
@@ -290,6 +390,7 @@ if os.path.exists(info_path):
         page["targets"].append(target)
 
         storage.append(page)
+        nca_info_set = True
 else:
     print("Skipping NCA page since the .info file doesn't exist.")
 
@@ -625,6 +726,27 @@ if len(diff_titles)>0:
 
     page["targets"].append(target)
 
+    if bootpkg_masterkey is not None: # This is done seperately to make sure it's added when the BootImagePackages section already exists on wiki. This expects the BootImagePackages section to already exist at this point (such as via the above target).
+        target = {
+            "search_section": "= BootImagePackages",
+            "search_section_end": "\n=",
+            "text_sections": []
+        }
+
+        insert_text = "Using updated master-key: %s (previously %s)." % (bootpkg_masterkey['cur'], bootpkg_masterkey['prev'])
+
+        if nca_info_set is True:
+            insert_text = insert_text + " See [[NCA]] for the KeyGeneration listing."
+        insert_text = insert_text + "\n"
+
+        text_section = {
+            "search_text": "master-key",
+            "insert_text": insert_text
+        }
+
+        target["text_sections"].append(text_section)
+        page["targets"].append(target)
+
     storage.append(page)
 
 # TODO
@@ -658,73 +780,11 @@ page = {
     ],
 }
 
-bt_bsa_version_string = None
-bt_bsa_version_info_string = None
-bt_config_str = None
-wifi_fwstr = None
-
-bootpkg_line_found = False
-bootpkg_masterkey_str = None # Extract this from updatedetails since it's present anyway, even though this script has no use for it currently.
-bootpkg_retail_fuses = None
-bootpkg_devunit_fuses = None
-
-cmpstr = "bluetooth-sysmodule"
-cmpstr2 = "wlan-sysmodule"
-cmpstr3 = "BootImagePackage"
-
-if updatedetails is not None:
-    cnt=0
-    cnt2=0
-    cnt3=0
-    for line in updatedetails:
-        line = line.strip("\n")
-        if len(line)>0:
-            if line[:len(cmpstr)] == cmpstr:
-                cnt=3
-            elif line[:len(cmpstr2)] == cmpstr2:
-                cnt2=1
-            elif line[:len(cmpstr3)] == cmpstr3:
-                cnt3=3
-                bootpkg_line_found = True
-            elif cnt>0 or cnt2>0 or cnt3>0:
-                if cnt>0:
-                    cnt = cnt-1
-                    line_type=0
-                elif cnt2>0:
-                    cnt2 = cnt2-1
-                    line_type=1
-                elif cnt3>0:
-                    cnt3 = cnt3-1
-                    line_type=2
-
-                pos = line.find(': ')
-                if pos!=-1:
-                    cmpline = line[:pos]
-                    val_line = line[pos+2:]
-
-                    if line_type==0:
-                        if cmpline == "bsa_version_string":
-                            bt_bsa_version_string = val_line
-                        elif cmpline == "bsa_version_info_string":
-                            bt_bsa_version_info_string = val_line
-                        elif cmpline == "Config string":
-                            bt_config_str = val_line
-                    elif line_type==1:
-                        if cmpline == "Firmware string":
-                            wifi_fwstr = val_line
-                    elif line_type==2:
-                        if cmpline == "Using master-key":
-                            bootpkg_masterkey_str = val_line
-                        elif cmpline == "Total retail blown fuses":
-                            bootpkg_retail_fuses = val_line
-                        elif cmpline == "Total devunit blown fuses":
-                            bootpkg_devunit_fuses = val_line
-
-if bootpkg_line_found is False or (bootpkg_line_found is True and bootpkg_retail_fuses is not None and bootpkg_devunit_fuses is not None):
+if updatedetails_info['bootpkg_line_found'] is False or (updatedetails_info['bootpkg_line_found'] is True and 'bootpkg_retail_fuses' in updatedetails_info and 'bootpkg_devunit_fuses' in updatedetails_info):
     fuse_columns = []
-    if bootpkg_retail_fuses is not None and bootpkg_devunit_fuses is not None:
-        fuse_columns.append(bootpkg_retail_fuses)
-        fuse_columns.append(bootpkg_devunit_fuses)
+    if 'bootpkg_retail_fuses' in updatedetails_info and 'bootpkg_devunit_fuses' in updatedetails_info:
+        fuse_columns.append(updatedetails_info['bootpkg_retail_fuses'])
+        fuse_columns.append(updatedetails_info['bootpkg_devunit_fuses'])
 
     page = {
         "page_title": "Fuses",
@@ -742,7 +802,7 @@ if bootpkg_line_found is False or (bootpkg_line_found is True and bootpkg_retail
     }
     storage.append(page)
 
-if bt_bsa_version_string is not None and bt_bsa_version_info_string is not None and bt_config_str is not None:
+if 'bt_bsa_version_string' in updatedetails_info and 'bt_bsa_version_info_string' in updatedetails_info and 'bt_config_str' in updatedetails_info:
     page = {
         "page_title": "Bluetooth_Driver_services",
         "search_section": "== Versions ==",
@@ -752,9 +812,9 @@ if bt_bsa_version_string is not None and bt_bsa_version_info_string is not None 
                 "tables_updatever_range": [
                     {
                         "columns": [
-                            bt_bsa_version_string,
-                            bt_bsa_version_info_string,
-                            bt_config_str,
+                            updatedetails_info['bt_bsa_version_string'],
+                            updatedetails_info['bt_bsa_version_info_string'],
+                            updatedetails_info['bt_config_str'],
                         ],
                     },
                 ],
@@ -763,7 +823,7 @@ if bt_bsa_version_string is not None and bt_bsa_version_info_string is not None 
     }
     storage.append(page)
 
-if wifi_fwstr is not None:
+if 'wifi_fwstr' in updatedetails_info:
     page = {
         "page_title": "WLAN_services",
         "search_section": "= FwVersion =",
@@ -773,7 +833,7 @@ if wifi_fwstr is not None:
                 "tables_updatever_range": [
                     {
                         "columns": [
-                            wifi_fwstr,
+                            updatedetails_info['wifi_fwstr'],
                         ],
                     },
                 ],
