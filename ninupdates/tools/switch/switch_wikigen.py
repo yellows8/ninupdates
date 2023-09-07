@@ -5,8 +5,12 @@ import argparse
 import json
 import subprocess
 import csv
+import ssl_bdf # https://github.com/yellows8/nx-tools
 from os.path import exists
 from datetime import datetime, date, time, timezone
+from cryptography import x509
+
+# PYTHONPATH should be set for nx-tools: "PYTHONPATH={nx-tools path} {python3 cmd}"
 
 parser = argparse.ArgumentParser(description='Generate wiki data.')
 parser.add_argument('updatedir', help='Updatedir path.')
@@ -415,7 +419,7 @@ if os.path.exists(info_path):
             parse_str = None
             change_type = None
             if line[:6] == "Files " and line[len(line)-7:] == " differ":
-                line = line[7:len(line)-7]
+                line = line[6:len(line)-7]
                 pos = line.find(" and ")
                 if pos!=-1:
                     prevpath = line[:pos]
@@ -434,6 +438,7 @@ if os.path.exists(info_path):
                     parse_str = path + "/" + path_name
                     if os.path.isdir(parse_str) is True:
                         parse_str = parse_str + "/"
+                    prevpath = parse_str
                     pos = path.find("%s%s" % (reportdate, system_searchstr))
                     if pos!=-1:
                         change_type = "added"
@@ -466,6 +471,10 @@ if os.path.exists(info_path):
                             if 'dirpath' not in title and (change_type=="updated" or "added"):
                                 tmp_pos = parse_str.find('romfs/')
                                 title['dirpath'] = parse_str[:tmp_pos+5]
+
+                            if 'dirpath_prev' not in title and (change_type=="updated" or "removed"):
+                                tmp_pos = prevpath.find('romfs/')
+                                title['dirpath_prev'] = prevpath[:tmp_pos+5]
 
                             change = {'type': change_type, 'path': path}
 
@@ -510,6 +519,56 @@ if len(diff_titles)>0:
 
                         diff_titles[group]['group_titles'].append((titleid, desc))
                         diff_titles[titleid]['group'] = group
+
+def process_certstore(title):
+    updatever_text = "[%s+]" % (updatever)
+
+    ssl_page = {
+        "page_title": "SSL_services",
+        "search_section": "= CaCertificateId =",
+        "targets": [],
+    }
+
+    ssl_target = {
+        "search_section": "{|",
+        "insert_row_tables": [],
+    }
+
+    for change in title['changes']:
+        if change['path'].find("TrustedCerts")==-1:
+            print("process_certstore(): Skipping processing for file: \"%s\"" % (change['path']))
+            continue
+        if change['type'] == 'updated':
+            tmp_path = os.path.join(title['dirpath'], change['path'][1:])
+            tmp_path_prev = os.path.join(title['dirpath_prev'], change['path'][1:])
+            cur_bdf = ssl_bdf.bdf_read(tmp_path)
+            prev_bdf = ssl_bdf.bdf_read(tmp_path_prev)
+            ssl_diff = ssl_bdf.bdf_diff(prev_bdf, cur_bdf)
+
+            for ent in ssl_diff:
+                if ent['type'] == 'added':
+                    strid = "%d" % (ent['entry']['id'])
+                    tmpattr = ent['entry']['data_x509'].subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
+                    tmpstr = tmpattr[0].value
+                    rowentry = {
+                        "search_text": strid,
+                        "search_column": 0,
+                        "search_type": 1,
+                        "sort": 1,
+                        "columns": [
+                            strid,
+                            '%s "%s"' % (updatever_text, tmpstr)
+                        ],
+                    }
+                    ssl_target["insert_row_tables"].append(rowentry)
+                else:
+                    print("process_certstore(): ssl_diff type %s is not supported, ent:" % (ent['type']))
+                    print(ent)
+        else:
+            print("process_certstore(): Skipping processing for change type '%s', file: \"%s\"" % (change['type'], change['path']))
+
+    ssl_page["targets"].append(ssl_target)
+    storage.append(ssl_page)
 
 if len(diff_titles)>0:
     page = {
@@ -632,6 +691,9 @@ if len(diff_titles)>0:
             bootpkgs_text = bootpkgs_text + title_text
         else:
             insert_text = insert_text + title_text
+
+        if titleid=='0100000000000800': # CertStore
+            process_certstore(title)
 
     text_section = {
         "search_text": "RomFs",

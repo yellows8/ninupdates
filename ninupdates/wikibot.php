@@ -443,7 +443,7 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 
 			$tmpdata["search_text"] = $title["titleid"];
 			$tmpdata["search_column"] = 0;
-			$tmpdata["sort"] = True;
+			$tmpdata["sort"] = 0;
 			$tmpdata["sort_columnlen"] = 16;
 			$tmpdata["columns"] = [$title["titleid"], $ver_entry, $desc];
 			if($title_type!=0) $tmpdata["columns"][] = "";
@@ -964,7 +964,8 @@ When any errors occur, it will skip processing the current array-entry, with the
 				"insert_row_tables": [ # Optional array of insert_row_table. Insert a row at the end of a table.
 					"search_text": "{text}", # Raw text to search for within the edit-section to determine whether editing is needed. If found, editing this insert_row_table is skipped.
 					"search_column": {integer}, # Optional. Normally search_text is used raw for the text-search. If this is specified, the search is instead done on each table row with the specified column (0 is the first column).
-					"sort": {value unused}, # If specified, search_text is used for comparing against the first column in each table row. This is used for determining where to insert the row, with fallback to table-end if not found.
+					"search_type": {integer}, # Optional, defaults to 0. Only used if search_column is specified, same as val0 otherwise. Controls the method to use for doing the search with search_text. 0 = strpos, 1 = exact match.
+					"sort": {integer}, # If specified, search_text is used for comparing against the first column in each table row. This is used for determining where to insert the row, with fallback to table-end if not found. 0 = regular compare, 1 = {same as 0 except intval is used}.
 					"sort_columnlen": {integer}, # If specified, the column value used by sort must match the specified length otherwise an error is thrown.
 					"columns": [ # Array of text strings for each column. The inserted text is "| " followed by the string then newline. If the string is "!LAST", the value from the table row prior to the inserted row is used for this column. If the string is "!TIMESTAMP", an UTC date is used as the column string (report timestamp, otherwise for wikigen-argv it's from time()).
 					],
@@ -1111,8 +1112,6 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 		foreach($wikigen_targets as $wikigen_target)
 		{
-			$page_text_org = $page_text;
-
 			$search_section = "";
 			if(isset($wikigen_target["search_section"]))
 			{
@@ -1128,7 +1127,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 			$page_section_pos = 0;
 			if($page_search_section!="")
 			{
-				$page_section_pos = strpos($page_text_org, $page_search_section);
+				$page_section_pos = strpos($page_text, $page_search_section);
 				if($page_section_pos===FALSE)
 				{
 					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the text for page search_section.", 0, $reportdate);
@@ -1139,7 +1138,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 			if($search_section!="")
 			{
-				$section_pos = strpos($page_text_org, $search_section, $page_section_pos);
+				$section_pos = strpos($page_text, $search_section, $page_section_pos);
 				if($section_pos===FALSE)
 				{
 					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the text for target search_section.", 0, $reportdate);
@@ -1157,16 +1156,6 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 			{
 				$search_section_end = $wikigen_target["search_section_end"];
 			}
-
-			$section_endpos = strpos($page_text_org, $search_section_end, $section_pos);
-			if($section_endpos===FALSE)
-			{
-				wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the section end.", 0, $reportdate);
-				if($ret==0) $ret=2;
-				continue;
-			}
-
-			$section_text = substr($page_text_org, $section_pos, $section_endpos-$section_pos);
 
 			$text_sections = array();
 			$insert_row_tables = array();
@@ -1202,6 +1191,16 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 			foreach($text_sections as $text_section)
 			{
+				$section_endpos = strpos($page_text, $search_section_end, $section_pos);
+				if($section_endpos===FALSE)
+				{
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the section end.", 0, $reportdate);
+					if($ret==0) $ret=2;
+					break;
+				}
+
+				$section_text = substr($page_text_org, $section_pos, $section_endpos-$section_pos);
+
 				if(isset($text_section["search_text"]) && isset($text_section["insert_text"]))
 				{
 					$search_text = $text_section["search_text"];
@@ -1239,12 +1238,22 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				}
 
 				$section_text = substr($section_text, 0, $insert_pos) . $insert_text . substr($section_text, $insert_pos);
-				$page_text = substr($page_text_org, 0, $section_pos) . $section_text . substr($page_text_org, $section_endpos);
+				$page_text = substr($page_text, 0, $section_pos) . $section_text . substr($page_text, $section_endpos);
 				$page_updated = True;
 			}
 
 			foreach ($insert_row_tables as $insert_row_table)
 			{
+				$section_endpos = strpos($page_text, $search_section_end, $section_pos);
+				if($section_endpos===FALSE)
+				{
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the section end.", 0, $reportdate);
+					if($ret==0) $ret=2;
+					break;
+				}
+
+				$section_text = substr($page_text, $section_pos, $section_endpos-$section_pos);
+
 				if(isset($insert_row_table["search_text"]) && isset($insert_row_table["columns"]))
 				{
 					$search_text = $insert_row_table["search_text"];
@@ -1263,10 +1272,18 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					$search_column = $insert_row_table["search_column"];
 				}
 
+				$search_type = 0;
+				if(isset($insert_row_table["search_type"]))
+				{
+					$search_type = $insert_row_table["search_type"];
+				}
+
 				$enable_sort = FALSE;
+				$sort_type=0;
 				if(isset($insert_row_table["sort"]))
 				{
 					$enable_sort = TRUE;
+					$sort_type = $insert_row_table["sort"];
 				}
 
 				$sort_columnlen = 0;
@@ -1283,7 +1300,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					continue;
 				}
 
-				$table_endpos = strpos($page_text_org, "|}", $section_pos);
+				$table_endpos = strpos($page_text, "|}", $section_pos);
 				if($table_endpos===FALSE)
 				{
 					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the table end for insert_row_table.", 2, $reportdate);
@@ -1342,6 +1359,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 								$tmpdata[] = substr($curline, $colpos, $curpos-$colpos);
 								$colpos = $curpos+3;
 								$curpos = strpos($curline, " ||", $colpos);
+								$colpos++;
 							}
 							$tmp = substr($curline, $colpos);
 							if(strlen($tmp)>0) $tmpdata[] = $tmp;
@@ -1400,7 +1418,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 							break;
 						}
 
-						if(strpos($table_columns[$i][$search_column], $search_text)!==FALSE)
+						if(($search_type==0 && strpos($table_columns[$i][$search_column], $search_text)!==FALSE) || ($search_type==1 && $table_columns[$i][$search_column] === $search_text))
 						{
 							wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the column for search_column=$search_column insert_row_table, search_text: $search_text", 2, $reportdate);
 							$errorflag = True;
@@ -1419,15 +1437,83 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				if($enable_sort===TRUE)
 				{
 					$target_pos = NULL;
+					if($sort_type==1)
+					{
+						if($search_text!=="0")
+						{
+							$search_text_org = $search_text;
+							$search_text = intval($search_text, 0);
+							if($search_text===0)
+							{
+								wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to convert search_text with intval, search_text: $search_text_org", 0, $reportdate);
+								if($ret==0) $ret=3;
+								continue;
+							}
+						}
+						else
+						{
+							$search_text = 0;
+						}
+					}
+
+					$errorflag = False;
 					for($i=0; $i<$table_columns_count; $i++)
 					{
 						$tmpent = $table_columns[$i][0];
+
+						if($sort_type==1)
+						{
+							if($tmpent!=="0")
+							{
+								$tmpent_org = $tmpent;
+								$tmpent = intval($tmpent, 0);
+								if($tmpent===0)
+								{
+									wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to convert table column with intval, column data: $tmpent_org", 0, $reportdate);
+									if($ret==0) $ret=3;
+									$errorflag = True;
+									break;
+								}
+							}
+							else
+							{
+								$tmpent = 0;
+							}
+						}
+
 						if($i!=$table_columns_count-1)
 						{
-							if($tmpent<=$search_text && $table_columns[$i+1][0]>=$search_text)
+							$tmpent2 = $table_columns[$i+1][0];
+							if($sort_type==1)
+							{
+								if($tmpent2!=="0")
+								{
+									$tmpent2_org = $tmpent2;
+									$tmpent2 = intval($tmpent2, 0);
+									if($tmpent2===0)
+									{
+										wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to convert table column with intval, column data: $tmpent2_org", 0, $reportdate);
+										if($ret==0) $ret=3;
+										$errorflag = True;
+										break;
+									}
+								}
+								else
+								{
+									$tmpent2 = 0;
+								}
+							}
+
+							if($tmpent<=$search_text && $tmpent2>=$search_text)
 							{
 								$target_pos = $table_columns_pos[$i+1];
 								$last_table_column = $table_columns[$i];
+							}
+							else if($i==0 && $search_text < $tmpent)
+							{
+								$target_pos = $table_columns_pos[$i];
+								$last_table_column = NULL;
+								wikibot_writelog("wikibot_process_wikigen($pagetitle): !LAST will output '' for this insert_row_table entry since the inserted row is at the start of the table.", 2, $reportdate);
 							}
 						}
 						else
@@ -1437,7 +1523,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 								$target_pos = NULL;
 								$last_table_column = $table_columns[$table_columns_count-1];
 							}
-							else
+							else if($target_pos===NULL)
 							{
 								$target_pos = $table_columns_pos[$i];
 								if($table_columns_count>1)
@@ -1458,8 +1544,8 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 						$new_text = "";
 					}
 				}
+				if($errorflag) continue;
 
-				$i=0;
 				for($i=0; $i<$entrycount; $i++)
 				{
 					$linetext = $columns[$i];
@@ -1502,18 +1588,28 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					}
 				}
 
-				$tmp = substr($page_text_org, $table_endpos, 2);
+				$tmp = substr($page_text, $table_endpos, 2);
 				if($tmp!="|-" && $tmp!="|}")
 				{
 					$new_text.= "|-\n";
 				}
 
-				$page_text = substr($page_text_org, 0, $table_endpos) . $new_text . substr($page_text_org, $table_endpos);
+				$page_text = substr($page_text, 0, $table_endpos) . $new_text . substr($page_text, $table_endpos);
 				$page_updated = True;
 			}
 
 			foreach($table_lists as $table_list)
 			{
+				$section_endpos = strpos($page_text, $search_section_end, $section_pos);
+				if($section_endpos===FALSE)
+				{
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the section end.", 0, $reportdate);
+					if($ret==0) $ret=2;
+					break;
+				}
+
+				$section_text = substr($page_text, $section_pos, $section_endpos-$section_pos);
+
 				if(isset($table_list["target_text_prefix"]))
 				{
 					$target_text_prefix = $table_list["target_text_prefix"];
@@ -1639,12 +1735,22 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 				$new_line = substr($line, 0, $insert_pos) . $insert_text . substr($line, $insert_pos);
 				$section_text = substr($section_text, 0, $prefix_pos) . $new_line . substr($section_text, $line_endpos);
-				$page_text = substr($page_text_org, 0, $section_pos) . $section_text . substr($page_text_org, $section_endpos);
+				$page_text = substr($page_text, 0, $section_pos) . $section_text . substr($page_text, $section_endpos);
 				$page_updated = True;
 			}
 
 			foreach($tables_updatever_range as $table_updatever_range)
 			{
+				$section_endpos = strpos($page_text, $search_section_end, $section_pos);
+				if($section_endpos===FALSE)
+				{
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the section end.", 0, $reportdate);
+					if($ret==0) $ret=2;
+					break;
+				}
+
+				$section_text = substr($page_text, $section_pos, $section_endpos-$section_pos);
+
 				if($updateversion==="N/A")
 				{
 					wikibot_writelog("wikibot_process_wikigen($pagetitle): json tables_updatever_range is not available when the updateversion isn't set ('N/A').", 2, $reportdate);
@@ -1735,7 +1841,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 						$new_text.= "| ".$columns[$i]."\n";
 					}
 
-					$page_text = substr($page_text_org, 0, $section_endpos) . $new_text . substr($page_text_org, $section_endpos);
+					$page_text = substr($page_text, 0, $section_endpos) . $new_text . substr($page_text, $section_endpos);
 				}
 				else // When data matches, just update the updatever in the table. This will also be reached when the json columns is empty.
 				{
@@ -1758,7 +1864,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 						}
 						$new_text.= $linetext . "\n";
 					}
-					$page_text = substr($page_text_org, 0, $section_pos) . $new_text . substr($page_text_org, $section_endpos);
+					$page_text = substr($page_text, 0, $section_pos) . $new_text . substr($page_text, $section_endpos);
 				}
 				$page_updated = True;
 			}
@@ -1792,7 +1898,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 {
-	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $system;
+	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $wikibot_ignore_latest_requirement, $system;
 
 	$wikibot_loggedin = 0;
 	$ret=0;
@@ -2002,7 +2108,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 
 		$tmp_reportdate = $row[0];
 
-		if($tmp_reportdate === $reportdate)
+		if($tmp_reportdate === $reportdate || (isset($wikibot_ignore_latest_requirement) && $wikibot_ignore_latest_requirement===True))
 		{
 			if($rebootless_flag===False)
 			{
