@@ -89,6 +89,7 @@ function wikibot_updatenewspages($api, $services, $updateversion, $reportdate, $
 
 	$newsarchivepage_new = $archiveline . $newsarchivepage_text;
 
+	wikibot_writelog("The news-pages were updated.", 2, $reportdate);
 	wikibot_writelog("New news-page: $newspage_new", 1, $reportdate);
 	wikibot_writelog("New news-archive-page: $newsarchivepage_new", 1, $reportdate);
 
@@ -220,6 +221,7 @@ function wikibot_updatepage_homemenu($api, $services, $updateversion, $reportdat
 
 	$new_page = substr($page_text, 0, $tableposend) . $table_entry . substr($page_text, $tableposend, strlen($page_text) - $tableposend);
 
+	wikibot_writelog("Home Menu page updated.", 2, $reportdate);
 	wikibot_writelog("New entry added to the Home Menu sysupdates table:\n$table_entry", 1, $reportdate);
 
 	if($wikibot_loggedin == 1)
@@ -298,6 +300,7 @@ function wikibot_edit_navboxversions($api, $services, $updateversion, $reportdat
 
 	$new_page = substr($page_text, 0, $posend) . $new_text . substr($page_text, $posend);
 
+	wikibot_writelog("NavboxVersions page updated.", 2, $reportdate);
 	wikibot_writelog("Updated NavboxVersions page:\n$new_page", 1, $reportdate);
 
 	if($wikibot_loggedin == 1)
@@ -808,6 +811,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 
 	if($page_updated)
 	{
+		wikibot_writelog("Sysupdate page updated.", 2, $reportdate);
 		wikibot_writelog("New sysupdate page:\n$page_text", 1, $reportdate);
 	}
 	else
@@ -907,7 +911,7 @@ function wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate,
 	$curupdatetext = substr($strstart, 3, $strendpos-3);
 	$reportupdatetext = "[[$updateversion]]";
 
-	wikibot_writelog("curupdatetext: $curupdatetext, reportupdatetext: $reportupdatetext", 2, $reportdate);
+	wikibot_writelog("wikibot_edit_firmwarenews(): curupdatetext: $curupdatetext, reportupdatetext: $reportupdatetext", 2, $reportdate);
 
 	if($curupdatetext === $reportupdatetext)
 	{
@@ -915,7 +919,7 @@ function wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate,
 		return 0;
 	}
 
-	wikibot_writelog("curupdatetext and reportupdatetext don't match, generating new page-text...", 2, $reportdate);
+	wikibot_writelog("wikibot_edit_firmwarenews(): curupdatetext and reportupdatetext don't match, generating new page-text...", 2, $reportdate);
 
 	$new_page_text = str_replace("'''$curupdatetext'''", "'''$reportupdatetext'''", $page_text);
 
@@ -1199,7 +1203,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					break;
 				}
 
-				$section_text = substr($page_text_org, $section_pos, $section_endpos-$section_pos);
+				$section_text = substr($page_text, $section_pos, $section_endpos-$section_pos);
 
 				if(isset($text_section["search_text"]) && isset($text_section["insert_text"]))
 				{
@@ -1874,11 +1878,12 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 		if($page_updated && $in_page_text===NULL)
 		{
-			wikibot_writelog("New $pagetitle page:\n$page_text", 1, $reportdate);
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): Page updated.", 2, $reportdate);
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): New page:\n$page_text", 1, $reportdate);
 
 			if($wikibot_loggedin == 1)
 			{
-				wikibot_writelog("Sending $pagetitle page edit request...", 2, $reportdate);
+				wikibot_writelog("wikibot_process_wikigen($pagetitle): Sending page edit request...", 2, $reportdate);
 
 				$newContent = new \Mediawiki\DataModel\Content($new_page_text);
 				$title = new \Mediawiki\DataModel\Title($pagetitle);
@@ -1886,10 +1891,14 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
 				$services->newRevisionSaver()->save($revision);
 
-				$text = "$pagetitle page edit request was successful.";
+				$text = "wikibot_process_wikigen($pagetitle): page edit request was successful.";
 				echo "$text\n";
 				wikibot_writelog($text, 1, $reportdate);
 			}
+		}
+		else if($page_updated===False)
+		{
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): Page was not updated.", 2, $reportdate);
 		}
 	}
 
