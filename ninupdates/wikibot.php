@@ -450,7 +450,7 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 			$tmpdata["sort_columnlen"] = 16;
 			$tmpdata["columns"] = [$title["titleid"], $ver_entry, $desc];
 			if($title_type!=0) $tmpdata["columns"][] = "";
-			$target["insert_row_tables"][] = $tmpdata;
+			$target["insert_row_tables"][] = $tmpdata; // TODO: If the row already exists, handling is skipped. This shouldn't be done for mostly-empty wiki rows, impl something for that.
 		}
 		else if($title["status"]==="Changed")
 		{
@@ -1088,12 +1088,12 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 			if($tmp_revision===NULL)
 			{
-				wikibot_writelog("wikibot_process_wikigen(): $pagetitle page doesn't exist, skipping this page entry.", 2, $reportdate);
+				wikibot_writelog("wikibot_process_wikigen($pagetitle): Page doesn't exist, skipping this page entry.", 2, $reportdate);
 
 				continue;
 			}
 
-			wikibot_writelog("wikibot_process_wikigen(): $pagetitle page exists, generating new page text if needed...", 2, $reportdate);
+			wikibot_writelog("wikibot_process_wikigen($pagetitle): Page exists, generating new page text if needed...", 2, $reportdate);
 
 			$page_text = $tmp_revision->getContent()->getData();
 		}
@@ -1134,7 +1134,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$page_section_pos = strpos($page_text, $page_search_section);
 				if($page_section_pos===FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the text for page search_section.", 0, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the text for page search_section, search_section: \"$page_search_section\"", 0, $reportdate);
 					if($ret==0) $ret=1;
 					continue;
 				}
@@ -1145,7 +1145,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$section_pos = strpos($page_text, $search_section, $page_section_pos);
 				if($section_pos===FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the text for target search_section.", 0, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the text for target search_section, search_section: \"$search_section\"", 0, $reportdate);
 					if($ret==0) $ret=1;
 					continue;
 				}
@@ -1161,6 +1161,8 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$search_section_end = $wikigen_target["search_section_end"];
 			}
 
+			$array_set_count = 0;
+			$array_counts = 0;
 			$text_sections = array();
 			$insert_row_tables = array();
 			$table_lists = array();
@@ -1169,26 +1171,41 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 			if(isset($wikigen_target["text_sections"]))
 			{
 				$text_sections = $wikigen_target["text_sections"];
+				$array_set_count++;
+				$array_counts+= count($text_sections);
 			}
 
 			if(isset($wikigen_target["insert_row_tables"]))
 			{
 				$insert_row_tables = $wikigen_target["insert_row_tables"];
+				$array_set_count++;
+				$array_counts+= count($insert_row_tables);
 			}
 
 			if(isset($wikigen_target["table_lists"]))
 			{
 				$table_lists = $wikigen_target["table_lists"];
+				$array_set_count++;
+				$array_counts+= count($table_lists);
 			}
 
 			if(isset($wikigen_target["tables_updatever_range"]))
 			{
 				$tables_updatever_range = $wikigen_target["tables_updatever_range"];
+				$array_set_count++;
+				$array_counts+= count($tables_updatever_range);
 			}
 
-			if(!isset($wikigen_target["text_sections"]) && !isset($wikigen_target["insert_row_tables"]) && !isset($wikigen_target["table_lists"]) && !isset($wikigen_target["tables_updatever_range"]))
+			if($array_set_count==0)
 			{
-				wikibot_writelog("wikibot_process_wikigen($pagetitle): json text_sections/insert_row_tables/table_lists/tables_updatever_range isn't set, skipping this entry.", 2, $reportdate);
+				wikibot_writelog("wikibot_process_wikigen($pagetitle): None of the json arrays are set, skipping this target entry.", 2, $reportdate);
+
+				continue;
+			}
+
+			if($array_counts==0)
+			{
+				wikibot_writelog("wikibot_process_wikigen($pagetitle): The json array(s) are empty, skipping this target entry.", 2, $reportdate);
 
 				continue;
 			}
@@ -1198,7 +1215,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$section_endpos = strpos($page_text, $search_section_end, $section_pos);
 				if($section_endpos===FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the section end.", 0, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): text_section: Failed to find the section end, search_section_end: \"$search_section_end\"", 0, $reportdate);
 					if($ret==0) $ret=2;
 					break;
 				}
@@ -1219,7 +1236,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 				if(strpos($section_text, $search_text)!==FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the section, search_text: $search_text", 2, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the section for text_section, search_text: \"$search_text\"", 2, $reportdate);
 					continue;
 				}
 
@@ -1231,7 +1248,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					$insert_pos = strpos($section_text, $insert_before_text);
 					if($insert_pos===FALSE)
 					{
-						wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the insert_before_text. search_text: $search_text", 0, $reportdate);
+						wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the insert_before_text for text_section. search_text: \"$search_text\"", 0, $reportdate);
 						if($ret==0) $ret=2;
 						continue;
 					}
@@ -1251,7 +1268,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$section_endpos = strpos($page_text, $search_section_end, $section_pos);
 				if($section_endpos===FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the section end.", 0, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): insert_row_table: Failed to find the section end, search_section_end: \"$search_section_end\"", 0, $reportdate);
 					if($ret==0) $ret=2;
 					break;
 				}
@@ -1300,7 +1317,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 				if($search_column==-1 && strpos($section_text, $search_text)!==FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the section for insert_row_table, search_text: $search_text", 2, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the section for insert_row_table, search_text: \"$search_text\"", 2, $reportdate);
 					continue;
 				}
 
@@ -1416,7 +1433,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 						$tmpcount = count($table_columns[$i]);
 						if($search_column >= $tmpcount)
 						{
-							wikibot_writelog("wikibot_process_wikigen($pagetitle): search_column = $search_column but the count for this table row is $tmpcount, search_text: $search_text", 0, $reportdate);
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): insert_row_table: search_column = $search_column but the count for this table row is $tmpcount, search_text: \"$search_text\"", 0, $reportdate);
 							if($ret==0) $ret=2;
 							$errorflag=True;
 							break;
@@ -1424,7 +1441,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 						if(($search_type==0 && strpos($table_columns[$i][$search_column], $search_text)!==FALSE) || ($search_type==1 && $table_columns[$i][$search_column] === $search_text))
 						{
-							wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the column for search_column=$search_column insert_row_table, search_text: $search_text", 2, $reportdate);
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the column for search_column=$search_column insert_row_table, search_text: \"$search_text\"", 2, $reportdate);
 							$errorflag = True;
 							break;
 						}
@@ -1449,7 +1466,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 							$search_text = intval($search_text, 0);
 							if($search_text===0)
 							{
-								wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to convert search_text with intval, search_text: $search_text_org", 0, $reportdate);
+								wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to convert search_text with intval for insert_row_table, search_text: \"$search_text_org\"", 0, $reportdate);
 								if($ret==0) $ret=3;
 								continue;
 							}
@@ -1473,7 +1490,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 								$tmpent = intval($tmpent, 0);
 								if($tmpent===0)
 								{
-									wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to convert table column with intval, column data: $tmpent_org", 0, $reportdate);
+									wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to convert table column with intval for insert_row_table, column data: \"$tmpent_org\"", 0, $reportdate);
 									if($ret==0) $ret=3;
 									$errorflag = True;
 									break;
@@ -1496,7 +1513,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 									$tmpent2 = intval($tmpent2, 0);
 									if($tmpent2===0)
 									{
-										wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to convert table column with intval, column data: $tmpent2_org", 0, $reportdate);
+										wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to convert table column with intval for insert_row_table, column data: \"$tmpent2_org\"", 0, $reportdate);
 										if($ret==0) $ret=3;
 										$errorflag = True;
 										break;
@@ -1517,7 +1534,6 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 							{
 								$target_pos = $table_columns_pos[$i];
 								$last_table_column = NULL;
-								wikibot_writelog("wikibot_process_wikigen($pagetitle): !LAST will output '' for this insert_row_table entry since the inserted row is at the start of the table.", 2, $reportdate);
 							}
 						}
 						else
@@ -1537,15 +1553,19 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 								else
 								{
 									$last_table_column = NULL;
-									wikibot_writelog("wikibot_process_wikigen($pagetitle): !LAST will output '' for this insert_row_table entry since the inserted row is at the start of the table.", 2, $reportdate);
 								}
 							}
 						}
 					}
+
 					if($target_pos!==NULL)
 					{
 						$table_endpos = $target_pos;
 						$new_text = "";
+					}
+					if($last_table_column===NULL)
+					{
+						wikibot_writelog("wikibot_process_wikigen($pagetitle): !LAST will output '' for this insert_row_table entry since the inserted row is at the start of the table.", 2, $reportdate);
 					}
 				}
 				if($errorflag) continue;
@@ -1607,7 +1627,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$section_endpos = strpos($page_text, $search_section_end, $section_pos);
 				if($section_endpos===FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the section end.", 0, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): table_list: Failed to find the section end, search_section_end: \"$search_section_end\"", 0, $reportdate);
 					if($ret==0) $ret=2;
 					break;
 				}
@@ -1620,7 +1640,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				}
 				else
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): json target_text_prefix isn't set, skipping this entry.", 2, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): json target_text_prefix isn't set, skipping this table_list entry.", 2, $reportdate);
 
 					continue;
 				}
@@ -1658,7 +1678,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$prefix_pos = strpos($section_text, "| $target_text_prefix");
 				if($prefix_pos===FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the table text for target_text_prefix: $target_text_prefix", 0, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the table text for table_list target_text_prefix: \"$target_text_prefix\"", 0, $reportdate);
 					if($ret==0) $ret=2;
 					continue;
 				}
@@ -1666,7 +1686,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$line_endpos = strpos($section_text, "\n", $prefix_pos);
 				if($line_endpos===FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the target line end.", 0, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the target line end for table_list.", 0, $reportdate);
 					if($ret==0) $ret=2;
 					continue;
 				}
@@ -1675,7 +1695,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 				if(strpos($line, $search_text)!==FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): This entry already exists in the table, search_text: $search_text", 2, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): This entry already exists in the table for table_list, target_text_prefix=\"$target_text_prefix\" with search_text: \"$search_text\"", 2, $reportdate);
 					continue;
 				}
 
@@ -1694,7 +1714,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 							}
 							else
 							{
-								wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find ' ||' for target_column=$target_column with table_list, target_text_prefix: $target_text_prefix", 0, $reportdate);
+								wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find ' ||' for target_column=$target_column with table_list, target_text_prefix: \"$target_text_prefix\"", 0, $reportdate);
 								if($ret==0) $ret=2;
 								$errorflag = True;
 								break;
@@ -1724,7 +1744,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 						$insert_pos = strpos($line, $insert_before_text);
 						if($insert_pos===FALSE)
 						{
-							wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the insert_before_text, search_text: $search_text", 0, $reportdate);
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the insert_before_text for table_list, search_text: \"$search_text\"", 0, $reportdate);
 							if($ret==0) $ret=2;
 							continue;
 						}
@@ -1773,7 +1793,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				}
 				else
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): json table_updatever_range columns isn't set, skipping this entry.", 2, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): json table_updatever_range columns isn't set, skipping this tables_updatever_range entry.", 2, $reportdate);
 
 					continue;
 				}
@@ -1891,7 +1911,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
 				$services->newRevisionSaver()->save($revision);
 
-				$text = "wikibot_process_wikigen($pagetitle): page edit request was successful.";
+				$text = "wikibot_process_wikigen($pagetitle): Page edit request was successful.";
 				echo "$text\n";
 				wikibot_writelog($text, 1, $reportdate);
 			}
