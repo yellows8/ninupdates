@@ -473,7 +473,7 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 	return wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, wikigen_data: $wikigen_data);
 }
 
-function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation, $postproc_runfinished)
+function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation, $postproc_runfinished, $report_latest_flag)
 {
 	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
 
@@ -843,26 +843,33 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$result=mysqli_query($mysqldb, $query);		
 
 		$text = "Sysupdate page edit request was successful.";
-		echo "$text\n";
-		wikibot_writelog($text, 1, $reportdate);
-		$text = "Sending notif...";
-		echo "$text\n";
-		wikibot_writelog($text, 1, $reportdate);
+		wikibot_writelog($text, 2, $reportdate);
 
-		$msgtext = "created";
-		$msgtextnew = "new";
-		if($page_exists==1)
+		if($report_latest_flag===True)
 		{
-			$msgtext = "updated";
-			$msgtextnew = "";
+			$text = "Sending notif...";
+			wikibot_writelog($text, 2, $reportdate);
+
+			$msgtext = "created";
+			$msgtextnew = "new";
+			if($page_exists==1)
+			{
+				$msgtext = "updated";
+				$msgtextnew = "";
+			}
+
+			$wiki_uribase = "wiki/";
+			if($apiprefixuri == "")$wiki_uribase = "index.php?title=";
+
+			$notif_msg = "The wiki page for the $msgtextnew $sysnames_list $updateversion_norebootless sysupdate has been $msgtext: $serverbaseurl$wiki_uribase$updateversion_norebootless";
+			if($rebootless_flag===False) $notif_msg.= " See also: ".$serverbaseurl.$wiki_uribase."Special:RecentChanges";
+			send_notif([$notif_msg, "--social"]);
 		}
-
-		$wiki_uribase = "wiki/";
-		if($apiprefixuri == "")$wiki_uribase = "index.php?title=";
-
-		$notif_msg = "The wiki page for the $msgtextnew $sysnames_list $updateversion_norebootless sysupdate has been $msgtext: $serverbaseurl$wiki_uribase$updateversion_norebootless";
-		if($rebootless_flag===False) $notif_msg.= " See also: ".$serverbaseurl.$wiki_uribase."Special:RecentChanges";
-		send_notif([$notif_msg, "--social"]);
+		else
+		{
+			$text = "Skipping sending notif since this isn't the latest report.";
+			wikibot_writelog($text, 2, $reportdate);
+		}
 	}
 
 	return 0;
@@ -2125,8 +2132,11 @@ function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 		//wikibot_writelog("Sysupdate page:\n".$sysupdate_page, 1, $reportdate);
 	//}
 
-	$tmpret = wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation, $postproc_runfinished);
-	if($ret==0) $ret = $tmpret;
+	$report_latest_flag = False;
+	if(isset($wikibot_ignore_latest_requirement) && $wikibot_ignore_latest_requirement===True)
+	{
+		$report_latest_flag = True;
+	}
 
 	$query="SELECT ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE log='report' && ninupdates_reports.systemid=ninupdates_consoles.id && ninupdates_consoles.system='".$system."' ORDER BY ninupdates_reports.curdate DESC LIMIT 1";
 	$result=mysqli_query($mysqldb, $query);
@@ -2137,34 +2147,42 @@ function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 
 		$tmp_reportdate = $row[0];
 
-		if($tmp_reportdate === $reportdate || (isset($wikibot_ignore_latest_requirement) && $wikibot_ignore_latest_requirement===True))
+		if($tmp_reportdate === $reportdate)
 		{
-			if($rebootless_flag===False)
-			{
-				$tmpret = wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
-				if($ret==0) $ret = $tmpret;
-			}
+			$report_latest_flag = True;
+		}
+	}
 
-			if($postproc_runfinished!=0)
-			{
-				$tmpret = wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
-				if($ret==0) $ret = $tmpret;
+	$tmpret = wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation, $postproc_runfinished, $report_latest_flag);
+	if($ret==0) $ret = $tmpret;
 
-				if($system_generation!=0)
-				{
-					$tmpret = wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $updateversion_norebootless);
-					if($ret==0) $ret = $tmpret;
-				}
-			}
-			else
+	if($report_latest_flag===True)
+	{
+		if($rebootless_flag===False)
+		{
+			$tmpret = wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+			if($ret==0) $ret = $tmpret;
+		}
+
+		if($postproc_runfinished!=0)
+		{
+			$tmpret = wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
+			if($ret==0) $ret = $tmpret;
+
+			if($system_generation!=0)
 			{
-				wikibot_writelog("Skipping wikigen/titlelist handling since the report post-processing isn't finished.", 2, $reportdate);
+				$tmpret = wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $updateversion_norebootless);
+				if($ret==0) $ret = $tmpret;
 			}
 		}
 		else
 		{
-			wikibot_writelog("Skipping FirmwareNews and wikigen/titlelist page handling since this report isn't the latest one.", 2, $reportdate);
+			wikibot_writelog("Skipping wikigen/titlelist handling since the report post-processing isn't finished.", 2, $reportdate);
 		}
+	}
+	else
+	{
+		wikibot_writelog("Skipping FirmwareNews and wikigen/titlelist page handling since this report isn't the latest one.", 2, $reportdate);
 	}
 
 	echo "Updating the report's wikibot_runfinished field...\n";
