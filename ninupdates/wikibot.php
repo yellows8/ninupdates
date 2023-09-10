@@ -442,7 +442,8 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 
 		if($title["status"]==="New")
 		{
-			$desc = "[".$updateversion."+] " . $desc;
+			$desc_prefix = "[".$updateversion."+]";
+			$desc = $desc_prefix." ".$desc;
 
 			$tmpdata["search_text"] = $title["titleid"];
 			$tmpdata["search_column"] = 0;
@@ -450,7 +451,40 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 			$tmpdata["sort_columnlen"] = 16;
 			$tmpdata["columns"] = [$title["titleid"], $ver_entry, $desc];
 			if($title_type!=0) $tmpdata["columns"][] = "";
-			$target["insert_row_tables"][] = $tmpdata; // TODO: If the row already exists, handling is skipped. This shouldn't be done for mostly-empty wiki rows, impl something for that.
+
+			$table_lists = array();
+
+			// Version column.
+			$table_list = array();
+			$table_list["target_text_prefix"] = $title["titleid"];
+			$table_list["delimiter"] = "<br/> ";
+			$table_list["target_column"] = 1;
+			$table_list["search_text"] = $ver;
+			$table_list["insert_text"] = $ver_entry;
+			$table_lists[] = $table_list;
+
+			// Description/Name column.
+			$table_list = array();
+			$table_list["target_text_prefix"] = $title["titleid"];
+			$table_list["delimiter"] = "<br/> ";
+			$table_list["target_column"] = 2;
+			$table_list["search_text"] = $desc_prefix;
+			$table_list["insert_text"] = $desc;
+
+			$findreplace_list = array();
+			$findreplace_entry = array();
+
+			$findreplace_entry["find_text"] = "(currently not present on retail devices)";
+			$findreplace_entry["replace_text"] = "";
+
+			$findreplace_list[] = $findreplace_entry;
+
+			$table_list["findreplace_list"] = $findreplace_list;
+			$table_lists[] = $table_list;
+
+			$tmpdata["table_lists"] = $table_lists;
+
+			$target["insert_row_tables"][] = $tmpdata;
 		}
 		else if($title["status"]==="Changed")
 		{
@@ -978,6 +1012,7 @@ When any errors occur, it will skip processing the current array-entry, with the
 					"search_type": {integer}, # Optional, defaults to 0. Only used if search_column is specified, same as val0 otherwise. Controls the method to use for doing the search with search_text. 0 = strpos, 1 = exact match.
 					"sort": {integer}, # If specified, search_text is used for comparing against the first column in each table row. This is used for determining where to insert the row, with fallback to table-end if not found. 0 = regular compare, 1 = {same as 0 except intval is used}.
 					"sort_columnlen": {integer}, # If specified, the column value used by sort must match the specified length otherwise an error is thrown.
+					"table_lists:": [], # Optional array of table_list to append to the below table_lists array when search_text is found successfully.
 					"columns": [ # Array of text strings for each column. The inserted text is "| " followed by the string then newline. If the string is "!LAST", the value from the table row prior to the inserted row is used for this column. If the string is "!TIMESTAMP", an UTC date is used as the column string (report timestamp, otherwise for wikigen-argv it's from time()).
 					],
 				],
@@ -989,6 +1024,12 @@ When any errors occur, it will skip processing the current array-entry, with the
 						"insert_before_text": "{text}", # Optional. By default insert_text is inserted at the end of the table line. If this is specified, the text is inserted at the pos of the specified text.
 						"target_column": {integer}, # Optional column to edit within the same line, seperated by " ||". If specified, insert_before_text is ignored and the text will be inserted at the end of the specified column. The first column (before the first " ||") is value 0, which is the default. This is only enabled when >0.
 						"search_text": "{text}", # Text to search for within the table line to determine whether editing is needed. If found, editing this table_list is skipped.
+						"findreplace_list": [ # Optional array containing the following entry data. The entry data is used with the raw line text and str_replace, prior to handling insert_text.
+							{
+								"find_text": {str}, # Text string to find with str_replace.
+								"replace_text": {str}, # Text string to replace with str_replace.
+							},
+						],
 						"insert_text": "{text}", # Text to insert. If insert_before_text is not specified, delimiter is added before insert_text, otherwise it's appended afterwards. With target_column, delimiter is only used for adding before insert_text when the column isn't empty.
 					},
 				],
@@ -1322,9 +1363,21 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 				$columns_count = count($columns);
 
+				$extra_table_lists = NULL;
+				if(isset($insert_row_table["table_lists"]))
+				{
+					$extra_table_lists = $insert_row_table["table_lists"];
+				}
+
 				if($search_column==-1 && strpos($section_text, $search_text)!==FALSE)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the section for insert_row_table, search_text: \"$search_text\"", 2, $reportdate);
+					$tmpstr = "";
+					if($extra_table_lists!==NULL)
+					{
+						$tmpstr = " The input table_lists from this insert_row_table will be processed later.";
+						foreach($extra_table_lists as $tmp_extra) $table_lists[] = $tmp_extra;
+					}
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the section for insert_row_table, search_text: \"$search_text\".$tmpstr", 2, $reportdate);
 					continue;
 				}
 
@@ -1448,7 +1501,13 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 						if(($search_type==0 && strpos($table_columns[$i][$search_column], $search_text)!==FALSE) || ($search_type==1 && $table_columns[$i][$search_column] === $search_text))
 						{
-							wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the column for search_column=$search_column insert_row_table, search_text: \"$search_text\"", 2, $reportdate);
+							$tmpstr = "";
+							if($extra_table_lists!==NULL)
+							{
+								$tmpstr = " The input table_lists from this insert_row_table will be processed later.";
+								foreach($extra_table_lists as $tmp_extra) $table_lists[] = $tmp_extra;
+							}
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the column for search_column=$search_column insert_row_table, search_text: \"$search_text\".$tmpstr", 2, $reportdate);
 							$errorflag = True;
 							break;
 						}
@@ -1670,6 +1729,12 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					$target_column = $table_list["target_column"];
 				}
 
+				$findreplace_list = NULL;
+				if(isset($table_list["findreplace_list"]))
+				{
+					$findreplace_list = $table_list["findreplace_list"];
+				}
+
 				if(isset($table_list["search_text"]) && isset($table_list["insert_text"]))
 				{
 					$search_text = $table_list["search_text"];
@@ -1706,6 +1771,22 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					continue;
 				}
 
+				if($findreplace_list!==NULL)
+				{
+					foreach($findreplace_list as $findreplace_entry)
+					{
+						if(isset($findreplace_entry["find_text"]) && isset($findreplace_entry["replace_text"]))
+						{
+							$line = str_replace($findreplace_entry["find_text"], $findreplace_entry["replace_text"], $line);
+						}
+						else
+						{
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): This findreplace_list is missing the required fields with table_list, target_text_prefix=\"$target_text_prefix\" with search_text: \"$search_text\"", 2, $reportdate);
+							continue;
+						}
+					}
+				}
+
 				if($target_column>0)
 				{
 					$curpos=0;
@@ -1735,11 +1816,12 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					if($errorflag) continue;
 					$insert_pos = $curpos;
 
-					if(substr($line, $curpos-3, 3)!==" ||") // If the column isn't empty, add delimiter.
+					$tmp = substr($line, $curpos-3, 3);
+					if($tmp!==" ||" && $tmp!=="|| ") // If the column isn't empty, add delimiter.
 					{
 						$insert_text = $delimiter . $insert_text;
 					}
-					else
+					else if($tmp[2]!==" ")
 					{
 						$insert_text = " " . $insert_text;
 					}
