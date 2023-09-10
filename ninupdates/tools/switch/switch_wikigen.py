@@ -203,8 +203,9 @@ if updatedetails is not None:
     updatedetails_info = parse_updatedetails(updatedetails)
 
 bootpkg_masterkey = None
+updatedetails_prev_info = {}
 
-if 'bootpkg_masterkey_str' in updatedetails_info:
+if updatedetails_info['bootpkg_line_found'] is True:
     apiout = api_cli("G", "0100000000000819", args=["--prevreport=%s" % (reportdate)])
     if apiout!="":
         apilines = apiout.split("\n")
@@ -220,12 +221,14 @@ if 'bootpkg_masterkey_str' in updatedetails_info:
                     updatedetails_prev = updatef.readlines()
                     updatedetails_prev_info = parse_updatedetails(updatedetails_prev)
                     if 'bootpkg_masterkey_str' in updatedetails_prev_info:
-                        if updatedetails_prev_info['bootpkg_masterkey_str'] != updatedetails_info['bootpkg_masterkey_str']:
-                            bootpkg_masterkey = {'prev': updatedetails_prev_info['bootpkg_masterkey_str'], 'cur': updatedetails_info['bootpkg_masterkey_str']}
+                        if 'bootpkg_masterkey_str' in updatedetails_info:
+                            if updatedetails_prev_info['bootpkg_masterkey_str'] != updatedetails_info['bootpkg_masterkey_str']:
+                                bootpkg_masterkey = {'prev': updatedetails_prev_info['bootpkg_masterkey_str'], 'cur': updatedetails_info['bootpkg_masterkey_str']}
+                        else:
+                            print("bootpkg_masterkey_str in updatedetails_info not found.")
                     else:
                         print("bootpkg_masterkey_str in updatedetails_prev_info not found.")
             else:
-                updatedetails_prev = None
                 print("Updatedetails file for prev_reportdate %s doesn't exist, skipping processing for it.")
 
 sysver_fullversionstr_path = "%s/sysver_fullversionstr" % (updatedir)
@@ -788,13 +791,14 @@ if len(diff_titles)>0:
 
     page["targets"].append(target)
 
-    if bootpkg_masterkey is not None: # This is done seperately to make sure it's added when the BootImagePackages section already exists on wiki. This expects the BootImagePackages section to already exist at this point (such as via the above target).
-        target = {
-            "search_section": "= BootImagePackages",
-            "search_section_end": "\n=",
-            "text_sections": []
-        }
+   # This is done seperately to make sure it's added when the BootImagePackages section already exists on wiki. This expects the BootImagePackages section to already exist at this point (such as via the above target).
+    target = {
+        "search_section": "= BootImagePackages",
+        "search_section_end": "\n=",
+        "text_sections": []
+    }
 
+    if bootpkg_masterkey is not None:
         insert_text = "Using updated master-key: %s (previously %s)." % (bootpkg_masterkey['cur'], bootpkg_masterkey['prev'])
 
         if nca_info_set is True:
@@ -807,6 +811,21 @@ if len(diff_titles)>0:
         }
 
         target["text_sections"].append(text_section)
+
+    # If the fuse info changed, add a text_section for it.
+    if updatedetails_info['bootpkg_line_found'] is True and 'bootpkg_retail_fuses' in updatedetails_info and 'bootpkg_devunit_fuses' in updatedetails_info:
+        if updatedetails_prev_info['bootpkg_line_found'] is True and 'bootpkg_retail_fuses' in updatedetails_prev_info and 'bootpkg_devunit_fuses' in updatedetails_prev_info:
+            if updatedetails_info['bootpkg_retail_fuses'] != updatedetails_prev_info['bootpkg_retail_fuses'] or updatedetails_info['bootpkg_devunit_fuses'] != updatedetails_prev_info['bootpkg_devunit_fuses']:
+                insert_text = "The anti-downgrade fuses were [[Fuses#Anti-downgrade|updated]].\n"
+
+                text_section = {
+                    "search_text": "[[Fuses",
+                    "insert_text": insert_text
+                }
+
+                target["text_sections"].append(text_section)
+
+    if len(target["text_sections"])>0:
         page["targets"].append(target)
 
     storage.append(page)
