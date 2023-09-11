@@ -523,19 +523,18 @@ if len(diff_titles)>0:
                         diff_titles[group]['group_titles'].append((titleid, desc))
                         diff_titles[titleid]['group'] = group
 
-def process_certstore(title):
+def process_certstore(title, title_text):
     updatever_text = "[%s+]" % (updatever)
 
     status_table = {-1: 'Invalid', 0: 'Removed', 1: 'EnabledTrusted', 2: 'EnabledNotTrusted', 3: 'Revoked'}
 
     ssl_page = {
         "page_title": "SSL_services",
-        "search_section": "= CaCertificateId =",
         "targets": [],
     }
 
     ssl_target = {
-        "search_section": "{|",
+        "search_section": "= CaCertificateId",
         "insert_row_tables": [],
         "table_lists": [],
     }
@@ -611,6 +610,27 @@ def process_certstore(title):
                     ssl_target["table_lists"].append(table_list)
         else:
             print("process_certstore(): Skipping processing for change type '%s', path: \"%s\"" % (change['type'], change['path']))
+
+    ssl_page["targets"].append(ssl_target)
+
+    ssl_target = {
+        "search_section": "= CertStore",
+        "text_sections": [],
+    }
+
+    insert_text = title_text
+    pos = insert_text.find(": ")
+    if pos!=-1:
+        insert_text = insert_text[pos+1:]
+    insert_text = "\n" + updatever_text + insert_text
+
+    text_section = {
+        "insert_before_text": "\n[[#ISslContext]]",
+        "search_text": updatever_text,
+        "insert_text": insert_text
+    }
+
+    ssl_target["text_sections"].append(text_section)
 
     ssl_page["targets"].append(ssl_target)
     storage.append(ssl_page)
@@ -738,7 +758,7 @@ if len(diff_titles)>0:
             insert_text = insert_text + title_text
 
         if titleid=='0100000000000800': # CertStore
-            process_certstore(title)
+            process_certstore(title, title_text)
 
     text_section = {
         "search_text": "RomFs",
