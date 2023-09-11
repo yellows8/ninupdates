@@ -526,6 +526,8 @@ if len(diff_titles)>0:
 def process_certstore(title):
     updatever_text = "[%s+]" % (updatever)
 
+    status_table = {-1: 'Invalid', 0: 'Removed', 1: 'EnabledTrusted', 2: 'EnabledNotTrusted', 3: 'Revoked'}
+
     ssl_page = {
         "page_title": "SSL_services",
         "search_section": "= CaCertificateId =",
@@ -535,6 +537,7 @@ def process_certstore(title):
     ssl_target = {
         "search_section": "{|",
         "insert_row_tables": [],
+        "table_lists": [],
     }
 
     for change in title['changes']:
@@ -547,10 +550,17 @@ def process_certstore(title):
             cur_bdf = ssl_bdf.bdf_read(tmp_path)
             prev_bdf = ssl_bdf.bdf_read(tmp_path_prev)
             ssl_diff = ssl_bdf.bdf_diff(prev_bdf, cur_bdf)
+            if ssl_diff is None: # error occured
+                print("process_certstore(): bdf_diff failed with path: \"%s\"" % (change['path']))
+                continue
 
             for ent in ssl_diff:
+                strid = "%d" % (ent['entry']['id'])
+                if change['path'] != "/ssl_TrustedCerts.bdf" and ent['entry']['id'] < 0x10000:
+                    print("process_certstore(): Skipping processing for ssl_diff entry type='%s' id=%s, path: \"%s\"" % (ent['type'], strid, change['path']))
+                    continue
+
                 if ent['type'] == 'added':
-                    strid = "%d" % (ent['entry']['id'])
                     tmpattr = ent['entry']['data_x509'].subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
                     tmpstr = tmpattr[0].value
                     rowentry = {
@@ -564,11 +574,43 @@ def process_certstore(title):
                         ],
                     }
                     ssl_target["insert_row_tables"].append(rowentry)
-                else:
-                    print("process_certstore(): ssl_diff type %s is not supported, ent:" % (ent['type']))
-                    print(ent)
+                elif ent['type'] == 'updated':
+                    str0 = ""
+                    str1 = ""
+
+                    status = ent['entry']['status']
+                    if status in status_table:
+                        status = status_table[status]
+                    else:
+                        status = "%d" % (status)
+
+                    if ent['status_updated'] is True:
+                        str0 = "[[#TrustedCertStatus]] is %s" % (status)
+
+                    if ent['data_updated'] is True:
+                        if len(str0)==0:
+                            str1 = "C"
+                        else:
+                            str1 = ", c"
+                        str1 = str1 + "ert data updated"
+
+                    table_list = {}
+                    table_list["target_text_prefix"] = strid + " "
+                    table_list["delimiter"] = " "
+                    table_list["target_column"] = 1
+                    table_list["search_text"] = updatever_text
+                    table_list["insert_text"] = "(%s %s%s)" % (updatever_text, str0, str1)
+                    ssl_target["table_lists"].append(table_list)
+                elif ent['type'] == 'removed':
+                    table_list = {}
+                    table_list["target_text_prefix"] = strid + " "
+                    table_list["delimiter"] = " "
+                    table_list["target_column"] = 1
+                    table_list["search_text"] = updatever_text
+                    table_list["insert_text"] = "(%s Removed)" % (updatever_text)
+                    ssl_target["table_lists"].append(table_list)
         else:
-            print("process_certstore(): Skipping processing for change type '%s', file: \"%s\"" % (change['type'], change['path']))
+            print("process_certstore(): Skipping processing for change type '%s', path: \"%s\"" % (change['type'], change['path']))
 
     ssl_page["targets"].append(ssl_target)
     storage.append(ssl_page)
