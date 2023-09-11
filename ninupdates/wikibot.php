@@ -1306,6 +1306,8 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					$insert_text = "\n" . $insert_text;
 				}
 
+				wikibot_writelog("wikibot_process_wikigen($pagetitle): Successfully edited the page for text_section. search_text: \"$search_text\"", 2, $reportdate);
+
 				$section_text = substr($section_text, 0, $insert_pos) . $insert_text . substr($section_text, $insert_pos);
 				$page_text = substr($page_text, 0, $section_pos) . $section_text . substr($page_text, $section_endpos);
 				$page_updated = True;
@@ -1313,7 +1315,15 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 			foreach ($insert_row_tables as $insert_row_table)
 			{
-				$section_endpos = strpos($page_text, $search_section_end, $section_pos);
+				$section_pos_table = strpos($page_text, "{|", $section_pos);
+				if($section_pos_table===FALSE)
+				{
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): insert_row_table: Failed to find the table start, search_section: \"$search_section\"", 0, $reportdate);
+					if($ret==0) $ret=1;
+					continue;
+				}
+
+				$section_endpos = strpos($page_text, $search_section_end, $section_pos_table);
 				if($section_endpos===FALSE)
 				{
 					wikibot_writelog("wikibot_process_wikigen($pagetitle): insert_row_table: Failed to find the section end, search_section_end: \"$search_section_end\"", 0, $reportdate);
@@ -1321,7 +1331,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					break;
 				}
 
-				$section_text = substr($page_text, $section_pos, $section_endpos-$section_pos);
+				$section_text = substr($page_text, $section_pos_table, $section_endpos-$section_pos_table);
 
 				if(isset($insert_row_table["search_text"]) && isset($insert_row_table["columns"]))
 				{
@@ -1400,7 +1410,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$num_columns=0;
 
 				$tmpdata = array();
-				$linepos = $section_pos;
+				$linepos = $section_pos_table;
 				$tmpdata_pos = NULL;
 				$errorflag = False;
 				$table_columns = array();
@@ -1457,7 +1467,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 							$tmpdata_len = strlen($tmpdata[0]);
 							if($sort_columnlen>0 && $tmpdata_len!=$sort_columnlen)
 							{
-								wikibot_writelog("wikibot_process_wikigen($pagetitle): The column length is invalid for insert_row_table: sort_columnlen=$sort_columnlen, but actual column len = $tmpdata_len.", 0, $reportdate);
+								wikibot_writelog("wikibot_process_wikigen($pagetitle): The column length is invalid for insert_row_table: sort_columnlen=$sort_columnlen, but actual column len = $tmpdata_len. column data: \"".$tmpdata[0]."\"", 0, $reportdate);
 								if($ret==0) $ret=2;
 								$errorflag = True;
 								break;
@@ -1684,6 +1694,8 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					$new_text.= "|-\n";
 				}
 
+				wikibot_writelog("wikibot_process_wikigen($pagetitle): Successfully edited the page for insert_row_table. search_text: \"$search_text\"", 2, $reportdate);
+
 				$page_text = substr($page_text, 0, $table_endpos) . $new_text . substr($page_text, $table_endpos);
 				$page_updated = True;
 			}
@@ -1845,6 +1857,8 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 						$insert_pos = strlen($line);
 					}
 				}
+
+				wikibot_writelog("wikibot_process_wikigen($pagetitle): Successfully edited the page for table_list. target_text_prefix=\"$target_text_prefix\" with search_text: \"$search_text\"", 2, $reportdate);
 
 				$new_line = substr($line, 0, $insert_pos) . $insert_text . substr($line, $insert_pos);
 				$section_text = substr($section_text, 0, $prefix_pos) . $new_line . substr($section_text, $line_endpos);
