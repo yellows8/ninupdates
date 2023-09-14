@@ -7,7 +7,7 @@ include_once(dirname(__FILE__) . "/get_officialchangelog.php");
 
 dbconnection_start();
 
-$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.regions, ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updatever_autoset=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
+$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.regions, ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updatever_autoset=0 AND ninupdates_reports.systemid=ninupdates_consoles.id";
 $result=mysqli_query($mysqldb, $query);
 $numrows_reports=mysqli_num_rows($result);
 
@@ -21,13 +21,16 @@ for($i=0; $i<$numrows_reports; $i++)
 	$pos = 0;
 	$len = strlen($sysupdate_regions);
 
+	$num_pages = 0;
+
 	while($pos < $len)
 	{
 		$region = substr($sysupdate_regions, $pos, 1);
 
-		$query="SELECT ninupdates_officialchangelog_pages.url, ninupdates_officialchangelog_pages.id FROM ninupdates_officialchangelog_pages, ninupdates_consoles, ninupdates_regions WHERE ninupdates_consoles.system='".$system."' && ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id && ninupdates_officialchangelog_pages.regionid=ninupdates_regions.id && ninupdates_regions.regioncode='".$region."'";
+		$query="SELECT ninupdates_officialchangelog_pages.url, ninupdates_officialchangelog_pages.id FROM ninupdates_officialchangelog_pages, ninupdates_consoles, ninupdates_regions WHERE ninupdates_consoles.system='".$system."' AND ninupdates_officialchangelog_pages.systemid=ninupdates_consoles.id AND ninupdates_officialchangelog_pages.regionid=ninupdates_regions.id AND ninupdates_regions.regioncode='".$region."'";
 		$result_other=mysqli_query($mysqldb, $query);
 		$numrows_pages=mysqli_num_rows($result_other);
+		$num_pages+=$numrows_pages;
 		if($numrows_pages!=0)
 		{
 			$row = mysqli_fetch_row($result_other);
@@ -44,9 +47,16 @@ for($i=0; $i<$numrows_reports; $i++)
 
 		if($sysupdate_regions[$pos]==',')$pos++;
 	}
+
+	if($num_pages===0)
+	{
+		echo "No pages found for reportdate=".$sysupdate_timestamp." system=".$system.", updating updatever_autoset...\n";
+		$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.updatever_autoset=2 WHERE ninupdates_reports.reportdate='".$sysupdate_timestamp."' AND ninupdates_reports.systemid=ninupdates_consoles.id AND ninupdates_consoles.system='".$system."'";
+		$result=mysqli_query($mysqldb, $query);
+	}
 }
 
-$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updatever_autoset=1 && ninupdates_reports.wikibot_runfinished=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
+$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updatever_autoset=1 AND ninupdates_reports.wikibot_runfinished=0 AND ninupdates_reports.systemid=ninupdates_consoles.id";
 $result=mysqli_query($mysqldb, $query);
 $numrows=mysqli_num_rows($result);
 
