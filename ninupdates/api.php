@@ -122,6 +122,8 @@ function ninupdates_api($ninupdatesapi_in_command, $ninupdatesapi_in_sys, $ninup
 	$ninupdatesapi_out_reportdate_array = array();
 	$ninupdatesapi_out_updateversion_array = array();
 
+	if($versions===NULL || $reportdates===NULL || $updateversions===NULL) return 6;
+
 	$ver = strtok($versions, ",");
 	while($ver!==FALSE)
 	{
@@ -144,7 +146,7 @@ function ninupdates_api($ninupdatesapi_in_command, $ninupdatesapi_in_sys, $ninup
 		$updatever = strtok(",");
 	}
 
-	if($ninupdatesapi_in_filterent!=0)
+	if($ninupdatesapi_in_filterent!=0 && $ninupdatesapi_out_total_entries>0)
 	{
 		if($ninupdatesapi_in_filterent==1)$index = 0;
 		if($ninupdatesapi_in_filterent==2)$index = $ninupdatesapi_out_total_entries-1;
