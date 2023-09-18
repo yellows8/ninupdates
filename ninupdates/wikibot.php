@@ -335,6 +335,11 @@ function wikibot_strip_titledesc($desc)
 		{
 			$desc = substr($desc, $start_pos+1, $end_pos-$start_pos-1);
 		}
+		else
+		{
+			$end_pos = strpos($desc, " (");
+			if($end_pos!==FALSE) $desc = substr($desc, 0, $end_pos);
+		}
 	}
 	return $desc;
 }
