@@ -979,13 +979,19 @@ bootpkgs_text = ""
 
 MetaOut = GetMetaText(updatedir)
 
+insert_text = "[[NPDM]] changes (besides usual version-bump):"
+
 if len(MetaOut['Meta'])>0:
-    text_section = {
-        "search_text": "NPDM",
-        "insert_text": "[[NPDM]] changes (besides usual version-bump):\n" + MetaOut['Meta']
-    }
-    target["text_sections"].append(text_section)
-    #print(text_section["insert_text"])
+    insert_text = insert_text + "\n" + MetaOut['Meta']
+else:
+    insert_text = insert_text + " none.\n"
+
+text_section = {
+    "search_text": "NPDM",
+    "insert_text": insert_text
+}
+target["text_sections"].append(text_section)
+#print(text_section["insert_text"])
 
 if len(diff_titles)>0:
     insert_text = "RomFs changes:\n"
@@ -1240,37 +1246,6 @@ if len(target["text_sections"])>0:
     page["targets"].append(target)
 
 storage.append(page)
-
-# TODO
-page = {
-    "page_title": "!UPDATEVER",
-    "search_section": "==System Titles==",
-    "targets": [
-        {
-            "search_section_end": "\n=",
-            "text_sections": [
-                {
-                    "search_text": "NPDM",
-                    "insert_text": "[[NPDM]] changes (besides usual version-bump):\n* TODO\n"
-                },
-                {
-                    "search_text": "RomFs",
-                    "insert_text": "RomFs changes (non-sysver):\n* TODO\n"
-                },
-            ],
-        },
-        {
-            "search_section_end": "\n==See Also==",
-            "text_sections": [
-                {
-                    "insert_before_text": "\n=",
-                    "search_text": "IPC Interface Changes",
-                    "insert_text": "\n=== IPC Interface Changes ===\n* TODO\n",
-                },
-            ],
-        },
-    ],
-}
 
 if updatedetails_info['bootpkg_line_found'] is False or (updatedetails_info['bootpkg_line_found'] is True and 'bootpkg_retail_fuses' in updatedetails_info and 'bootpkg_devunit_fuses' in updatedetails_info):
     fuse_columns = []
