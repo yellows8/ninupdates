@@ -5,10 +5,14 @@ import argparse
 import json
 import subprocess
 import csv
-import ssl_bdf # https://github.com/yellows8/nx-tools
+from pathlib import Path
 from os.path import exists
 from datetime import datetime, date, time, timezone
 from cryptography import x509
+
+# https://github.com/yellows8/nx-tools
+import ssl_bdf
+import nx_meta
 
 # PYTHONPATH should be set for nx-tools: "PYTHONPATH={nx-tools path} {python3 cmd}"
 
@@ -136,7 +140,7 @@ def get_titledesc(titleid):
 def api_cli(region, titleid, args=[]):
     proc = subprocess.run(["php", "/home/yellows8/ninupdates/api_cli.php", "gettitleversions", insystem, region, titleid, "2", "--format=csv", *args], capture_output=True, encoding='utf8')
     if proc.returncode!=0:
-        print("api_cli failed, stderr: %s" % (proc.stderr))
+        print("api_cli failed, stderr+stdout: %s" % (proc.stderr + proc.stdout))
         return ""
     else:
         return proc.stdout
@@ -199,6 +203,331 @@ def parse_updatedetails(inlines):
                             out['bootpkg_devunit_fuses'] = val_line
     return out
 
+def IsBootImagePackage(Id):
+    return Id=='0100000000000819' or Id=='010000000000081A' or Id=='010000000000081B' or Id=='010000000000081C'
+
+def FindMetaPath(TitleDir, TitleType):
+    Out = None
+
+    if TitleType==0:
+        DirListing = Path(TitleDir).glob('**/*plain_section0_pfs0/main.npdm')
+    elif TitleType==1:
+        DirListing = Path(TitleDir).glob('**/package2_outdir/INI1.bin')
+
+    for CurPath in DirListing:
+        Out = "%s" % (CurPath)
+        break
+
+    return Out
+
+def ProcessMetaDiffKc(KcDiff):
+    Text = ""
+
+    for KcKey, KcValue in KcDiff.items():
+        if KcKey == 'EnableSystemCalls' or KcKey == 'EnableInterrupts':
+            if len(Text)>0 and Text[-1]!=' ':
+                Text = Text + " "
+            if KcKey == 'EnableSystemCalls':
+                Text = Text + "SVC access: "
+            elif KcKey == 'EnableInterrupts':
+                Text = Text + "Interrupt access: "
+            for ChangeKey, ChangeValue in KcDiff[KcKey].items():
+                if len(Text)>0 and Text[-1]!=' ':
+                    Text = Text + ", "
+                Text = Text + "%s " % (ChangeKey.lower())
+                for Id in ChangeValue:
+                    if len(Text)>0 and Text[-1]!=' ':
+                        Text = Text + ", "
+                    if KcKey == 'EnableSystemCalls': # TODO: SVC names
+                        TmpStr = "SVC 0x%02X" % (Id)
+                    elif KcKey == 'EnableInterrupts':
+                        TmpStr = "0x%03X" % (Id)
+                    Text = Text + TmpStr
+            Text = Text + "."
+        else:
+            if len(Text)>0 and Text[-1]!=' ':
+                Text = Text + " "
+            if KcKey == 'Descriptor':
+                TmpStr = "Unknown KernelCap descriptor(s): "
+            else:
+                TmpStr = "KernelCap %s: " % (KcKey)
+            Text = Text + TmpStr
+            for ChangeKey, ChangeValue in KcDiff[KcKey].items():
+                if len(Text)>0 and Text[-1]!=' ':
+                    Text = Text + ", "
+                Text = Text + "%s " % (ChangeKey.lower())
+                for TmpKey, TmpValue in KcDiff[KcKey][ChangeKey].items():
+                    if TmpKey == 'Value':
+                        continue
+                    elif TmpKey == 'Descriptors':
+                        for KcEntry in KcDiff[KcKey][ChangeKey][TmpKey]:
+                            if len(Text)>0 and Text[-1]!=' ':
+                                Text = Text + ", "
+                            for DescKey, DescValue in KcEntry.items():
+                                if DescKey == 'Value' or DescKey == 'Value0' or DescKey == 'Value1':
+                                    continue
+                                if DescKey == 'Reserved' and ChangeKey != 'Updated' and DescValue==0:
+                                    continue
+
+                                if len(Text)>0 and Text[-1]!=' ':
+                                    Text = Text + " "
+                                Text = Text + "%s" % (DescKey)
+
+                                if DescKey == 'PermissionType' or DescKey == 'MappingType':
+                                    if ChangeKey == 'Updated':
+                                        Vals = "%s -> %s" % (DescValue[0], DescValue[1])
+                                    else:
+                                        Vals = "%s" % (DescValue)
+                                else:
+                                    if ChangeKey == 'Updated' and DescKey != 'BeginAddress':
+                                        Vals = "0x%X -> 0x%X" % (DescValue[0], DescValue[1])
+                                    else:
+                                        Vals = "0x%X" % (DescValue)
+
+                                if ChangeKey == 'Updated' and DescKey != 'BeginAddress':
+                                    Text = Text + " = %s" % (Vals)
+                                else:
+                                    Text = Text + "=%s" % (Vals)
+                    else:
+                        if TmpKey == 'Reserved' and ChangeKey != 'Updated' and TmpValue==0:
+                            continue
+
+                        if len(Text)>0 and Text[-1]!=' ':
+                            Text = Text + " "
+                        Text = Text + "%s" % (TmpKey)
+                        if ChangeKey == 'Updated':
+                            Text = Text + " = 0x%X -> 0x%X" % (TmpValue[0], TmpValue[1])
+                        else:
+                            Text = Text + "=0x%X" % (TmpValue)
+            Text = Text + "."
+
+    return Text
+
+def ProcessMetaDiffMeta(Desc, Diff, IgnoreVersion=True):
+    Text = "* %s: " % (Desc)
+
+    for Key, Value in Diff.items():
+        if Key == 'Acid':
+            for AcidKey, AcidValue in Diff[Key].items():
+                if 'Updated' in AcidValue:
+                    if len(Text)>0 and Text[-1]!=' ':
+                        Text = Text + " "
+                    Text = Text + "Acid.%s updated: 0x%X -> 0x%X." % (AcidKey, AcidValue['Updated'][0], AcidValue['Updated'][1])
+        elif Key != 'Aci':
+            if 'Updated' in Value:
+                if Key == 'Version' and IgnoreVersion is True:
+                    continue
+
+                if len(Text)>0 and Text[-1]!=' ':
+                    Text = Text + " "
+
+                if Key == 'Name' or Key == 'ProductCode' or Key == 'Reserved_x40':
+                    Vals = "%s -> %s" % (Value['Updated'][0], Value['Updated'][1])
+                else:
+                    Vals = "0x%X -> 0x%X" % (Value['Updated'][0], Value['Updated'][1])
+                Text = Text + "%s updated: %s." % (Key, Vals)
+        else:
+            for AciKey, AciValue in Diff[Key].items():
+                if AciKey!='Fac' and AciKey!='Sac' and AciKey!='Kc':
+                    if 'Updated' in AciValue:
+                        if len(Text)>0 and Text[-1]!=' ':
+                            Text = Text + " "
+                        Text = Text + "%s updated: 0x%X -> 0x%X." % (AciKey, AciValue['Updated'][0], AciValue['Updated'][1])
+                elif AciKey=='Fac':
+                    for FacKey, FacValue in Diff[Key][AciKey].items():
+                        if FacKey != 'ContentOwnerInfo' and FacKey != 'SaveDataOwnerInfo':
+                            if 'Updated' in FacValue:
+                                if len(Text)>0 and Text[-1]!=' ':
+                                    Text = Text + " "
+
+                                if Key == 'Padding':
+                                    Vals = "%s -> %s" % (Value['Updated'][0], Value['Updated'][1])
+                                else:
+                                    Vals = "0x%X -> 0x%X" % (FacValue['Updated'][0], FacValue['Updated'][1])
+
+                                Text = Text + "Fac.%s updated: %s." % (FacKey, Vals)
+                        else:
+                            TmpText = "Fac.%s " % (FacKey)
+                            for ChangeKey, ChangeValue in Diff[Key][AciKey][FacKey].items():
+                                if len(TmpText)>0 and TmpText[-1]!=' ':
+                                    TmpText = TmpText + ", "
+                                for Info in ChangeValue:
+                                    if ChangeKey == 'Updated':
+                                        IdStr = "%016X" % (Info[0]['Id'])
+                                        TmpDesc = get_titledesc(IdStr)
+                                        if TmpDesc=='N/A':
+                                            TmpDesc = ""
+                                        else:
+                                            TmpDesc = " (%s)" % (TmpDesc)
+                                        if FacKey=='SaveDataOwnerInfo':
+                                            TmpText = TmpText + "%s %s%s access %s -> %s" % (ChangeKey.lower(), IdStr, TmpDesc, nx_meta.metaSaveDataOwnerAccessToStr(Info[0]['Access']), nx_meta.metaSaveDataOwnerAccessToStr(Info[1]['Access']))
+                                    else:
+                                        IdStr = "%016X" % (Info['Id'])
+                                        TmpDesc = get_titledesc(IdStr)
+                                        if TmpDesc=='N/A':
+                                            TmpDesc = ""
+                                        else:
+                                            TmpDesc = " (%s)" % (TmpDesc)
+                                        TmpText = TmpText + "%s %s%s" % (ChangeKey.lower(), IdStr, TmpDesc)
+                                        if FacKey=='SaveDataOwnerInfo':
+                                            TmpText = TmpText + " access %s" % (nx_meta.metaSaveDataOwnerAccessToStr(Info['Access']))
+                            if len(TmpText)>0:
+                                if len(Text)>0 and Text[-1]!=' ':
+                                    Text = Text + " "
+                                Text = Text + TmpText + "."
+                elif AciKey=='Sac':
+                    for SacKey, SacValue in Diff[Key][AciKey].items():
+                        TmpText = "Service %s access: " % (SacKey.lower())
+                        for TmpKey, TmpValue in Diff[Key][AciKey][SacKey].items():
+                            for ChangeKey, ChangeValue in Diff[Key][AciKey][SacKey][TmpKey].items():
+                                if len(TmpText)>0 and TmpText[-1]!=' ':
+                                    TmpText = TmpText + ", "
+                                TmpText = TmpText + "%s \"%s\"" % (ChangeKey.lower(), TmpKey)
+                                if ChangeKey=='Updated':
+                                    TmpText = TmpText + " (control byte 0x%X -> 0x%X)" % (ChangeValue[0], ChangeValue[1])
+                                elif ChangeValue & 0x78: # Reserved bits set.
+                                    TmpText = TmpText + " (control byte 0x%X)" % (ChangeValue)
+                        if len(TmpText)>0 and TmpText[-1]!=' ':
+                            if len(Text)>0 and Text[-1]!=' ':
+                                Text = Text + " "
+                            Text = Text + TmpText + "."
+                elif AciKey=='Kc':
+                    TmpText = ProcessMetaDiffKc(Diff[Key][AciKey])
+                    if len(TmpText)>0:
+                        if len(Text)>0 and Text[-1]!=' ':
+                            Text = Text + " "
+                        Text = Text + TmpText
+
+    if len(Text)>0 and Text[-1]==' ':
+        Text = ""
+    else:
+        Text = Text + "\n"
+    return Text
+
+def ProcessMetaDiffIni1(Desc, Diff):
+    Text = "* %s: " % (Desc)
+    KipText = ""
+
+    for ChangeKey, ChangeValue in Diff.items():
+        for Key, Value in Diff[ChangeKey].items():
+            if Key == 'Size':
+                continue
+            if Key != 'Kips':
+                if ChangeKey == 'Updated':
+                    if len(Text)>0 and Text[-1]!=' ':
+                        Text = Text + " "
+                    Text = Text + "INI1.%s updated: 0x%X -> 0x%X." % (Key, Value[0], Value[1])
+            else:
+                if ChangeKey == 'Updated':
+                    for KipKeyId, KipEntry in Diff[ChangeKey][Key].items():
+                        TmpStr = KipKeyId
+                        pos = KipKeyId.find("_")
+                        if pos!=-1:
+                            TmpStr = "%s (%s)" % (KipKeyId[:pos], KipKeyId[pos+1:])
+                        KipText = KipText + "** %s: " % (TmpStr)
+                        for KipKey, KipValue in Diff[ChangeKey][Key][KipKeyId].items():
+                            if KipKey != 'Kc':
+                                if KipKey == 'Name':
+                                    Vals = "%s -> %s" % (KipValue[0], KipValue[1])
+                                else:
+                                    Vals = "0x%X -> 0x%X" % (KipValue[0], KipValue[1])
+
+                                if len(KipText)>0 and KipText[-1]!=' ':
+                                    KipText = KipText + " "
+                                KipText = KipText + "%s updated: %s." % (KipKey, Vals)
+                            else:
+                                TmpText = ProcessMetaDiffKc(Diff[ChangeKey][Key][KipKeyId][KipKey])
+                                if len(TmpText)>0:
+                                    if len(KipText)>0 and KipText[-1]!=' ':
+                                        KipText = KipText + " "
+                                    KipText = KipText + TmpText
+                        KipText = KipText + "\n"
+                else:
+                    for Kip in Diff[ChangeKey][Key]:
+                        if len(Text)>0 and Text[-1]!=' ':
+                            Text = Text + " "
+                        Text = Text + "%s KIP %016X (%s)." % (ChangeKey, Kip['ProgramId'], Kip['Name'])
+
+    if len(Text)>0 and Text[-1]==' ' and len(KipText)==0:
+        Text = ""
+    else:
+        Text = Text + "\n" + KipText
+    return Text
+
+def ProcessMetaDiff(MetaDiff):
+    Out = {'Meta': '', 'Ini1': ''}
+
+    for Id, Diff in MetaDiff.items():
+        Desc = get_titledesc(Id)
+        if Desc=="N/A":
+            Desc = Id
+        if 'Meta' in Diff:
+            Out['Meta'] = Out['Meta'] + ProcessMetaDiffMeta(Desc, Diff['Meta'])
+        elif 'Ini1' in Diff:
+            Out['Ini1'] = Out['Ini1'] + ProcessMetaDiffIni1(Desc, Diff['Ini1'])
+        else:
+            print("ProcessMetaDiff(): The entry for '%s' doesn't have the required data." % (Id))
+
+    return Out
+
+def GetMetaText(InDirpath):
+    TitleInfo = {} # Use this for sorting.
+
+    if os.path.isdir(InDirpath) is True:
+        for d_name in os.listdir(InDirpath):
+            CurPath = os.path.join(InDirpath, d_name)
+            if os.path.isdir(CurPath) is True and len(d_name)==16:
+                Id = d_name
+                PrevReportDate = None
+
+                TitleType = 0
+                if Id[16-4:16-2] == "08": # Ignore SystemData, for non-bootpkg.
+                    if IsBootImagePackage(Id) is False:
+                        continue
+                    else:
+                        TitleType = 1
+
+                for Region in ["G", "C"]:
+                    apiout = api_cli(Region, Id, args=["--prevreport=%s" % (reportdate)])
+                    if apiout!="":
+                        ApiLines = apiout.split("\n")
+                        Reader = csv.DictReader(ApiLines, delimiter=',', quoting=csv.QUOTE_NONE)
+                        TmpRow = None
+                        for Row in Reader:
+                            TmpRow = Row # Only handle the last row.
+                        if TmpRow is not None:
+                            PrevReportDate = TmpRow['Report date']
+                            break
+
+                if PrevReportDate is None:
+                    print("GetMetaText(): Failed to get the prevreport for: '%s'." % (Id))
+                else:
+                    TitleDir = "%s/%s" % (InDirpath, Id)
+                    PrevTitleDir = "/home/yellows8/ninupdates/sysupdatedl/autodl_sysupdates/%s-%s/%s" % (PrevReportDate, insystem, Id)
+                    if os.path.isdir(PrevTitleDir) is True:
+                        TitleInfo[Id] = {'TitleType': TitleType, 'TitleDir': TitleDir, 'PrevTitleDir': PrevTitleDir}
+                    else:
+                        print("GetMetaText(): PrevTitleDir doesn't exist, skipping this Id. PrevTitleDir: %s" % (PrevTitleDir))
+
+    TitleInfo = sorted(TitleInfo.items())
+    MetaInfo = {}
+
+    for Id, Title in TitleInfo:
+        TitleType = Title['TitleType']
+        TitleDir = Title['TitleDir']
+        PrevTitleDir = Title['PrevTitleDir']
+
+        TitleMeta = FindMetaPath(TitleDir, TitleType)
+        TitlePrevMeta = FindMetaPath(PrevTitleDir, TitleType)
+
+        if TitleMeta is None or TitlePrevMeta is None:
+            print("GetMetaText(): FindMetaPath failed to find the meta path for Id = '%s', TitleDir = '%s', PrevTitleDir = '%s'." % (Id, TitleDir, PrevTitleDir))
+            continue
+
+        MetaInfo[Id] = {'Prev': TitlePrevMeta, 'Cur': TitleMeta}
+
+    return ProcessMetaDiff(nx_meta.metaDiffPathArray(MetaInfo))
+
 if updatedetails is not None:
     updatedetails_info = parse_updatedetails(updatedetails)
 
@@ -229,7 +558,7 @@ if updatedetails_info['bootpkg_line_found'] is True:
                     else:
                         print("bootpkg_masterkey_str in updatedetails_prev_info not found.")
             else:
-                print("Updatedetails file for prev_reportdate %s doesn't exist, skipping processing for it.")
+                print("Updatedetails file for prev_reportdate %s doesn't exist, skipping processing for it." % (prev_reportdate))
 
 sysver_fullversionstr_path = "%s/sysver_fullversionstr" % (updatedir)
 sysver_hexstr_path = "%s/sysver_hexstr" % (updatedir)
@@ -635,20 +964,30 @@ def process_certstore(title, title_text):
     ssl_page["targets"].append(ssl_target)
     storage.append(ssl_page)
 
+page = {
+    "page_title": "!UPDATEVER",
+    "search_section": "==System Titles==",
+    "targets": []
+}
+
+target = {
+    "search_section_end": "\n=",
+    "text_sections": []
+}
+
+bootpkgs_text = ""
+
+MetaOut = GetMetaText(updatedir)
+
+if len(MetaOut['Meta'])>0:
+    text_section = {
+        "search_text": "NPDM",
+        "insert_text": "[[NPDM]] changes (besides usual version-bump):\n" + MetaOut['Meta']
+    }
+    target["text_sections"].append(text_section)
+    #print(text_section["insert_text"])
+
 if len(diff_titles)>0:
-    page = {
-        "page_title": "!UPDATEVER",
-        "search_section": "==System Titles==",
-        "targets": []
-    }
-
-    target = {
-        "search_section_end": "\n=",
-        "text_sections": []
-    }
-
-    bootpkgs_text = ""
-
     insert_text = "RomFs changes:\n"
     for titleid, title in diff_titles.items():
         if 'group' in title:
@@ -752,7 +1091,7 @@ if len(diff_titles)>0:
 
                     title_text = title_text + "** \"%s\" %s\n" % (path, change['type'])
 
-        if titleid=='0100000000000819' or titleid=='010000000000081A' or titleid=='010000000000081B' or titleid=='010000000000081C': # While unlikely, check titleid for every bootpkg just in case grouping isn't used (different changes in a title compared against the main-bootpkg).
+        if IsBootImagePackage(titleid): # While unlikely, check titleid for every bootpkg just in case grouping isn't used (different changes in a title compared against the main-bootpkg).
             bootpkgs_text = bootpkgs_text + title_text
         else:
             insert_text = insert_text + title_text
@@ -767,130 +1106,140 @@ if len(diff_titles)>0:
 
     #print(insert_text)
     target["text_sections"].append(text_section)
+
+if len(target["text_sections"])>0:
     page["targets"].append(target)
 
-    target = {
-        "search_section_end": "\n==See Also==",
-        "text_sections": []
+target = {
+    "search_section_end": "\n==See Also==",
+    "text_sections": []
+}
+
+if len(bootpkgs_text)>0:
+    insert_text = "\n=== BootImagePackages ===\nRomFs changes:\n"
+
+    # If all bootpkgs are present, remove the title-listing. Could just compare the full "name/name/..." str, but don't assume order.
+    pos = bootpkgs_text.find(": ")
+    if pos!=-1:
+        tmpstr = bootpkgs_text[:pos+1]
+        if (tmpstr.find("BootImagePackage/")!=-1 or tmpstr.find("BootImagePackage:")!=-1) and tmpstr.find("BootImagePackageSafe")!=-1 and tmpstr.find("BootImagePackageExFat")!=-1 and tmpstr.find("BootImagePackageExFatSafe")!=-1:
+            bootpkgs_text = bootpkgs_text[:2] + bootpkgs_text[len(tmpstr)+1:]
+
+    if bootpkgs_text.count("\n") == 1: # Unlikely to ever be >1, but only run this for a single bootpkg line.
+        if bootpkgs_text.find("All files updated")!=-1:
+            insert_text = insert_text[:len(insert_text)-1] + " a" + bootpkgs_text[3:]
+            bootpkgs_text = ""
+
+    if bootpkgs_text!="":
+        insert_text = insert_text + bootpkgs_text
+
+    text_section = {
+        "insert_before_text": "\n=",
+        "search_text": "= BootImagePackages",
+        "insert_text": insert_text
     }
 
-    if len(bootpkgs_text)>0:
-        insert_text = "\n=== BootImagePackages ===\nRomFs changes:\n"
+    target["text_sections"].append(text_section)
+    #print(insert_text)
 
-        # If all bootpkgs are present, remove the title-listing. Could just compare the full "name/name/..." str, but don't assume order.
-        pos = bootpkgs_text.find(": ")
-        if pos!=-1:
-            tmpstr = bootpkgs_text[:pos+1]
-            if (tmpstr.find("BootImagePackage/")!=-1 or tmpstr.find("BootImagePackage:")!=-1) and tmpstr.find("BootImagePackageSafe")!=-1 and tmpstr.find("BootImagePackageExFat")!=-1 and tmpstr.find("BootImagePackageExFatSafe")!=-1:
-                bootpkgs_text = bootpkgs_text[:2] + bootpkgs_text[len(tmpstr)+1:]
+if os.path.exists("%s/swipcgen_server_ready" % (updatedir)):
+    info_path = "%s/swipcgen_server_modern_alltitles.diff.info" % (updatedir)
+    if os.path.exists(info_path):
+        with open(info_path, 'r') as infof:
+            info_lines = infof.readlines()
 
-        if bootpkgs_text.count("\n") == 1: # Unlikely to ever be >1, but only run this for a single bootpkg line.
-            if bootpkgs_text.find("All files updated")!=-1:
-                insert_text = insert_text[:len(insert_text)-1] + " a" + bootpkgs_text[3:]
-                bootpkgs_text = ""
+        insert_text = "\n=== IPC Interface Changes ===\n"
 
-        if bootpkgs_text!="":
-            insert_text = insert_text + bootpkgs_text
+        #unkintf_prev_cnt=0
+        #unkintf_cur_cnt=0
+        #for line in info_lines:
+        #    line = line.strip("\n")
+        #    if len(line)>0:
+        #        if line.find("Unknown Interface prev-version:")!=-1:
+        #            unkintf_prev_cnt=unkintf_prev_cnt+1
+        #        if line.find("Unknown Interface cur-version:")!=-1:
+        #            unkintf_cur_cnt=unkintf_cur_cnt+1
+
+        linecnt=0
+        for line in info_lines:
+            line = line.strip("\n")
+            if len(line)>0:
+                line_text = "* "
+                tmpcnt=0
+                for i in range(len(line)):
+                    if line[i].isspace():
+                        tmpcnt=tmpcnt+1
+                        if tmpcnt==1:
+                            line_text = "*" + line_text
+                    else:
+                        #if line.find("Unknown Interface ")==-1 or unkintf_prev_cnt!=unkintf_cur_cnt:
+                        line_text = line_text + line[i:] + "\n"
+                        insert_text = insert_text + line_text
+                        linecnt=linecnt+1
+                        break
+
+        if linecnt==0:
+            line_text = "No changes.\n"
+            insert_text = insert_text + line_text
 
         text_section = {
             "insert_before_text": "\n=",
-            "search_text": "= BootImagePackages",
+            "search_text": "IPC Interface Changes",
             "insert_text": insert_text
         }
 
         target["text_sections"].append(text_section)
-        #print(insert_text)
+    else:
+        print("The swipcgen .info file doesn't exist even though the ready file exists, skipping IPC section.")
 
-    if os.path.exists("%s/swipcgen_server_ready" % (updatedir)):
-        info_path = "%s/swipcgen_server_modern_alltitles.diff.info" % (updatedir)
-        if os.path.exists(info_path):
-            with open(info_path, 'r') as infof:
-                info_lines = infof.readlines()
+if len(target["text_sections"])>0:
+    page["targets"].append(target)
 
-            insert_text = "\n=== IPC Interface Changes ===\n"
+# This is done seperately to make sure it's added when the BootImagePackages section already exists on wiki. This expects the BootImagePackages section to already exist at this point (such as via the above target).
+target = {
+    "search_section": "= BootImagePackages",
+    "search_section_end": "\n=",
+    "text_sections": []
+}
 
-            #unkintf_prev_cnt=0
-            #unkintf_cur_cnt=0
-            #for line in info_lines:
-            #    line = line.strip("\n")
-            #    if len(line)>0:
-            #        if line.find("Unknown Interface prev-version:")!=-1:
-            #            unkintf_prev_cnt=unkintf_prev_cnt+1
-            #        if line.find("Unknown Interface cur-version:")!=-1:
-            #            unkintf_cur_cnt=unkintf_cur_cnt+1
+if bootpkg_masterkey is not None:
+    insert_text = "Using updated master-key: %s (previously %s)." % (bootpkg_masterkey['cur'], bootpkg_masterkey['prev'])
 
-            linecnt=0
-            for line in info_lines:
-                line = line.strip("\n")
-                if len(line)>0:
-                    line_text = "* "
-                    tmpcnt=0
-                    for i in range(len(line)):
-                        if line[i].isspace():
-                            tmpcnt=tmpcnt+1
-                            if tmpcnt==1:
-                                line_text = "*" + line_text
-                        else:
-                            #if line.find("Unknown Interface ")==-1 or unkintf_prev_cnt!=unkintf_cur_cnt:
-                            line_text = line_text + line[i:] + "\n"
-                            insert_text = insert_text + line_text
-                            linecnt=linecnt+1
-                            break
+    if nca_info_set is True:
+        insert_text = insert_text + " See [[NCA]] for the KeyGeneration listing."
+    insert_text = insert_text + "\n"
 
-            if linecnt==0:
-                line_text = "No changes.\n"
-                insert_text = insert_text + line_text
+    text_section = {
+        "search_text": "master-key",
+        "insert_text": insert_text
+    }
+
+    target["text_sections"].append(text_section)
+
+# If the fuse info changed, add a text_section for it.
+if updatedetails_info['bootpkg_line_found'] is True and 'bootpkg_retail_fuses' in updatedetails_info and 'bootpkg_devunit_fuses' in updatedetails_info:
+    if 'bootpkg_line_found' in updatedetails_prev_info and updatedetails_prev_info['bootpkg_line_found'] is True and 'bootpkg_retail_fuses' in updatedetails_prev_info and 'bootpkg_devunit_fuses' in updatedetails_prev_info:
+        if updatedetails_info['bootpkg_retail_fuses'] != updatedetails_prev_info['bootpkg_retail_fuses'] or updatedetails_info['bootpkg_devunit_fuses'] != updatedetails_prev_info['bootpkg_devunit_fuses']:
+            insert_text = "The anti-downgrade fuses were [[Fuses#Anti-downgrade|updated]].\n"
 
             text_section = {
-                "insert_before_text": "\n=",
-                "search_text": "IPC Interface Changes",
+                "search_text": "[[Fuses",
                 "insert_text": insert_text
             }
 
             target["text_sections"].append(text_section)
-        else:
-            print("The swipcgen .info file doesn't exist even though the ready file exists, skipping IPC section.")
 
+if len(MetaOut['Ini1'])>0:
+    text_section = {
+        "search_text": "INI1",
+        "insert_text": "[[Package2|INI1]] changes:\n" + MetaOut['Ini1']
+    }
+    target["text_sections"].append(text_section)
+
+if len(target["text_sections"])>0:
     page["targets"].append(target)
 
-   # This is done seperately to make sure it's added when the BootImagePackages section already exists on wiki. This expects the BootImagePackages section to already exist at this point (such as via the above target).
-    target = {
-        "search_section": "= BootImagePackages",
-        "search_section_end": "\n=",
-        "text_sections": []
-    }
-
-    if bootpkg_masterkey is not None:
-        insert_text = "Using updated master-key: %s (previously %s)." % (bootpkg_masterkey['cur'], bootpkg_masterkey['prev'])
-
-        if nca_info_set is True:
-            insert_text = insert_text + " See [[NCA]] for the KeyGeneration listing."
-        insert_text = insert_text + "\n"
-
-        text_section = {
-            "search_text": "master-key",
-            "insert_text": insert_text
-        }
-
-        target["text_sections"].append(text_section)
-
-    # If the fuse info changed, add a text_section for it.
-    if updatedetails_info['bootpkg_line_found'] is True and 'bootpkg_retail_fuses' in updatedetails_info and 'bootpkg_devunit_fuses' in updatedetails_info:
-        if updatedetails_prev_info['bootpkg_line_found'] is True and 'bootpkg_retail_fuses' in updatedetails_prev_info and 'bootpkg_devunit_fuses' in updatedetails_prev_info:
-            if updatedetails_info['bootpkg_retail_fuses'] != updatedetails_prev_info['bootpkg_retail_fuses'] or updatedetails_info['bootpkg_devunit_fuses'] != updatedetails_prev_info['bootpkg_devunit_fuses']:
-                insert_text = "The anti-downgrade fuses were [[Fuses#Anti-downgrade|updated]].\n"
-
-                text_section = {
-                    "search_text": "[[Fuses",
-                    "insert_text": insert_text
-                }
-
-                target["text_sections"].append(text_section)
-
-    if len(target["text_sections"])>0:
-        page["targets"].append(target)
-
-    storage.append(page)
+storage.append(page)
 
 # TODO
 page = {
