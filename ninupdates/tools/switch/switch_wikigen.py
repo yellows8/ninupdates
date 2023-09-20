@@ -220,6 +220,33 @@ def FindMetaPath(TitleDir, TitleType):
 
     return Out
 
+def ProcessMetaDiffPrintValue(Key, Val):
+    if Key == 'PermissionType' or Key == 'MappingType' or Key == 'Name':
+        return "%s" % (Val)
+    elif Key[:9] == 'ProgramId':
+        return "%016X" % (Val)
+    else:
+        return "0x%X" % (Val)
+
+def ProcessMetaDiffKcRegionMap(TmpKey, Val):
+    TmpText = "["
+
+    Pos=0
+    for CurVal in Val:
+        if Pos>0:
+            TmpText = TmpText + ", "
+        Pos=Pos+1
+        if TmpKey == 'RegionsType':
+            EntVal = nx_meta.metaKcRegionMapTypeGetStr(CurVal)
+        else:
+            if Val==0:
+                EntVal = "R-"
+            else:
+                EntVal = "RW"
+        TmpText = TmpText + EntVal
+
+    return TmpText + "]"
+
 def ProcessMetaDiffKc(KcDiff):
     Text = ""
 
@@ -273,16 +300,10 @@ def ProcessMetaDiffKc(KcDiff):
                                     Text = Text + " "
                                 Text = Text + "%s" % (DescKey)
 
-                                if DescKey == 'PermissionType' or DescKey == 'MappingType':
-                                    if ChangeKey == 'Updated':
-                                        Vals = "%s -> %s" % (DescValue[0], DescValue[1])
-                                    else:
-                                        Vals = "%s" % (DescValue)
+                                if ChangeKey == 'Updated' and DescKey != 'BeginAddress':
+                                    Vals = "%s -> %s" % (ProcessMetaDiffPrintValue(DescKey, DescValue[0]), ProcessMetaDiffPrintValue(DescKey, DescValue[1]))
                                 else:
-                                    if ChangeKey == 'Updated' and DescKey != 'BeginAddress':
-                                        Vals = "0x%X -> 0x%X" % (DescValue[0], DescValue[1])
-                                    else:
-                                        Vals = "0x%X" % (DescValue)
+                                    Vals = "%s" % (ProcessMetaDiffPrintValue(DescKey, DescValue))
 
                                 if ChangeKey == 'Updated' and DescKey != 'BeginAddress':
                                     Text = Text + " = %s" % (Vals)
@@ -295,10 +316,27 @@ def ProcessMetaDiffKc(KcDiff):
                         if len(Text)>0 and Text[-1]!=' ':
                             Text = Text + " "
                         Text = Text + "%s" % (TmpKey)
-                        if ChangeKey == 'Updated':
-                            Text = Text + " = 0x%X -> 0x%X" % (TmpValue[0], TmpValue[1])
+
+                        if TmpKey == 'Version':
+                            if ChangeKey == 'Updated':
+                                Vals = "%u.%u -> %u.%u" % (TmpValue[0]['Major'], TmpValue[0]['Minor'], TmpValue[1]['Major'], TmpValue[0]['Minor'])
+                            else:
+                                Vals = "0x%X" % (TmpValue['Major'], TmpValue['Minor'])
+                        elif TmpKey == 'RegionsType' or TmpKey == 'RegionsIsReadOnly':
+                            if ChangeKey == 'Updated':
+                                Vals = ProcessMetaDiffKcRegionMap(TmpKey, TmpValue[0]) + " -> " + ProcessMetaDiffKcRegionMap(TmpKey, TmpValue[1])
+                            else:
+                                Vals = ProcessMetaDiffKcRegionMap(TmpKey, TmpValue)
                         else:
-                            Text = Text + "=0x%X" % (TmpValue)
+                            if ChangeKey == 'Updated':
+                                Vals = "0x%X -> 0x%X" % (TmpValue[0], TmpValue[1])
+                            else:
+                                Vals = "0x%X" % (TmpValue)
+
+                        if ChangeKey == 'Updated':
+                            Text = Text + " = %s" % (Vals)
+                        else:
+                            Text = Text + "=%s" % (Vals)
             Text = Text + "."
 
     return Text
@@ -312,7 +350,7 @@ def ProcessMetaDiffMeta(Desc, Diff, IgnoreVersion=True):
                 if 'Updated' in AcidValue:
                     if len(Text)>0 and Text[-1]!=' ':
                         Text = Text + " "
-                    Text = Text + "Acid.%s updated: 0x%X -> 0x%X." % (AcidKey, AcidValue['Updated'][0], AcidValue['Updated'][1])
+                    Text = Text + "Acid.%s updated: %s -> %s." % (AcidKey, ProcessMetaDiffPrintValue(AcidKey, AcidValue['Updated'][0]), ProcessMetaDiffPrintValue(AcidKey, AcidValue['Updated'][1]))
         elif Key != 'Aci':
             if 'Updated' in Value:
                 if Key == 'Version' and IgnoreVersion is True:
@@ -332,7 +370,7 @@ def ProcessMetaDiffMeta(Desc, Diff, IgnoreVersion=True):
                     if 'Updated' in AciValue:
                         if len(Text)>0 and Text[-1]!=' ':
                             Text = Text + " "
-                        Text = Text + "%s updated: 0x%X -> 0x%X." % (AciKey, AciValue['Updated'][0], AciValue['Updated'][1])
+                        Text = Text + "%s updated: %s -> %s." % (AciKey, ProcessMetaDiffPrintValue(AciKey, AciValue['Updated'][0]), ProcessMetaDiffPrintValue(AciKey, AciValue['Updated'][1]))
                 elif AciKey=='Fac':
                     for FacKey, FacValue in Diff[Key][AciKey].items():
                         if FacKey != 'ContentOwnerInfo' and FacKey != 'SaveDataOwnerInfo':
@@ -427,10 +465,7 @@ def ProcessMetaDiffIni1(Desc, Diff):
                         KipText = KipText + "** %s: " % (TmpStr)
                         for KipKey, KipValue in Diff[ChangeKey][Key][KipKeyId].items():
                             if KipKey != 'Kc':
-                                if KipKey == 'Name':
-                                    Vals = "%s -> %s" % (KipValue[0], KipValue[1])
-                                else:
-                                    Vals = "0x%X -> 0x%X" % (KipValue[0], KipValue[1])
+                                Vals = "%s -> %s" % (ProcessMetaDiffPrintValue(KipKey, KipValue[0]), ProcessMetaDiffPrintValue(KipKey, KipValue[1]))
 
                                 if len(KipText)>0 and KipText[-1]!=' ':
                                     KipText = KipText + " "
