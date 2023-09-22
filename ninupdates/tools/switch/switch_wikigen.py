@@ -265,8 +265,8 @@ def ProcessMetaDiffKc(KcDiff):
                 for Id in ChangeValue:
                     if len(Text)>0 and Text[-1]!=' ':
                         Text = Text + ", "
-                    if KcKey == 'EnableSystemCalls': # TODO: SVC names
-                        TmpStr = "SVC 0x%02X" % (Id)
+                    if KcKey == 'EnableSystemCalls':
+                        TmpStr = "!TABLE[SVC,0,0x%02X,2,NOLINK]" % (Id)
                     elif KcKey == 'EnableInterrupts':
                         TmpStr = "0x%03X" % (Id)
                     Text = Text + TmpStr
@@ -1007,6 +1007,7 @@ page = {
 
 target = {
     "search_section_end": "\n=",
+    "parse_tables": [],
     "text_sections": []
 }
 
@@ -1015,6 +1016,9 @@ bootpkgs_text = ""
 MetaOut = GetMetaText(updatedir)
 
 insert_text = "[[NPDM]] changes (besides usual version-bump):"
+
+if len(MetaOut['Meta'])>0 or len(MetaOut['Ini1'])>0:
+    target["parse_tables"].append({"page_title": "SVC", "search_section": "= System calls"})
 
 if len(MetaOut['Meta'])>0:
     insert_text = insert_text + "\n" + MetaOut['Meta']
