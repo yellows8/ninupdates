@@ -1084,19 +1084,10 @@ When any errors occur, it will skip processing the current array-entry, with the
 				"text_sections": [ # Optional array of text_section. Insert raw text.
 					{
 						"search_text": "{text}", # Text to search for within the edit-section to determine whether editing is needed. If found, editing this text_section is skipped.
-						"insert_text": "{text}", # Text to insert. If insert_before_text is not specified, "\n" is added prior to the insert_text. If present, there's special handling for each instance of "!TABLE[{args}]", which uses the data from parse_tables above. Each arg is seperated by ",". There's at least 4 args: target_page (must match parse_table page_title), target_column (which column to use for target_text), target_text (if column data contains this (strpos) then the target_load_column is loaded), target_load_column (which column to load when a match is found). If an addtional arg "NOLINK" is specified, then links are stripped from the column data. The "!TABLE[{args}]" text is replaced with the column data, if a matching row isn't found target_text is used as the column data.
+						"insert_text": "{text}", # Text to insert. If insert_before_text is not specified, "\n" is added prior to the insert_text. If present, there's special handling for each instance of "!TABLE[{args}]", which uses the data from parse_tables above. Each arg is seperated by ",". There's at least 4 args: target_page (must match parse_table page_title), target_column (which column to use for target_text), target_text (if column data contains this then the target_load_column is loaded), target_load_column (which column to load when a match is found). Optional additional args can be specified: if "NOLINK" is specified, then links are stripped from the column data. Arg "DEFAULT={column_data_default}" sets the column data to use when the target row isn't found, instead of target_text. Arg "MATCH={EXACT|STRPOS}" controls how to compare the target_column data with target_text: EXACT indicates the column must be an exact match, while STRPOS indicates strpos() is used (which is the default). The "!TABLE[{args}]" text is replaced with the column data, if a matching row isn't found column_data_default is used as the column data.
 						"insert_before_text": "{text}" # Optional. By default insert_text is inserted at the end of the edit-section. If this is specified, the text is inserted at the pos of the specified text.
 					},
 				],
-
-					$target_page = $text_args[0];
-					$target_column = $text_args[1];
-					$target_text = $text_args[2];
-					$target_load_column = $text_args[3];
-
-					if(count($text_args)>=5 && $text_args[4]==="NOLINK")
-					{
-						$strip_link = True;
 
 				"insert_row_tables": [ # Optional array of insert_row_table. Insert a row at the end of a table.
 					"search_text": "{text}", # Raw text to search for within the edit-section to determine whether editing is needed. If found, editing this insert_row_table is skipped.
@@ -1485,7 +1476,8 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					}
 
 					$text_args = explode(",", substr($insert_text, $curpos+7, $endpos-$curpos-7));
-					if(count($text_args)<4)
+					$text_args_count = count($text_args);
+					if($text_args_count<4)
 					{
 						wikibot_writelog("wikibot_process_wikigen($pagetitle): Invalid number of text_args for '!TABLE[' for text_section. search_text: \"$search_text\"", 0, $reportdate);
 						if($ret==0) $ret=2;
@@ -1498,13 +1490,35 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					$target_text = $text_args[2];
 					$target_load_column = $text_args[3];
 
-					if(count($text_args)>=5 && $text_args[4]==="NOLINK")
+					$strip_link = False;
+					$column_data_default = $target_text;
+					$match_type = 1;
+
+					if($text_args_count>=5)
 					{
-						$strip_link = True;
-					}
-					else
-					{
-						$strip_link = False;
+						for($argi=4; $argi<$text_args_count; $argi++)
+						{
+							if($text_args[$argi]==="NOLINK")
+							{
+								$strip_link = True;
+							}
+							else if(substr($text_args[$argi], 0, 8)==="DEFAULT=")
+							{
+								$column_data_default = substr($text_args[$argi], 8);
+							}
+							else if(substr($text_args[$argi], 0, 6)==="MATCH=")
+							{
+								$match_str = substr($text_args[$argi], 6);
+								if($match_str==="EXACT")
+								{
+									$match_type = 0;
+								}
+								else if($match_str==="STRPOS")
+								{
+									$match_type = 1;
+								}
+							}
+						}
 					}
 
 					if(!isset($parse_tables_data[$target_page]))
@@ -1528,7 +1542,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 							break;
 						}
 
-						if(strpos($parse_tables_data[$target_page][$i][$target_column], $target_text)!==FALSE)
+						if(($match_type==0 && $parse_tables_data[$target_page][$i][$target_column]===$target_text) || ($match_type==1 && strpos($parse_tables_data[$target_page][$i][$target_column], $target_text)!==FALSE))
 						{
 							$column_data = $parse_tables_data[$target_page][$i][$target_load_column];
 							break;
@@ -1538,8 +1552,8 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 					if($column_data===NULL)
 					{
-						$column_data = $target_text;
-						wikibot_writelog("wikibot_process_wikigen($pagetitle): The target_text for '!TABLE[' for text_section was not found in the table, using target_text ($target_text) as the column_data. search_text: \"$search_text\"", 2, $reportdate);
+						$column_data = $column_data_default;
+						wikibot_writelog("wikibot_process_wikigen($pagetitle): The target_text for '!TABLE[' for text_section was not found in the table, using column_data_default ($column_data_default) as the column_data. search_text: \"$search_text\"", 2, $reportdate);
 						if($ret==0) $ret=2;
 					}
 					else if($strip_link===True)

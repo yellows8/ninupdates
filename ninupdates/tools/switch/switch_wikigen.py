@@ -341,6 +341,18 @@ def ProcessMetaDiffKc(KcDiff):
 
     return Text
 
+def ProcessMetaDiffFsAccessMask(Mask):
+    TmpStr = "("
+    Bits = nx_meta.metaMaskToList(Mask)
+
+    for CurBit in Bits:
+        if len(TmpStr)>0 and TmpStr[-1]!=' ' and TmpStr[-1]!='(':
+            TmpStr = TmpStr + ", "
+        TmpStr = TmpStr + "!TABLE[NPDM,0,%u,1,DEFAULT=bit%u,MATCH=EXACT]" % (CurBit, CurBit)
+
+    TmpStr = TmpStr + ")"
+    return TmpStr
+
 def ProcessMetaDiffMeta(Desc, Diff, IgnoreVersion=True):
     Text = "* %s: " % (Desc)
 
@@ -378,10 +390,20 @@ def ProcessMetaDiffMeta(Desc, Diff, IgnoreVersion=True):
                                 if len(Text)>0 and Text[-1]!=' ':
                                     Text = Text + " "
 
-                                if Key == 'Padding':
-                                    Vals = "%s -> %s" % (Value['Updated'][0], Value['Updated'][1])
-                                else:
+                                if FacKey == 'Padding':
+                                    Vals = "%s -> %s" % (FacValue['Updated'][0], FacValue['Updated'][1])
+                                elif FacKey != 'FsAccessFlag':
                                     Vals = "0x%X -> 0x%X" % (FacValue['Updated'][0], FacValue['Updated'][1])
+                                else:
+                                    MaskAdded = FacValue['Updated'][1] & ~FacValue['Updated'][0]
+                                    MaskRemoved = FacValue['Updated'][0] & ~FacValue['Updated'][1]
+                                    Vals = ""
+                                    if MaskAdded!=0:
+                                        Vals = "set bitmask 0x%016X %s" % (MaskAdded, ProcessMetaDiffFsAccessMask(MaskAdded))
+                                    if MaskRemoved!=0:
+                                        if len(Vals)>0:
+                                            Vals = Vals + ", "
+                                        Vals = Vals + "cleared bitmask 0x%016X %s" % (MaskRemoved, ProcessMetaDiffFsAccessMask(MaskRemoved))
 
                                 Text = Text + "Fac.%s updated: %s." % (FacKey, Vals)
                         else:
@@ -1019,6 +1041,7 @@ insert_text = "[[NPDM]] changes (besides usual version-bump):"
 
 if len(MetaOut['Meta'])>0 or len(MetaOut['Ini1'])>0:
     target["parse_tables"].append({"page_title": "SVC", "search_section": "= System calls"})
+    target["parse_tables"].append({"page_title": "NPDM", "search_section": "== FsAccessFlag"})
 
 if len(MetaOut['Meta'])>0:
     insert_text = insert_text + "\n" + MetaOut['Meta']
