@@ -437,16 +437,33 @@ def ProcessMetaDiffMeta(Desc, Diff, IgnoreVersion=True):
                                 Text = Text + TmpText + "."
                 elif AciKey=='Sac':
                     for SacKey, SacValue in Diff[Key][AciKey].items():
-                        TmpText = "Service %s access: " % (SacKey.lower())
+                        TmpStr = " " + SacKey.lower()
+                        if TmpStr == " client":
+                            TmpStr = ""
+                        TmpText = "Service%s access: " % (TmpStr)
+                        SacChanges = {}
+                        SacChanges['Updated'] = []
+                        SacChanges['Added'] = []
+                        SacChanges['Removed'] = []
                         for TmpKey, TmpValue in Diff[Key][AciKey][SacKey].items():
                             for ChangeKey, ChangeValue in Diff[Key][AciKey][SacKey][TmpKey].items():
+                                CurText = "%s" % (TmpKey)
+                                if ChangeKey=='Updated':
+                                    CurText = CurText + " (control byte 0x%X -> 0x%X)" % (ChangeValue[0], ChangeValue[1])
+                                elif ChangeValue & 0x78: # Reserved bits set.
+                                    CurText = CurText + " (control byte 0x%X)" % (ChangeValue)
+                                SacChanges[ChangeKey].append(CurText)
+
+                        for ChangeKey, ChangeValue in SacChanges.items():
+                            if len(ChangeValue)>0:
                                 if len(TmpText)>0 and TmpText[-1]!=' ':
                                     TmpText = TmpText + ", "
-                                TmpText = TmpText + "%s \"%s\"" % (ChangeKey.lower(), TmpKey)
-                                if ChangeKey=='Updated':
-                                    TmpText = TmpText + " (control byte 0x%X -> 0x%X)" % (ChangeValue[0], ChangeValue[1])
-                                elif ChangeValue & 0x78: # Reserved bits set.
-                                    TmpText = TmpText + " (control byte 0x%X)" % (ChangeValue)
+                                TmpText = TmpText + "%s " % (ChangeKey.lower())
+                                for SacChange in ChangeValue:
+                                    if len(TmpText)>0 and TmpText[-1]!=' ':
+                                        TmpText = TmpText + ", "
+                                    TmpText = TmpText + SacChange
+
                         if len(TmpText)>0 and TmpText[-1]!=' ':
                             if len(Text)>0 and Text[-1]!=' ':
                                 Text = Text + " "
