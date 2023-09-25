@@ -129,6 +129,21 @@ dirfilter_msgs = {
     '/nro/netfront/': 'Various data',
 }
 
+def TitleDescStrip(Desc):
+    Pos = Desc.find("-sysmodule")
+    if Pos!=-1:
+        return Desc[:Pos]
+    else:
+        PosStart = Desc.find('"')
+        PosEnd = Desc.find('" applet')
+        if PosStart!=-1 and PosEnd!=-1:
+            return Desc[PosStart+1:PosEnd]
+        else:
+            Pos = Desc.find(" (")
+            if Pos!=-1:
+                return Desc[:Pos]
+    return Desc
+
 def get_titledesc(titleid):
     proc = subprocess.run(["php", "/home/yellows8/ninupdates/manage_titledesc.php", titleid], capture_output=True, encoding='utf8')
     if proc.returncode!=0:
@@ -418,7 +433,7 @@ def ProcessMetaDiffMeta(Desc, Diff, IgnoreVersion=True):
                                         if TmpDesc=='N/A':
                                             TmpDesc = ""
                                         else:
-                                            TmpDesc = " (%s)" % (TmpDesc)
+                                            TmpDesc = " (%s)" % (TitleDescStrip(TmpDesc))
                                         if FacKey=='SaveDataOwnerInfo':
                                             TmpText = TmpText + "%s %s%s access %s -> %s" % (ChangeKey.lower(), IdStr, TmpDesc, nx_meta.metaSaveDataOwnerAccessToStr(Info[0]['Access']), nx_meta.metaSaveDataOwnerAccessToStr(Info[1]['Access']))
                                     else:
@@ -427,7 +442,7 @@ def ProcessMetaDiffMeta(Desc, Diff, IgnoreVersion=True):
                                         if TmpDesc=='N/A':
                                             TmpDesc = ""
                                         else:
-                                            TmpDesc = " (%s)" % (TmpDesc)
+                                            TmpDesc = " (%s)" % (TitleDescStrip(TmpDesc))
                                         TmpText = TmpText + "%s %s%s" % (ChangeKey.lower(), IdStr, TmpDesc)
                                         if FacKey=='SaveDataOwnerInfo':
                                             TmpText = TmpText + " access %s" % (nx_meta.metaSaveDataOwnerAccessToStr(Info['Access']))
@@ -535,6 +550,8 @@ def ProcessMetaDiff(MetaDiff):
         Desc = get_titledesc(Id)
         if Desc=="N/A":
             Desc = Id
+        else:
+            Desc = TitleDescStrip(Desc)
         if 'Meta' in Diff:
             Out['Meta'] = Out['Meta'] + ProcessMetaDiffMeta(Desc, Diff['Meta'])
         elif 'Ini1' in Diff:
