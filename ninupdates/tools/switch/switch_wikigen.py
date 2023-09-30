@@ -5,6 +5,7 @@ import argparse
 import json
 import subprocess
 import csv
+import configparser
 from pathlib import Path
 from os.path import exists
 from datetime import datetime, date, time, timezone
@@ -159,6 +160,19 @@ def api_cli(region, titleid, args=[]):
         return ""
     else:
         return proc.stdout
+
+def GetTitlePrevInfo(Id):
+    TmpRow = None
+    for Region in ["G", "C"]:
+        apiout = api_cli(Region, Id, args=["--prevreport=%s" % (reportdate)])
+        if apiout!="":
+            ApiLines = apiout.split("\n")
+            Reader = csv.DictReader(ApiLines, delimiter=',', quoting=csv.QUOTE_NONE)
+            for Row in Reader:
+                TmpRow = Row # Only handle the last row.
+            if TmpRow is not None:
+                break
+    return TmpRow
 
 def parse_updatedetails(inlines):
     bootpkg_line_found = False
@@ -578,17 +592,9 @@ def GetMetaText(InDirpath):
                     else:
                         TitleType = 1
 
-                for Region in ["G", "C"]:
-                    apiout = api_cli(Region, Id, args=["--prevreport=%s" % (reportdate)])
-                    if apiout!="":
-                        ApiLines = apiout.split("\n")
-                        Reader = csv.DictReader(ApiLines, delimiter=',', quoting=csv.QUOTE_NONE)
-                        TmpRow = None
-                        for Row in Reader:
-                            TmpRow = Row # Only handle the last row.
-                        if TmpRow is not None:
-                            PrevReportDate = TmpRow['Report date']
-                            break
+                TitleRow = GetTitlePrevInfo(Id)
+                if TitleRow is not None:
+                    PrevReportDate = TitleRow['Report date']
 
                 if PrevReportDate is None:
                     print("GetMetaText(): Failed to get the prevreport for: '%s'." % (Id))
@@ -621,6 +627,16 @@ def GetMetaText(InDirpath):
 
 if updatedetails is not None:
     updatedetails_info = parse_updatedetails(updatedetails)
+
+SystemUpdateInfo = GetTitlePrevInfo("0100000000000816")
+if SystemUpdateInfo is None:
+    print("Failed to get API info for the SystemUpdate title.")
+    sys.exit(1)
+else:
+    updatever_prev = SystemUpdateInfo['Update version']
+    TmpPos = updatever_prev.find('_rebootless')
+    if TmpPos!=-1:
+        updatever_prev = updatever_prev[:TmpPos]
 
 bootpkg_masterkey = None
 updatedetails_prev_info = {}
@@ -1055,6 +1071,203 @@ def process_certstore(title, title_text):
     ssl_page["targets"].append(ssl_target)
     storage.append(ssl_page)
 
+def SettingsGetValue(Key, Value):
+    TmpPos = Value.find("!")
+    if TmpPos==-1:
+        print("SettingsGetValue(\"%s\", \"%s\"): Failed to find '!', returning the raw value." % (Key, Value))
+        return Value
+    else:
+        ValueType = Value[:TmpPos]
+        ValueData = Value[TmpPos+1:]
+        if ValueType=="str":
+            return ValueData
+        elif ValueType=="u8":
+            ValueDataTmp = int(ValueData, 16)
+            if ValueDataTmp==0:
+                return "false"
+            elif ValueDataTmp==1:
+                return "true"
+            else:
+                print("SettingsGetValue(\"%s\", \"%s\"): Unrecogized value for u8, returning the raw value." % (Key, Value))
+                return Value
+        elif ValueType=="u32":
+            ValueDataTmp = int(ValueData, 16)
+            return "%u (0x%x)" % (ValueDataTmp, ValueDataTmp)
+        else:
+            print("SettingsGetValue(\"%s\", \"%s\"): Unrecogized type, returning the raw value." % (Key, Value))
+            return Value
+
+def DiffSettings(Config, ConfigPrev):
+    SettingsPage = {
+        "page_title": "System_Settings",
+        "targets": []
+    }
+
+    SectionPrev = None
+    SectionLast = list(Config)[-1]
+
+    for Section in Config:
+        if Section == 'DEFAULT':
+            continue
+        SectionHeader = "= %s =" % (Section)
+
+        TmpTarget = {
+            "search_section": SectionHeader,
+            "search_section_end": "",
+            "text_sections": [],
+            "insert_row_tables": []
+        }
+
+        # TODO: How to handle collision with PlatformConfig sections?
+        if Section not in ConfigPrev: # Section added
+            InsertText = "%s\nThis class does not exist before %s.\n\n" % (SectionHeader, updatever)
+            InsertText = InsertText + "{| class=\"wikitable\" border=\"1\"\n|-\n"
+            InsertText = InsertText + "! Name || Versions || Default Values || Description\n"
+
+            if len(Config[Section])==0:
+                InsertText = InsertText + "|-\n"
+
+            for Key, Value in Config[Section].items():
+                InsertText = InsertText + "|-\n"
+                InsertText = InsertText + "| rowspan=\"1\" |%s\n" % (Key)
+                InsertText = InsertText + "| %s+\n" % (updatever)
+                InsertText = InsertText + "| %s\n" % (SettingsGetValue("%s.%s" % (Section, Key), Value))
+                InsertText = InsertText + "| rowspan=\"1\" |\n"
+
+            InsertText = InsertText + "|}\n"
+
+            if SectionPrev is not None:
+                InsertText = "\n" + InsertText
+            else:
+                InsertText = InsertText + "\n"
+
+            TextSection = {
+                "search_text": SectionHeader + "\n",
+                "insert_before_text": "=",
+                "insert_text": InsertText
+            }
+            if SectionPrev is None:
+                del(TmpTarget["search_section"])
+                TmpTarget["full_page"] = True
+                TextSection["insert_before_text"] = "="
+            else:
+                TmpTarget["search_section"] = "= %s =" % (SectionPrev)
+                if Section != SectionLast:
+                    TextSection["insert_before_text"] = "\n="
+
+            TmpTarget["text_sections"].append(TextSection)
+        else:
+            TmpTarget["search_section_end"] = "|}"
+            for Key, Value in Config[Section].items():
+                InsertRowTable = {
+                    "search_text": Key,
+                    "search_text_rowspan": updatever + "+",
+                    "search_column": 0,
+                    "search_column_rowspan": 1,
+                    "search_type": 1,
+                    "search_type_rowspan": 0,
+                }
+
+                if Key not in ConfigPrev[Section]: # Field added
+                    #print("%s.%s added" % (Section, Key))
+                    InsertRowTable["sort"] = 0
+                    InsertRowTable["columns"] = [
+                        "rowspan=\"1\" |%s" % (Key),
+                        "%s+" % (updatever),
+                        SettingsGetValue("%s.%s" % (Section, Key), Value),
+                        "rowspan=\"1\" |"]
+                    TmpTarget["insert_row_tables"].append(InsertRowTable)
+                elif Value != ConfigPrev[Section][Key]: # Field updated
+                    #print("%s.%s: %s -> %s" % (Section, Key, Value, ConfigPrev[Section][Key]))
+                    InsertRowTable["rowspan_edit_prev"] = [
+                        {
+                            "column": 1,
+                            "findreplace_list": [
+                                {
+                                    "find_text": "+",
+                                    "replace_text": "-" + updatever_prev
+                                },
+                            ],
+                        },
+                    ]
+                    InsertRowTable["columns"] = [
+                        "%s+" % (updatever),
+                        SettingsGetValue("%s.%s" % (Section, Key), Value)]
+                    TmpTarget["insert_row_tables"].append(InsertRowTable)
+        if len(TmpTarget["text_sections"])>0 or len(TmpTarget["insert_row_tables"])>0:
+            SettingsPage["targets"].append(TmpTarget)
+        SectionPrev = Section
+
+    for Section in ConfigPrev:
+        TmpTarget = {
+            "search_section": "= %s =" % (Section),
+            "search_section_end": "|}",
+            "text_sections": [],
+            "insert_row_tables": []
+        }
+
+        if Section not in Config: # Section removed
+            InsertText = "This class was removed with %s+.\n\n" % (updatever)
+
+            TextSection = {
+                "search_text": updatever,
+                "insert_before_text": "{|",
+                "insert_text": InsertText
+            }
+
+            TmpTarget["text_sections"].append(TextSection)
+        else:
+            for Key, Value in ConfigPrev[Section].items():
+                if Key not in Config[Section]: # Field removed
+                    #print("%s.%s removed" % (Section, Key))
+                    EditText = "-" + updatever_prev
+                    InsertRowTable = {
+                        "search_text": Key,
+                        "search_text_rowspan": EditText,
+                        "search_column": 0,
+                        "search_column_rowspan": 1,
+                        "search_type": 1,
+                        "search_type_rowspan": 0,
+                        "columns": []
+                    }
+                    InsertRowTable["rowspan_edit_prev"] = [
+                        {
+                            "column": 1,
+                            "findreplace_list": [
+                                {
+                                    "find_text": "+",
+                                    "replace_text": EditText
+                                },
+                            ],
+                        },
+                    ]
+                    TmpTarget["insert_row_tables"].append(InsertRowTable)
+
+        if len(TmpTarget["text_sections"])>0 or len(TmpTarget["insert_row_tables"])>0:
+            SettingsPage["targets"].append(TmpTarget)
+
+    if len(SettingsPage["targets"])>0:
+        storage.append(SettingsPage)
+
+def ProcessSystemSettings(Title):
+    for Change in Title['changes']:
+        if Change['type'] == 'updated':
+            TmpPath = os.path.join(title['dirpath'], "..")
+            TmpPath = os.path.join(TmpPath, "settings_parseout.info")
+            TmpPathPrev = os.path.join(title['dirpath_prev'], "..")
+            TmpPathPrev = os.path.join(TmpPathPrev, "settings_parseout.info")
+
+            if os.path.exists(TmpPath) and os.path.exists(TmpPathPrev):
+                Config = configparser.ConfigParser(interpolation=None)
+                ConfigPrev = configparser.ConfigParser(interpolation=None)
+                Config.read(TmpPath)
+                ConfigPrev.read(TmpPathPrev)
+                DiffSettings(Config, ConfigPrev)
+            else:
+                print("ProcessSystemSettings(): File doesn't exist. TmpPath = %s, TmpPathPrev = %s" % (TmpPath, TmpPathPrev))
+
+            break
+
 page = {
     "page_title": "!UPDATEVER",
     "search_section": "==System Titles==",
@@ -1200,6 +1413,9 @@ if len(diff_titles)>0:
 
         if titleid=='0100000000000800': # CertStore
             process_certstore(title, title_text)
+
+        if titleid=='0100000000000818': # FirmwareDebugSettings
+            ProcessSystemSettings(title)
 
     text_section = {
         "search_text": "RomFs",
