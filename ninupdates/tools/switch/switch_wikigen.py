@@ -1228,42 +1228,31 @@ def DiffSettings(Config, ConfigPrev):
             "insert_row_tables": []
         }
 
-        if Section not in Config: # Section removed
-            InsertText = "This class was removed with %s+.\n\n" % (updatever)
-
-            TextSection = {
-                "search_text": updatever,
-                "insert_before_text": "{|",
-                "insert_text": InsertText
-            }
-
-            TmpTarget["text_sections"].append(TextSection)
-        else:
-            for Key, Value in ConfigPrev[Section].items():
-                if Key not in Config[Section]: # Field removed
-                    #print("%s.%s removed" % (Section, Key))
-                    EditText = "-" + updatever_prev
-                    InsertRowTable = {
-                        "search_text": Key,
-                        "search_text_rowspan": EditText,
-                        "search_column": 0,
-                        "search_column_rowspan": 1,
-                        "search_type": 1,
-                        "search_type_rowspan": 0,
-                        "columns": []
-                    }
-                    InsertRowTable["rowspan_edit_prev"] = [
-                        {
-                            "column": 1,
-                            "findreplace_list": [
-                                {
-                                    "find_text": "+",
-                                    "replace_text": EditText
-                                },
-                            ],
-                        },
-                    ]
-                    TmpTarget["insert_row_tables"].append(InsertRowTable)
+        for Key, Value in ConfigPrev[Section].items():
+            if Section not in Config or Key not in Config[Section]: # Field removed
+                #print("%s.%s removed" % (Section, Key))
+                EditText = "-" + updatever_prev
+                InsertRowTable = {
+                    "search_text": Key,
+                    "search_text_rowspan": EditText,
+                    "search_column": 0,
+                    "search_column_rowspan": 1,
+                    "search_type": 1,
+                    "search_type_rowspan": 0,
+                    "columns": []
+                }
+                InsertRowTable["rowspan_edit_prev"] = [
+                    {
+                        "column": 1,
+                        "findreplace_list": [
+                            {
+                                "find_text": "+",
+                                "replace_text": EditText
+                            },
+                        ],
+                    },
+                ]
+                TmpTarget["insert_row_tables"].append(InsertRowTable)
 
         if len(TmpTarget["text_sections"])>0 or len(TmpTarget["insert_row_tables"])>0:
             SettingsPage["targets"].append(TmpTarget)
