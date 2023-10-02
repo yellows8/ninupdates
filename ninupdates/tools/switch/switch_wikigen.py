@@ -1118,7 +1118,13 @@ def DiffSettings(Config, ConfigPrev):
             "insert_row_tables": []
         }
 
-        # TODO: How to handle collision with PlatformConfig sections?
+        TmpTarget2 = {
+            "search_section": SectionHeader,
+            "search_section_end": "",
+            "text_sections": [],
+            "insert_row_tables": []
+        }
+
         if Section not in ConfigPrev: # Section added
             InsertText = "%s\nThis class does not exist before %s.\n\n" % (SectionHeader, updatever)
             InsertText = InsertText + "{| class=\"wikitable\" border=\"1\"\n|-\n"
@@ -1127,12 +1133,7 @@ def DiffSettings(Config, ConfigPrev):
             if len(Config[Section])==0:
                 InsertText = InsertText + "|-\n"
 
-            for Key, Value in Config[Section].items():
-                InsertText = InsertText + "|-\n"
-                InsertText = InsertText + "| rowspan=\"1\" |%s\n" % (Key)
-                InsertText = InsertText + "| %s+\n" % (updatever)
-                InsertText = InsertText + "| %s\n" % (SettingsGetValue("%s.%s" % (Section, Key), Value))
-                InsertText = InsertText + "| rowspan=\"1\" |\n"
+            # The table is filled in via insert_row_tables below, in case the section already exists.
 
             InsertText = InsertText + "|}\n"
 
@@ -1156,6 +1157,25 @@ def DiffSettings(Config, ConfigPrev):
                     TextSection["insert_before_text"] = "\n="
 
             TmpTarget["text_sections"].append(TextSection)
+
+            TmpTarget2["search_section_end"] = "|}"
+            for Key, Value in Config[Section].items():
+                InsertRowTable = {
+                    "search_text": Key,
+                    "search_text_rowspan": updatever + "+",
+                    "search_column": 0,
+                    "search_column_rowspan": 1,
+                    "search_type": 1,
+                    "search_type_rowspan": 0,
+                }
+
+                InsertRowTable["sort"] = 0
+                InsertRowTable["columns"] = [
+                    "rowspan=\"1\" |%s" % (Key),
+                    "%s+" % (updatever),
+                    SettingsGetValue("%s.%s" % (Section, Key), Value),
+                    "rowspan=\"1\" |"]
+                TmpTarget2["insert_row_tables"].append(InsertRowTable)
         else:
             TmpTarget["search_section_end"] = "|}"
             for Key, Value in Config[Section].items():
@@ -1196,6 +1216,8 @@ def DiffSettings(Config, ConfigPrev):
                     TmpTarget["insert_row_tables"].append(InsertRowTable)
         if len(TmpTarget["text_sections"])>0 or len(TmpTarget["insert_row_tables"])>0:
             SettingsPage["targets"].append(TmpTarget)
+        if len(TmpTarget2["text_sections"])>0 or len(TmpTarget2["insert_row_tables"])>0:
+            SettingsPage["targets"].append(TmpTarget2)
         SectionPrev = Section
 
     for Section in ConfigPrev:
