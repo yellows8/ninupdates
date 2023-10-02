@@ -1790,12 +1790,14 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$table_columns_count = count($table_columns);
 				if($table_columns_count==0)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): The table for insert_row_table is empty.", 0, $reportdate);
-					if($ret==0) $ret=2;
-					continue;
+					$last_table_column = NULL;
+					$num_columns = 0;
 				}
-				$last_table_column = $table_columns[$table_columns_count-1];
-				$num_columns = count($last_table_column);
+				else
+				{
+					$last_table_column = $table_columns[$table_columns_count-1];
+					$num_columns = count($last_table_column);
+				}
 
 				if($sort_columnlen>0)
 				{
@@ -1903,7 +1905,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					if($errorflag) continue;
 				}
 
-				if($rowspan==0)
+				if($search_column_rowspan==-1 && $num_columns>0)
 				{
 					if($columns_count != $num_columns)
 					{
