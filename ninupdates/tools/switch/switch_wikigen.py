@@ -1097,12 +1097,149 @@ def SettingsGetValue(Key, Value):
             print("SettingsGetValue(\"%s\", \"%s\"): Unrecogized type, returning the raw value." % (Key, Value))
             return Value
 
-def DiffSettings(Config, ConfigPrev):
+def ProcessSystemSettingsDiff(Diff):
     SettingsPage = {
         "page_title": "System_Settings",
         "targets": []
     }
 
+    for ChangeKey, ChangeValue in Diff.items():
+        for Section, SectionValue in Diff[ChangeKey].items():
+            SectionHeader = "= %s =" % (Section)
+
+            TmpTarget = {
+                "search_section": SectionHeader,
+                "search_section_end": "",
+                "text_sections": [],
+                "insert_row_tables": []
+            }
+
+            if ChangeKey == 'AddedSections':
+                SectionPrev = None
+                if 'SectionPrev' in SectionValue:
+                    SectionPrev = SectionValue['SectionPrev']
+                IsSectionLast = SectionValue['IsSectionLast']
+                ConfigNames = SectionValue['ConfigNames']
+
+                Found = False
+                for CurName in ConfigNames:
+                    if CurName=='FirmwareDebugSettings':
+                        Found = True
+                        break
+
+                TmpStr = ""
+                if Found is False:
+                    TmpStr = " (only present in PlatformConfig* SystemData)"
+
+                InsertText = "%s\nThis class does not exist before %s%s.\n\n" % (SectionHeader, updatever, TmpStr)
+                InsertText = InsertText + "{| class=\"wikitable\" border=\"1\"\n|-\n"
+                InsertText = InsertText + "! Name || Versions || Default Values || Description\n"
+
+                InsertText = InsertText + "|-\n"
+
+                # The table is filled in via insert_row_tables below, in case the section already exists.
+
+                InsertText = InsertText + "|}\n"
+
+                if SectionPrev is not None:
+                    InsertText = "\n" + InsertText
+                else:
+                    InsertText = InsertText + "\n"
+
+                TextSection = {
+                    "search_text": SectionHeader + "\n",
+                    "insert_before_text": "=",
+                    "insert_text": InsertText
+                }
+                if SectionPrev is None:
+                    del(TmpTarget["search_section"])
+                    TmpTarget["full_page"] = True
+                    TextSection["insert_before_text"] = "="
+                else:
+                    TmpTarget["search_section"] = "= %s =" % (SectionPrev)
+                    if IsSectionLast is False:
+                        TextSection["insert_before_text"] = "\n="
+
+                TmpTarget["text_sections"].append(TextSection)
+            else:
+                TmpTarget["search_section_end"] = "|}"
+                for Key, ConfigNames in Diff[ChangeKey][Section].items():
+                    Value = ""
+                    ConfigData = []
+
+                    # Create a list where each unique Value is associated with the ConfigNames using it.
+                    for ConfigName, ValueData in Diff[ChangeKey][Section][Key].items():
+                        ConfigEntry = None
+                        for CurData in ConfigData:
+                            if CurData['Value'] == ValueData:
+                                ConfigEntry = CurData
+                                CurData['Names'].append(ConfigName)
+                                break
+                        if ConfigEntry is None:
+                            ConfigData.append({'Value': ValueData, 'Names': [ConfigName]})
+
+                    for CurData in ConfigData:
+                        ValueStr = SettingsGetValue("%s.%s" % (Section, Key), CurData['Value'])
+                        if CurData['Names'][0]!='FirmwareDebugSettings' or len(CurData['Names'])>1:
+                            ConfigStr = ""
+                            for ConfigName in CurData['Names']:
+                                if len(ConfigStr)>0:
+                                    ConfigStr = ConfigStr + "/"
+                                ConfigStr = ConfigStr + ConfigName
+                            ValueStr = "%s = %s" % (ConfigStr, ValueStr)
+                        if len(Value)>0:
+                            Value = Value + "\n"
+                        Value = Value + ValueStr
+
+                    EditText = "-" + updatever_prev
+
+                    InsertRowTable = {
+                        "search_text": Key,
+                        "search_text_rowspan": updatever + "+",
+                        "search_column": 0,
+                        "search_column_rowspan": 1,
+                        "search_type": 1,
+                        "search_type_rowspan": 0,
+                    }
+
+                    if ChangeKey == 'Added':
+                        InsertRowTable["sort"] = 0
+                    InsertRowTable["columns"] = [
+                        "rowspan=\"1\" |%s" % (Key),
+                        "%s+" % (updatever),
+                        Value,
+                        "rowspan=\"1\" |"]
+
+                    if ChangeKey == 'Updated' or ChangeKey == 'Removed':
+                        InsertRowTable["rowspan_edit_prev"] = [
+                            {
+                                "column": 1,
+                                "findreplace_list": [
+                                    {
+                                        "find_text": "+",
+                                        "replace_text": EditText
+                                    },
+                                ],
+                            },
+                        ]
+
+                    if ChangeKey == 'Updated':
+                        InsertRowTable["columns"] = [
+                            "%s+" % (updatever),
+                            Value]
+                    elif ChangeKey == 'Removed':
+                        InsertRowTable["columns"] = []
+                        InsertRowTable["search_text_rowspan"] = EditText
+
+                    TmpTarget["insert_row_tables"].append(InsertRowTable)
+
+            if len(TmpTarget["text_sections"])>0 or len(TmpTarget["insert_row_tables"])>0:
+                SettingsPage["targets"].append(TmpTarget)
+
+    if len(SettingsPage["targets"])>0:
+        storage.append(SettingsPage)
+
+def DiffSettings(ConfigName, Config, ConfigPrev, Diff):
     SectionPrev = None
     SectionLast = list(Config)[-1]
 
@@ -1111,173 +1248,90 @@ def DiffSettings(Config, ConfigPrev):
             continue
         SectionHeader = "= %s =" % (Section)
 
-        TmpTarget = {
-            "search_section": SectionHeader,
-            "search_section_end": "",
-            "text_sections": [],
-            "insert_row_tables": []
-        }
-
-        TmpTarget2 = {
-            "search_section": SectionHeader,
-            "search_section_end": "",
-            "text_sections": [],
-            "insert_row_tables": []
-        }
-
         if Section not in ConfigPrev: # Section added
-            InsertText = "%s\nThis class does not exist before %s.\n\n" % (SectionHeader, updatever)
-            InsertText = InsertText + "{| class=\"wikitable\" border=\"1\"\n|-\n"
-            InsertText = InsertText + "! Name || Versions || Default Values || Description\n"
+            if Section not in Diff['AddedSections']:
+                Diff['AddedSections'][Section] = {'ConfigNames': []}
+                Diff['AddedSections'][Section]['IsSectionLast'] = Section == SectionLast
+            if 'SectionPrev' not in Diff['AddedSections'][Section] and SectionPrev is not None:
+                Diff['AddedSections'][Section]['SectionPrev'] = SectionPrev
+            Diff['AddedSections'][Section]['ConfigNames'].append(ConfigName)
 
-            if len(Config[Section])==0:
-                InsertText = InsertText + "|-\n"
-
-            # The table is filled in via insert_row_tables below, in case the section already exists.
-
-            InsertText = InsertText + "|}\n"
-
-            if SectionPrev is not None:
-                InsertText = "\n" + InsertText
-            else:
-                InsertText = InsertText + "\n"
-
-            TextSection = {
-                "search_text": SectionHeader + "\n",
-                "insert_before_text": "=",
-                "insert_text": InsertText
-            }
-            if SectionPrev is None:
-                del(TmpTarget["search_section"])
-                TmpTarget["full_page"] = True
-                TextSection["insert_before_text"] = "="
-            else:
-                TmpTarget["search_section"] = "= %s =" % (SectionPrev)
-                if Section != SectionLast:
-                    TextSection["insert_before_text"] = "\n="
-
-            TmpTarget["text_sections"].append(TextSection)
-
-            TmpTarget2["search_section_end"] = "|}"
             for Key, Value in Config[Section].items():
-                InsertRowTable = {
-                    "search_text": Key,
-                    "search_text_rowspan": updatever + "+",
-                    "search_column": 0,
-                    "search_column_rowspan": 1,
-                    "search_type": 1,
-                    "search_type_rowspan": 0,
-                }
-
-                InsertRowTable["sort"] = 0
-                InsertRowTable["columns"] = [
-                    "rowspan=\"1\" |%s" % (Key),
-                    "%s+" % (updatever),
-                    SettingsGetValue("%s.%s" % (Section, Key), Value),
-                    "rowspan=\"1\" |"]
-                TmpTarget2["insert_row_tables"].append(InsertRowTable)
+                if Section not in Diff['Added']:
+                    Diff['Added'][Section] = {}
+                if Key not in Diff['Added'][Section]:
+                    Diff['Added'][Section][Key] = {}
+                Diff['Added'][Section][Key][ConfigName] = Value
         else:
-            TmpTarget["search_section_end"] = "|}"
             for Key, Value in Config[Section].items():
-                InsertRowTable = {
-                    "search_text": Key,
-                    "search_text_rowspan": updatever + "+",
-                    "search_column": 0,
-                    "search_column_rowspan": 1,
-                    "search_type": 1,
-                    "search_type_rowspan": 0,
-                }
-
                 if Key not in ConfigPrev[Section]: # Field added
                     #print("%s.%s added" % (Section, Key))
-                    InsertRowTable["sort"] = 0
-                    InsertRowTable["columns"] = [
-                        "rowspan=\"1\" |%s" % (Key),
-                        "%s+" % (updatever),
-                        SettingsGetValue("%s.%s" % (Section, Key), Value),
-                        "rowspan=\"1\" |"]
-                    TmpTarget["insert_row_tables"].append(InsertRowTable)
+
+                    if Section not in Diff['Added']:
+                        Diff['Added'][Section] = {}
+                    if Key not in Diff['Added'][Section]:
+                        Diff['Added'][Section][Key] = {}
+                    Diff['Added'][Section][Key][ConfigName] = Value
+
                 elif Value != ConfigPrev[Section][Key]: # Field updated
                     #print("%s.%s: %s -> %s" % (Section, Key, Value, ConfigPrev[Section][Key]))
-                    InsertRowTable["rowspan_edit_prev"] = [
-                        {
-                            "column": 1,
-                            "findreplace_list": [
-                                {
-                                    "find_text": "+",
-                                    "replace_text": "-" + updatever_prev
-                                },
-                            ],
-                        },
-                    ]
-                    InsertRowTable["columns"] = [
-                        "%s+" % (updatever),
-                        SettingsGetValue("%s.%s" % (Section, Key), Value)]
-                    TmpTarget["insert_row_tables"].append(InsertRowTable)
-        if len(TmpTarget["text_sections"])>0 or len(TmpTarget["insert_row_tables"])>0:
-            SettingsPage["targets"].append(TmpTarget)
-        if len(TmpTarget2["text_sections"])>0 or len(TmpTarget2["insert_row_tables"])>0:
-            SettingsPage["targets"].append(TmpTarget2)
+
+                    if Section not in Diff['Updated']:
+                        Diff['Updated'][Section] = {}
+                    if Key not in Diff['Updated'][Section]:
+                        Diff['Updated'][Section][Key] = {}
+                    Diff['Updated'][Section][Key][ConfigName] = Value
+
         SectionPrev = Section
 
     for Section in ConfigPrev:
-        TmpTarget = {
-            "search_section": "= %s =" % (Section),
-            "search_section_end": "|}",
-            "text_sections": [],
-            "insert_row_tables": []
-        }
-
         for Key, Value in ConfigPrev[Section].items():
             if Section not in Config or Key not in Config[Section]: # Field removed
                 #print("%s.%s removed" % (Section, Key))
-                EditText = "-" + updatever_prev
-                InsertRowTable = {
-                    "search_text": Key,
-                    "search_text_rowspan": EditText,
-                    "search_column": 0,
-                    "search_column_rowspan": 1,
-                    "search_type": 1,
-                    "search_type_rowspan": 0,
-                    "columns": []
-                }
-                InsertRowTable["rowspan_edit_prev"] = [
-                    {
-                        "column": 1,
-                        "findreplace_list": [
-                            {
-                                "find_text": "+",
-                                "replace_text": EditText
-                            },
-                        ],
-                    },
-                ]
-                TmpTarget["insert_row_tables"].append(InsertRowTable)
 
-        if len(TmpTarget["text_sections"])>0 or len(TmpTarget["insert_row_tables"])>0:
-            SettingsPage["targets"].append(TmpTarget)
+                if Section not in Diff['Removed']:
+                    Diff['Removed'][Section] = {}
+                if Key not in Diff['Removed'][Section]:
+                    Diff['Removed'][Section][Key] = {}
+                Diff['Removed'][Section][Key][ConfigName] = Value
 
-    if len(SettingsPage["targets"])>0:
-        storage.append(SettingsPage)
+def ProcessSystemSettings(Titles):
+    Diff = {}
+    Diff['AddedSections'] = {}
+    Diff['Added'] = {}
+    Diff['Removed'] = {}
+    Diff['Updated'] = {}
 
-def ProcessSystemSettings(Title):
-    for Change in Title['changes']:
-        if Change['type'] == 'updated':
-            TmpPath = os.path.join(title['dirpath'], "..")
-            TmpPath = os.path.join(TmpPath, "settings_parseout.info")
-            TmpPathPrev = os.path.join(title['dirpath_prev'], "..")
-            TmpPathPrev = os.path.join(TmpPathPrev, "settings_parseout.info")
+    CfgStr = "PlatformConfig"
+    CfgStrLen = len(CfgStr)
 
-            if os.path.exists(TmpPath) and os.path.exists(TmpPathPrev):
-                Config = configparser.ConfigParser(interpolation=None)
-                ConfigPrev = configparser.ConfigParser(interpolation=None)
-                Config.read(TmpPath)
-                ConfigPrev.read(TmpPathPrev)
-                DiffSettings(Config, ConfigPrev)
-            else:
-                print("ProcessSystemSettings(): File doesn't exist. TmpPath = %s, TmpPathPrev = %s" % (TmpPath, TmpPathPrev))
+    for Id, Title in Titles.items():
+        if Id=='0100000000000818' or (Titles[Id]['desc']!="N/A" and Titles[Id]['desc'][:CfgStrLen] == CfgStr):
+            for Change in Titles[Id]['changes']:
+                if Change['type'] == 'updated':
+                    TmpPath = os.path.join(Title['dirpath'], "..")
+                    TmpPath = os.path.join(TmpPath, "settings_parseout.info")
+                    TmpPathPrev = os.path.join(Title['dirpath_prev'], "..")
+                    TmpPathPrev = os.path.join(TmpPathPrev, "settings_parseout.info")
 
-            break
+                    Desc = Id
+                    if Titles[Id]['desc']!="N/A":
+                        Desc = Titles[Id]['desc']
+                        if Desc[:CfgStrLen] == CfgStr:
+                            Desc = Desc[CfgStrLen:]
+
+                    if os.path.exists(TmpPath) and os.path.exists(TmpPathPrev):
+                        Config = configparser.ConfigParser(interpolation=None)
+                        ConfigPrev = configparser.ConfigParser(interpolation=None)
+                        Config.read(TmpPath)
+                        ConfigPrev.read(TmpPathPrev)
+                        DiffSettings(Desc, Config, ConfigPrev, Diff)
+                    else:
+                        print("ProcessSystemSettings(): File doesn't exist. TmpPath = %s, TmpPathPrev = %s" % (TmpPath, TmpPathPrev))
+
+                    break
+
+    ProcessSystemSettingsDiff(Diff)
 
 page = {
     "page_title": "!UPDATEVER",
@@ -1425,9 +1479,6 @@ if len(diff_titles)>0:
         if titleid=='0100000000000800': # CertStore
             process_certstore(title, title_text)
 
-        if titleid=='0100000000000818': # FirmwareDebugSettings
-            ProcessSystemSettings(title)
-
     text_section = {
         "search_text": "RomFs",
         "insert_text": insert_text
@@ -1435,6 +1486,8 @@ if len(diff_titles)>0:
 
     #print(insert_text)
     target["text_sections"].append(text_section)
+
+    ProcessSystemSettings(diff_titles)
 
 if len(target["text_sections"])>0:
     page["targets"].append(target)
