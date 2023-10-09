@@ -936,6 +936,10 @@ if os.path.exists(info_path):
     #print(diff_titles)
 
 if len(diff_titles)>0:
+    diff_titles_sorted = sorted(diff_titles.items())
+    diff_titles = {}
+    for titleid, title in diff_titles_sorted:
+        diff_titles[titleid] = title
     for titleid, title in diff_titles.items():
         if titleid in titleinfo and 'group' in titleinfo[titleid]:
             group = titleinfo[titleid]['group']
