@@ -1163,6 +1163,8 @@ def ProcessSystemSettingsDiff(Diff):
                     TmpTarget["search_section"] = "= %s =" % (SectionPrev)
                     if IsSectionLast is False:
                         TextSection["insert_before_text"] = "\n="
+                    else:
+                        del(TextSection["insert_before_text"])
 
                 TmpTarget["text_sections"].append(TextSection)
             else:
@@ -1199,11 +1201,11 @@ def ProcessSystemSettingsDiff(Diff):
 
                     InsertRowTable = {
                         "search_text": Key,
-                        "search_text_rowspan": updatever + "+",
+                        "search_text_rowspan": [updatever + "+", updatever + "-"],
                         "search_column": 0,
                         "search_column_rowspan": 1,
                         "search_type": 1,
-                        "search_type_rowspan": 0,
+                        "search_type_rowspan": 2,
                     }
 
                     if ChangeKey == 'Added':
@@ -1234,6 +1236,7 @@ def ProcessSystemSettingsDiff(Diff):
                     elif ChangeKey == 'Removed':
                         InsertRowTable["columns"] = []
                         InsertRowTable["search_text_rowspan"] = EditText
+                        InsertRowTable["search_type_rowspan"] = 0
 
                     TmpTarget["insert_row_tables"].append(InsertRowTable)
 
