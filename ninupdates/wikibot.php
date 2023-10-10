@@ -1089,6 +1089,44 @@ function wikibot_parse_rowspan(&$tmp_column, &$rowspan, &$updated_column=NULL)
 	}
 }
 
+function wikibot_check_search_text($search_type, $search_text, $tmp_column)
+{
+	if(($search_type==0 && strpos($tmp_column, $search_text)!==FALSE) || ($search_type==1 && $tmp_column === $search_text))
+	{
+		return True;
+	}
+	else if($search_type==2)
+	{
+		foreach($search_text as $cur_search)
+		{
+			if(strpos($tmp_column, $cur_search)!==FALSE)
+			{
+				return True;
+			}
+		}
+	}
+	return False;
+}
+
+function wikibot_print_search_text($search_type, $search_text)
+{
+	if($search_type==2)
+	{
+		$tmpstr = "[";
+		foreach($search_text as $cur_search)
+		{
+			if(strlen($tmpstr)!=1) $tmpstr.= ", ";
+			$tmpstr.= "\"$cur_search\"";
+		}
+		$tmpstr.= "]";
+		return $tmpstr;
+	}
+	else
+	{
+		return "\"$search_text\"";
+	}
+}
+
 /*
 This parses a json file for editing wiki pages, with the below format.
 When any errors occur, it will skip processing the current array-entry, with the error only being returned after processing the rest of the json. This includes fields not being found which are not listed as optional, and when most text-search functionality (excluding search_text) fails.
@@ -1122,9 +1160,9 @@ When any errors occur, it will skip processing the current array-entry, with the
 					"search_text_rowspan": "{text}", # Same as search_text except for rowspan.
 					"search_column": {integer}, # Optional. Normally search_text is used raw for the text-search. If this is specified, the search is instead done on each table row with the specified column (0 is the first column).
 					"search_column_rowspan": {integer}, # Optional. Only used if 'rowspan' is present in the column data specified by search_column. Used with search_text_rowspan to determine whether editing is needed. Must be >=1 since this is decreased by 1 after the first entry.
-					"search_type": {integer}, # Optional, defaults to 0. Only used if search_column is specified, same as val0 otherwise. Controls the method to use for doing the search with search_text. 0 = strpos, 1 = exact match.
+					"search_type": {integer}, # Optional, defaults to 0. Only used if search_column is specified, same as val0 otherwise. Controls the method to use for doing the search with search_text. 0 = strpos, 1 = exact match, 2 = strpos with search_text as an array of strings (only 1 matching entry needs to be found).
 					"search_type_rowspan": {integer}, # Same as search_type except for rowspan.
-					"sort": {integer}, # If specified, search_text is used for comparing against the first column in each table row. This is used for determining where to insert the row, with fallback to table-end if not found. 0 = regular compare, 1 = {same as 0 except intval is used}.
+					"sort": {integer}, # If specified, search_text is used for comparing against the first column in each table row. This is used for determining where to insert the row, with fallback to table-end if not found. 0 = regular compare, 1 = {same as 0 except intval is used}. search_type=2 is not supported when sort is specified.
 					"sort_columnlen": {integer}, # If specified, the column value used by sort must match the specified length otherwise an error is thrown.
 					"table_lists": [], # Optional array of table_list to append to the below table_lists array when search_text is found successfully.
 					"rowspan_edit_prev": [ # Optional array, when rowspan is present this edits the previous row which is within the same rowspan.
@@ -1728,6 +1766,9 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					$search_text_rowspan = $insert_row_table["search_text_rowspan"];
 				}
 
+				$search_text_print = wikibot_print_search_text($search_type, $search_text);
+				$search_text_rowspan_print = wikibot_print_search_text($search_type_rowspan, $search_text_rowspan);
+
 				$enable_sort = FALSE;
 				$sort_type=0;
 				if(isset($insert_row_table["sort"]))
@@ -1764,7 +1805,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 						$tmpstr = " The input table_lists from this insert_row_table will be processed later.";
 						foreach($extra_table_lists as $tmp_extra) $table_lists[] = $tmp_extra;
 					}
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the section for insert_row_table, search_text: \"$search_text\".$tmpstr", 2, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the section for insert_row_table, search_text: $search_text_print.$tmpstr", 2, $reportdate);
 					continue;
 				}
 
@@ -1807,7 +1848,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 						$tmpcount = count($table_columns[$i]);
 						if($tmpcount==0)
 						{
-							wikibot_writelog("wikibot_process_wikigen($pagetitle): insert_row_table: the count for this table row is $tmpcount, search_text: \"$search_text\"", 0, $reportdate);
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): insert_row_table: the count for this table row is $tmpcount, search_text: $search_text_print", 0, $reportdate);
 							if($ret==0) $ret=2;
 							$errorflag=True;
 							break;
@@ -1836,7 +1877,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 						$tmpcount = count($table_columns[$i]);
 						if($search_column >= $tmpcount)
 						{
-							wikibot_writelog("wikibot_process_wikigen($pagetitle): insert_row_table: search_column = $search_column but the count for this table row is $tmpcount, search_text: \"$search_text\"", 0, $reportdate);
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): insert_row_table: search_column = $search_column but the count for this table row is $tmpcount, search_text: $search_text_print", 0, $reportdate);
 							if($ret==0) $ret=2;
 							$errorflag=True;
 							break;
@@ -1847,7 +1888,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 						$rowspan=0;
 						wikibot_parse_rowspan($tmp_column, $rowspan);
 
-						if(($search_type==0 && strpos($tmp_column, $search_text)!==FALSE) || ($search_type==1 && $tmp_column === $search_text))
+						if(wikibot_check_search_text($search_type, $search_text, $tmp_column))
 						{
 							$foundflag = True;
 							if($rowspan>=1 && $search_text_rowspan!=="")
@@ -1859,7 +1900,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 									if($i2>0) $rowspan_pos = 1;
 									$tmp_column = $table_columns[$i+$i2][$search_column_rowspan-$rowspan_pos];
 
-									if(($search_type_rowspan==0 && strpos($tmp_column, $search_text_rowspan)!==FALSE) || ($search_type_rowspan==1 && $tmp_column === $search_text_rowspan))
+									if(wikibot_check_search_text($search_type_rowspan, $search_text_rowspan, $tmp_column))
 									{
 										$foundflag = True;
 										break;
@@ -1872,14 +1913,14 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 								$tmpstr = "";
 								if($rowspan>=1 && $search_text_rowspan!=="")
 								{
-									$tmpstr.= " search_text_rowspan: \"$search_text_rowspan\".";
+									$tmpstr.= " search_text_rowspan: $search_text_rowspan_print.";
 								}
 								if($extra_table_lists!==NULL)
 								{
 									$tmpstr.= " The input table_lists from this insert_row_table will be processed later.";
 									foreach($extra_table_lists as $tmp_extra) $table_lists[] = $tmp_extra;
 								}
-								wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the column for search_column=$search_column insert_row_table, search_text: \"$search_text\".$tmpstr", 2, $reportdate);
+								wikibot_writelog("wikibot_process_wikigen($pagetitle): This text already exists in the column for search_column=$search_column insert_row_table, search_text: $search_text_print.$tmpstr", 2, $reportdate);
 								$errorflag = True;
 								break;
 							}
@@ -1920,13 +1961,25 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 				if($search_text_rowspan!=="" && $enable_sort===FALSE && ($rowspan_column_index===NULL || $target_column_index===NULL))
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the target rows for insert_row_table with rowspan. search_text: \"$search_text\", search_text_rowspan = \"$search_text_rowspan\".", 0, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the target rows for insert_row_table with rowspan. search_text: $search_text_print, search_text_rowspan = $search_text_rowspan_print.", 0, $reportdate);
 					if($ret==0) $ret=2;
 					continue;
 				}
 
 				if($enable_sort===TRUE)
 				{
+					if($search_type==2)
+					{
+						$tmpstr = "";
+						if($search_text_rowspan!=="")
+						{
+							$tmpstr.= ", search_text_rowspan: $search_text_rowspan_print";
+						}
+						wikibot_writelog("wikibot_process_wikigen($pagetitle): search_type=2 is not available when sort is enabled with insert_row_table. search_text: $search_text_print$tmpstr.", 0, $reportdate);
+						if($ret==0) $ret=2;
+						continue;
+					}
+
 					$target_pos = NULL;
 					if($sort_type==1)
 					{
@@ -2138,14 +2191,14 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 						}
 						else
 						{
-							wikibot_writelog("wikibot_process_wikigen($pagetitle): The required fields for rowspan_edit_prev are missing, skipping this rowspan_edit_prev entry. search_text: \"$search_text\"", 2, $reportdate);
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): The required fields for rowspan_edit_prev are missing, skipping this rowspan_edit_prev entry. search_text: $search_text_print", 2, $reportdate);
 							continue;
 						}
 
 						$tmpcount = count($table_columns[$target_column_index]);
 						if($target_column >= $tmpcount)
 						{
-							wikibot_writelog("wikibot_process_wikigen($pagetitle): insert_row_table: rowspan_edit_prev column = $target_column but the count for this table row is $tmpcount, search_text: \"$search_text\"", 0, $reportdate);
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): insert_row_table: rowspan_edit_prev column = $target_column but the count for this table row is $tmpcount, search_text: $search_text_print", 0, $reportdate);
 							if($ret==0) $ret=2;
 							$errorflag=True;
 							break;
@@ -2153,7 +2206,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 						if($target_column < 1)
 						{
-							wikibot_writelog("wikibot_process_wikigen($pagetitle): insert_row_table: rowspan_edit_prev column = $target_column, this must be >=1. search_text: \"$search_text\"", 0, $reportdate);
+							wikibot_writelog("wikibot_process_wikigen($pagetitle): insert_row_table: rowspan_edit_prev column = $target_column, this must be >=1. search_text: $search_text_print", 0, $reportdate);
 							if($ret==0) $ret=2;
 							$errorflag=True;
 							break;
@@ -2176,7 +2229,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 							}
 							else
 							{
-								wikibot_writelog("wikibot_process_wikigen($pagetitle): This findreplace_list is missing the required fields with insert_row_table rowspan_edit_prev, search_text: \"$search_text\"", 2, $reportdate);
+								wikibot_writelog("wikibot_process_wikigen($pagetitle): This findreplace_list is missing the required fields with insert_row_table rowspan_edit_prev, search_text: $search_text_print", 2, $reportdate);
 								continue;
 							}
 						}
@@ -2203,11 +2256,11 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				{
 					$page_updated = True;
 					$page_text = $page_text_prev . $new_text . substr($page_text, $table_endpos);
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): Successfully edited the page for insert_row_table. search_text: \"$search_text\"", 2, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): Successfully edited the page for insert_row_table. search_text: $search_text_print", 2, $reportdate);
 				}
 				else
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): Page editing for insert_row_table was not needed. search_text: \"$search_text\"", 2, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): Page editing for insert_row_table was not needed. search_text: $search_text_print", 2, $reportdate);
 				}
 			}
 
