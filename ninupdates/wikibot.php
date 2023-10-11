@@ -2586,7 +2586,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 			{
 				wikibot_writelog("wikibot_process_wikigen($pagetitle): Sending page edit request...", 2, $reportdate);
 
-				$newContent = new \Mediawiki\DataModel\Content($new_page_text);
+				$newContent = new \Mediawiki\DataModel\Content($page_text);
 				$title = new \Mediawiki\DataModel\Title($pagetitle);
 				$identifier = new \Mediawiki\DataModel\PageIdentifier($title);
 				$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
