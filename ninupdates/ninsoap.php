@@ -363,9 +363,10 @@ function dosystem($console)
 		if($initialscan)echo "System $system: Initial scan successful for regions $sysupdate_regions.\n";
 
 		echo "\nSending notifications...\n";
-		$args = [$notif_msg, "--social", "--webhook"];
 
 		$notif_msg = "Sysupdate detected for " . getsystem_sysname($system) . ": $msgme_message";
+		$args = [$notif_msg, "--social", "--webhook"];
+
 		if($reuse_report === True)
 		{
 			$notif_msg = "Sysupdate detected for " . getsystem_sysname($system) . " for an existing report with additional region(s): $msgme_message";
