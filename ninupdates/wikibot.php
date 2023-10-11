@@ -2480,33 +2480,40 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				}
 				$columns_count = count($columns);
 
+				$table_columns = array();
+				$table_columns_pos = array();
+				$use_single_line = False;
+				wikibot_parse_table($section_text, $section_pos, $table_columns, $table_columns_pos, $use_single_line);
+
 				$new_text = "";
 				if(substr($page_text, $section_endpos-3, 3)!="|-\n")
 				{
 					$new_text.= "|-\n";
 				}
 
-				$lines = explode("\n", $section_text);
-				$found = False;
-				$num_columns=0;
-				for($i=count($lines)-1; $i>=0; $i--)
+				$num_rows=count($table_columns);
+
+				if($num_rows == 0)
 				{
-					if(($i == count($lines)-1 && substr($lines[$i], 0, 2)==="|-") || strlen($lines[$i])==0)
-					{
-						continue;
-					}
-					if(substr($lines[$i], 0, 2)==="|-")
-					{
-						$linei = $i+1;
-						$found = True;
-						break;
-					}
-					$num_columns++;
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): The table for table_updatever_range is empty.", 0, $reportdate);
+					if($ret==0) $ret=2;
+					continue;
 				}
 
-				if($found === False)
+				$target_row_index = $num_rows-1;
+				$last_table_row = $table_columns[$target_row_index];
+				$num_columns = count($last_table_row);
+
+				if($num_columns==0)
 				{
-					wikibot_writelog("wikibot_process_wikigen($pagetitle): Failed to find the last table entry for table_updatever_range.", 0, $reportdate);
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): The last table row for table_updatever_range is empty.", 0, $reportdate);
+					if($ret==0) $ret=2;
+					continue;
+				}
+
+				if(strlen($last_table_row[0])==0)
+				{
+					wikibot_writelog("wikibot_process_wikigen($pagetitle): The updatever-column in the last table row for table_updatever_range is empty.", 0, $reportdate);
 					if($ret==0) $ret=2;
 					continue;
 				}
@@ -2519,7 +2526,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 				$updatever_prefix = "";
 				$updatever_append = "";
-				if(substr($lines[$linei], 2, 1)==="[")
+				if(substr($last_table_row[0], 0, 1)==="[")
 				{
 					$updatever_prefix = "[";
 					$updatever_append = "]";
@@ -2530,8 +2537,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				$found = False;
 				for($i=0; $i<$entrycount; $i++)
 				{
-					$tmp_line = substr($lines[$linei+1+$i], 2);
-					if($tmp_line!==$columns[$i])
+					if($last_table_row[$i+1]!==$columns[$i])
 					{
 						$found = True;
 						break;
@@ -2540,37 +2546,50 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 				if($found)
 				{
-					$new_text.= "| ".$updatever_prefix.$updateversion.$updatever_append."\n";
+					$new_text.= "| ".$updatever_prefix.$updateversion.$updatever_append;
+					if($use_single_line===False) $new_text.="\n";
 					for($i=0; $i<$entrycount; $i++)
 					{
-						$new_text.= "| ".$columns[$i]."\n";
+						if($use_single_line===False)
+						{
+							$new_text.= "| ";
+						}
+						else
+						{
+							$new_text.= " || ";
+						}
+						$new_text.= $columns[$i];
+						if($use_single_line===False || $i==$entrycount-1) $new_text.="\n";
 					}
 
 					$page_text = substr($page_text, 0, $section_endpos) . $new_text . substr($page_text, $section_endpos);
 				}
 				else // When data matches, just update the updatever in the table. This will also be reached when the json columns is empty.
 				{
-					$new_text = "";
-					for($i=0; $i<count($lines); $i++)
+					$tmpent = $last_table_row[0];
+					$tmpent_len = strlen($tmpent);
+
+					$tmp = strpos($tmpent, "-");
+					if($tmp===FALSE)
 					{
-						$linetext = $lines[$i];
-						if($i==count($lines)-1 && strlen($linetext)==0) continue;
-						if($linei == $i)
+						$insert_pos = strpos($tmpent, "]");
+						if($insert_pos===FALSE)
 						{
-							$tmp = strpos($linetext, "-");
-							if($tmp===FALSE)
-							{
-								$linetext = "| ".$updatever_prefix.$updateversion.$updatever_append;
-							}
-							else
-							{
-								$linetext = substr($linetext, 0, $tmp+1) . $updateversion.$updatever_append;
-							}
+							$insert_pos = strlen($tmpent);
 						}
-						$new_text.= $linetext . "\n";
+						$tmpent = substr($tmpent, 0, $insert_pos) . "-" . $updateversion . substr($tmpent, $insert_pos);
 					}
-					$page_text = substr($page_text, 0, $section_pos) . $new_text . substr($page_text, $section_endpos);
+					else
+					{
+						$tmpent = substr($tmpent, 0, $tmp+1) . $updateversion.$updatever_append;
+					}
+
+					$tmp_pos = $table_columns_pos[$target_row_index]["columns"][0];
+					$page_text = substr($page_text, 0, $tmp_pos) . $tmpent . substr($page_text, $tmp_pos+$tmpent_len);
 				}
+
+				wikibot_writelog("wikibot_process_wikigen($pagetitle): Successfully edited the page for table_updatever_range.", 2, $reportdate);
+
 				$page_updated = True;
 			}
 		}
