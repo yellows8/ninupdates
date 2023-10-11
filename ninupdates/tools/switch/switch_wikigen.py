@@ -1588,6 +1588,7 @@ if len(target["text_sections"])>0:
 target = {
     "search_section": "= BootImagePackages",
     "search_section_end": "\n=",
+    "parse_tables": [],
     "text_sections": []
 }
 
@@ -1619,6 +1620,7 @@ if updatedetails_info['bootpkg_line_found'] is True and 'bootpkg_retail_fuses' i
             target["text_sections"].append(text_section)
 
 if len(MetaOut['Ini1'])>0:
+    target["parse_tables"].append({"page_title": "SVC", "search_section": "= System calls"})
     text_section = {
         "search_text": "INI1",
         "insert_text": "[[Package2|INI1]] changes:\n" + MetaOut['Ini1']
