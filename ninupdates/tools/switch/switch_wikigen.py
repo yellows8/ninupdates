@@ -1500,7 +1500,7 @@ if len(target["text_sections"])>0:
     page["targets"].append(target)
 
 target = {
-    "search_section_end": "\n==See Also==",
+    "search_section_end": "See Also==",
     "text_sections": []
 }
 
