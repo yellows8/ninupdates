@@ -867,7 +867,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$services->newRevisionSaver()->save($revision);*/
 
 		$newContent = new \Mediawiki\DataModel\Content($page_text);
-		$title = new \Mediawiki\DataModel\Title($updateversion);
+		$title = new \Mediawiki\DataModel\Title($updateversion_norebootless);
 		$identifier = new \Mediawiki\DataModel\PageIdentifier($title);
 		$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
 		$services->newRevisionSaver()->save($revision);
