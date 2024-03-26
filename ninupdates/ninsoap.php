@@ -352,7 +352,7 @@ function dosystem($console)
 
 		if($report_exists == 1)
 		{
-			$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.regions='".$new_sysupdate_regions."' WHERE ninupdates_reports.reportdate='".$sysupdate_timestamp."' AND ninupdates_consoles.system='".$system."' AND ninupdates_reports.systemid=ninupdates_consoles.id AND ninupdates_reports.log='report'";
+			$query="UPDATE ninupdates_reports, ninupdates_consoles SET ninupdates_reports.regions='".$new_sysupdate_regions."', ninupdates_reports.updatever_autoset=0 WHERE ninupdates_reports.reportdate='".$sysupdate_timestamp."' AND ninupdates_consoles.system='".$system."' AND ninupdates_reports.systemid=ninupdates_consoles.id AND ninupdates_reports.log='report'";
 			$result=mysqli_query($mysqldb, $query);
 		}
 
