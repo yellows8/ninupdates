@@ -143,6 +143,29 @@ function do_systems_soap()
 			}
 		}
 
+		// In case the changelog still isn't available 20mins after the report curdate, run wikibot without waiting on changelog. This assumes the updatever was updated via postproc by now, hence generation!=0.
+		$query="SELECT COUNT(*) FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updatever_autoset=0 && ninupdates_reports.wikibot_runfinished=0 AND ninupdates_reports.curdate < FROM_UNIXTIME(".(time() - 20*60).") AND ninupdates_consoles.generation!=0 AND ninupdates_reports.systemid=ninupdates_consoles.id";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+
+		if($numrows>0)
+		{
+			$row = mysqli_fetch_row($result);
+			$count = $row[0];
+
+			if($count>0)
+			{
+				echo "Starting a wikibot updatever_autoset0 task for processing $count report(s)...\n";
+
+				$wikibot_timestamp = gmdate("Y-m-d_H-i-s");
+
+				$dirpath = "$sitecfg_workdir/wikibot_out_updatever_autoset0";
+				if(!is_dir($dirpath)) mkdir($dirpath, 0700);
+
+				system("php ".escapeshellarg("$sitecfg_workdir/wikibot.php")." scheduled_updatever_autoset0 > ".escapeshellarg("$dirpath/$wikibot_timestamp")." 2>&1 &");
+			}
+		}
+
 		$query="SELECT ninupdates_reports.reportdate, ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.postproc_runfinished=0 AND ninupdates_reports.systemid=ninupdates_consoles.id";
 		$result=mysqli_query($mysqldb, $query);
 		$numrows=mysqli_num_rows($result);

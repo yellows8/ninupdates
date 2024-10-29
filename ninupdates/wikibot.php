@@ -2893,16 +2893,18 @@ $wikibot_cmdtype = 0;
 
 if($argc<3)
 {
-	if($argc != 2 || $argv[1]!=="scheduled")
+	if($argc != 2 || ($argv[1]!=="scheduled" && $argv[1]!=="scheduled_updatever_autoset0"))
 	{
 		echo "Usage:\nphp wikibot.php <updateversion> <reportdate> <system>\n";
 		echo "php wikibot.php scheduled\n";
+		echo "php wikibot.php scheduled_updatever_autoset0\n";
 		echo "php wikibot.php <system> <--wikigen=path>\n";
 		return 0;
 	}
 	else
 	{
 		$wikibot_cmdtype = 1;
+		if($argv[1]==="scheduled_updatever_autoset0") $wikibot_cmdtype = 3;
 	}
 }
 else if($argc==3)
@@ -2958,7 +2960,12 @@ else if($wikibot_cmdtype == 2)
 }
 else
 {
-	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE updatever_autoset=1 && wikibot_runfinished=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
+        $updatever_autoset = "1";
+        if($wikibot_cmdtype == 3)  $updatever_autoset = "0";
+	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE updatever_autoset=".$updatever_autoset." && wikibot_runfinished=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
+
+	if($wikibot_cmdtype == 3) $query.= "AND ninupdates_reports.curdate < FROM_UNIXTIME(".(time() - 20*60).") AND ninupdates_consoles.generation!=0";
+
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 
