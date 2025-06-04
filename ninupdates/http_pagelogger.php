@@ -31,6 +31,11 @@ function send_httprequest_pagelogger($url)
 
 	curl_setopt($curl_handle_pagelogger, CURLOPT_URL, $url);
 
+	if(strstr($url, "/switch2/")!==FALSE) // Workaround HTTP 403 with default/empty etc UA.
+	{
+		curl_setopt($curl_handle_pagelogger, CURLOPT_USERAGENT, "Mozilla/5.0");
+	}
+
 	curl_setopt($curl_handle_pagelogger, CURLOPT_FILETIME, true);
 	if(isset($lastdate))curl_setopt($ch, CURLOPT_HTTPHEADER, array("If-Modified-Since: " . gmdate('D, d M Y H:i:s \G\M\T', $lastdate)));
 
@@ -51,9 +56,17 @@ function send_httprequest_pagelogger($url)
 	if($errorstr!="")$buf = $errorstr;
 
 	$lastmod = curl_getinfo ($curl_handle_pagelogger, CURLINFO_FILETIME);
-	echo "lastmod:".gmdate(DATE_RFC822, $lastmod)."\n";
-	$lastmod_dateid = gmdate("Y-m-d_H-i-s", $lastmod);
-	echo "lastmod_dateid: $lastmod_dateid\n";
+	if($lastmod!==-1)
+	{
+		echo "lastmod:".gmdate(DATE_RFC822, $lastmod)."\n";
+		$lastmod_dateid = gmdate("Y-m-d_H-i-s", $lastmod);
+		echo "lastmod_dateid: $lastmod_dateid\n";
+	}
+	else
+	{
+		$lastmod_dateid = hash('sha256', $buf);
+		echo "Last-Modified not available, using hash: $lastmod_dateid\n";
+	}
 
 	return $buf;
 }
@@ -82,6 +95,7 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 
 	if(!is_dir($datadir)) mkdir($datadir, 0775);
 
+	$curtime = time();
 	init_curl_pagelogger();
 	$buf = send_httprequest_pagelogger($url);
 	close_curl_pagelogger();
@@ -125,7 +139,15 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 
 	if($enable_notification>=1)
 	{
-		$msg = "$msgprefix Last-Modified: " . gmdate(DATE_RFC822, $lastmod) . ". $msgurl";
+		if($lastmod!==-1)
+		{
+			$msg_text = "Last-Modified: " . gmdate(DATE_RFC822, $lastmod);
+		}
+		else
+		{
+			$msg_text = "Request timestamp: " . gmdate(DATE_RFC822, $curtime);
+		}
+		$msg = "$msgprefix " . $msg_text . ". $msgurl";
 
 		sendnotif_pagelogger($msg, $enable_notification, $msgtarget);
 	}
