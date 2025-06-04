@@ -20,7 +20,7 @@ function close_curl_pagelogger()
 	fclose($error_FH_pagelogger);
 }
 
-function send_httprequest_pagelogger($url)
+function send_httprequest_pagelogger($url, $filterjs)
 {
 	global $httpstat_pagelogger, $sitecfg_workdir, $curl_handle_pagelogger, $error_FH_pagelogger, $lastmod_dateid, $lastmod;
 
@@ -30,11 +30,6 @@ function send_httprequest_pagelogger($url)
 	curl_setopt($curl_handle_pagelogger, CURLOPT_RETURNTRANSFER, true);
 
 	curl_setopt($curl_handle_pagelogger, CURLOPT_URL, $url);
-
-	if(strstr($url, "/switch2/")!==FALSE) // Workaround HTTP 403 with default/empty etc UA.
-	{
-		curl_setopt($curl_handle_pagelogger, CURLOPT_USERAGENT, "Mozilla/5.0");
-	}
 
 	curl_setopt($curl_handle_pagelogger, CURLOPT_FILETIME, true);
 	if(isset($lastdate))curl_setopt($ch, CURLOPT_HTTPHEADER, array("If-Modified-Since: " . gmdate('D, d M Y H:i:s \G\M\T', $lastdate)));
@@ -62,8 +57,25 @@ function send_httprequest_pagelogger($url)
 		$lastmod_dateid = gmdate("Y-m-d_H-i-s", $lastmod);
 		echo "lastmod_dateid: $lastmod_dateid\n";
 	}
-	else
+	else if($httpstat_pagelogger=="200")
 	{
+		if($filterjs=="1")
+		{
+			while(1)
+			{
+				$pos = strpos($buf, "<script");
+				$posend = strpos($buf, "</script>");
+				if($pos!==FALSE && $posend!==FALSE)
+				{
+					$buf = substr($buf, 0, $pos) . substr($buf, $posend+9);
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+
 		$lastmod_dateid = hash('sha256', $buf);
 		echo "Last-Modified not available, using hash: $lastmod_dateid\n";
 	}
@@ -87,7 +99,7 @@ function sendnotif_pagelogger($msg, $enable_notification, $msgtarget)
 	}
 }
 
-function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notification, $msgtarget = "msg3dsdev")
+function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notification, $msgtarget = "msg3dsdev", $filterjs = "0")
 {
 	global $httpstat_pagelogger, $lastmod_dateid, $lastmod;
 
@@ -97,7 +109,7 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 
 	$curtime = time();
 	init_curl_pagelogger();
-	$buf = send_httprequest_pagelogger($url);
+	$buf = send_httprequest_pagelogger($url, $filterjs);
 	close_curl_pagelogger();
 	if($httpstat_pagelogger == "0")return 5;//Return immediately when the HTTP request failed.
 
@@ -106,7 +118,7 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 	$httpstat_prev = FALSE;
 	if(file_exists($httpstat_file)===TRUE)$httpstat_prev = file_get_contents($httpstat_file);
 
-	if($httpstat_pagelogger == 200 || $httpstat_pagelogger == 404)//Only keep track of status-code changes between these two(otherwise this might catch server-side issues).
+	if($httpstat_pagelogger == 200 || $httpstat_pagelogger == 403 || $httpstat_pagelogger == 404)//Only keep track of status-code changes between these (otherwise this might catch server-side issues).
 	{
 		$f = fopen($httpstat_file, "w");
 		fwrite($f, $httpstat_pagelogger);

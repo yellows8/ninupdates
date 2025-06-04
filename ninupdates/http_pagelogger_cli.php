@@ -16,9 +16,13 @@ if($argc<7)
 {
 	process_pagelogger($argv[1], $argv[2], $argv[3], $argv[4], $argv[5]);
 }
-else
+else if($argc<8)
 {
 	process_pagelogger($argv[1], $argv[2], $argv[3], $argv[4], $argv[5], $argv[6]);
+}
+else
+{
+	process_pagelogger($argv[1], $argv[2], $argv[3], $argv[4], $argv[5], $argv[6], $argv[7]);
 }
 
 ?>
