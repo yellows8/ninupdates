@@ -514,7 +514,7 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 
 function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation, $postproc_runfinished, $report_latest_flag)
 {
-	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase, $wikicfgid;
 
 	$page_text = "";
 
@@ -628,7 +628,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		}
 	}
 
-	$query="SELECT ninupdates_reports.regions, ninupdates_reports.id, ninupdates_consoles.sysname, ninupdates_consoles.system, ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updateversion='".$updateversion."' && ninupdates_reports.systemid=ninupdates_consoles.id && wikibot_runfinished=0";
+	$query="SELECT ninupdates_reports.regions, ninupdates_reports.id, ninupdates_consoles.sysname, ninupdates_consoles.system, ninupdates_reports.reportdate FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.updateversion='".$updateversion."' && ninupdates_reports.systemid=ninupdates_consoles.id && wikibot_runfinished=0 && ninupdates_consoles.wikicfgid=$wikicfgid";
 	$result_systems=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result_systems);
 
@@ -2627,12 +2627,12 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 {
-	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $wikibot_ignore_latest_requirement, $system;
+	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $wikibot_ignore_latest_requirement, $system, $wikicfgid;
 
 	$wikibot_loggedin = 0;
 	$ret=0;
 
-	$query="SELECT ninupdates_wikiconfig.serverbaseurl, ninupdates_wikiconfig.apiprefixuri, ninupdates_wikiconfig.news_pagetitle, ninupdates_wikiconfig.newsarchive_pagetitle, ninupdates_wikiconfig.homemenu_pagetitle FROM ninupdates_wikiconfig, ninupdates_consoles WHERE ninupdates_wikiconfig.wikibot_enabled=1 && ninupdates_wikiconfig.id=ninupdates_consoles.wikicfgid && ninupdates_consoles.system='".$system."'";
+	$query="SELECT ninupdates_wikiconfig.id, ninupdates_wikiconfig.serverbaseurl, ninupdates_wikiconfig.apiprefixuri, ninupdates_wikiconfig.news_pagetitle, ninupdates_wikiconfig.newsarchive_pagetitle, ninupdates_wikiconfig.homemenu_pagetitle FROM ninupdates_wikiconfig, ninupdates_consoles WHERE ninupdates_wikiconfig.wikibot_enabled=1 && ninupdates_wikiconfig.id=ninupdates_consoles.wikicfgid && ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
 
@@ -2650,11 +2650,12 @@ function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 	}
 
 	$row = mysqli_fetch_row($result);
-	$serverbaseurl = $row[0];
-	$apiprefixuri = $row[1];
-	$wiki_newspagetitle = $row[2];
-	$wiki_newsarchivepagetitle = $row[3];
-	$wiki_homemenutitle = $row[4];
+	$wikicfgid = $row[0];
+	$serverbaseurl = $row[1];
+	$apiprefixuri = $row[2];
+	$wiki_newspagetitle = $row[3];
+	$wiki_newsarchivepagetitle = $row[4];
+	$wiki_homemenutitle = $row[5];
 
 	if(!isset($wiki_homemenutitle))$wiki_homemenutitle = "";
 
