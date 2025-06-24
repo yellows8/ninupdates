@@ -74,6 +74,13 @@ function send_httprequest_pagelogger($url, $filterjs)
 					break;
 				}
 			}
+
+                        $pos = strpos($buf, '<section class="update-versions">');
+                        if($pos!==FALSE) $posend = strpos($buf,  "</section>", $pos);
+                        if($pos!==FALSE && $posend!==FALSE)
+                        {
+                                $buf = substr($buf, $pos, $posend+10-$pos);
+                        }
 		}
 
 		$lastmod_dateid = hash('sha256', $buf);
