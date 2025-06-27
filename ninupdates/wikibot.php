@@ -408,17 +408,18 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 	foreach($report_titlelist as &$title)
 	{
 		$title_type=NULL;
-		if(substr($title["titleid"], 0, 14)==="01000000000000")
+		// Ignore the platform byte.
+		if(substr($title["titleid"], 2, 14)==="000000000000")
 		{
 			$title_type=0;
 			$target = &$targets[0];
 		}
-		else if(substr($title["titleid"], 0, 14)==="01000000000008")
+		else if(substr($title["titleid"], 2, 14)==="000000000008")
 		{
 			$title_type=1;
 			$target = &$targets[1];
 		}
-		else if(substr($title["titleid"], 0, 13)==="0100000000001")
+		else if(substr($title["titleid"], 2, 13)==="00000000001")
 		{
 			$title_type=2;
 			$target = &$targets[2];
