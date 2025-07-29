@@ -381,8 +381,8 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 	$report_titlelist = report_get_titlelist($system, $reportdate);
 	if(count($report_titlelist)==0)
 	{
-		wikibot_writelog("wikibot_edit_titlelist(): report_titlelist is empty.", 0, $reportdate);
-		return 1;
+		wikibot_writelog("wikibot_edit_titlelist(): report_titlelist is empty.", 2, $reportdate);
+		return 0;
 	}
 
 	$wikigen_page = array();
@@ -528,9 +528,12 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 
 	if($system_generation!=0) // Ignore the SystemUpdate/sysver titles.
 	{
-		$ignore_titles[] = "0100000000000816";
-		$ignore_titles[] = "0100000000000809";
-		$ignore_titles[] = "0100000000000826";
+		$platform = "01";
+		if($system==="bee") $platform = "04";
+
+		$ignore_titles[] = $platform . "00000000000816";
+		$ignore_titles[] = $platform . "00000000000809";
+		$ignore_titles[] = $platform . "00000000000826";
 	}
 
 	$report_titlelist = report_get_titlelist($system, $reportdate, out_titlestatus_new: $out_titlestatus_new, out_titlestatus_changed: $out_titlestatus_changed, ignore_titles: $ignore_titles);
@@ -560,15 +563,16 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 
 		foreach($out_titlestatus_changed as &$title)
 		{
-			if(substr($title["titleid"], 0, 14)==="01000000000000")
+		        // Ignore the platform byte.
+			if(substr($title["titleid"], 2, 12)==="000000000000")
 			{
 				$out_titlestatus_changed_sysmodules[] = $title;
 			}
-			else if(substr($title["titleid"], 0, 14)==="01000000000008")
+			else if(substr($title["titleid"], 2, 12)==="000000000008")
 			{
 				$out_titlestatus_changed_systemdata[] = $title;
 			}
-			else if(substr($title["titleid"], 0, 13)==="0100000000001")
+			else if(substr($title["titleid"], 2, 11)==="00000000001")
 			{
 				$out_titlestatus_changed_applets[] = $title;
 			}
