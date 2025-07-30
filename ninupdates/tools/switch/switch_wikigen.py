@@ -1394,7 +1394,8 @@ text_section = {
     "search_text": "NPDM",
     "insert_text": insert_text
 }
-target["text_sections"].append(text_section)
+if len(MetaOut['Meta'])>0 or insystem != "bee":
+    target["text_sections"].append(text_section)
 #print(text_section["insert_text"])
 
 if len(diff_titles)>0:
