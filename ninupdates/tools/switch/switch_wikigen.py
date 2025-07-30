@@ -1654,7 +1654,8 @@ if len(MetaOut['Ini1'])>0:
 if len(target["text_sections"])>0:
     page["targets"].append(target)
 
-storage.append(page)
+if len(page["targets"])>0:
+    storage.append(page)
 
 if insystem == "hac" and (updatedetails_info['bootpkg_line_found'] is False or (updatedetails_info['bootpkg_line_found'] is True and 'bootpkg_retail_fuses' in updatedetails_info and 'bootpkg_devunit_fuses' in updatedetails_info)):
     fuse_columns = []
