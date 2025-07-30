@@ -32,6 +32,10 @@ insystem = args.system
 updatever = args.updatever
 outpath = args.outpath
 
+Platform = "01"
+if insystem == "bee":
+    Platform = "04"
+
 if updatever.find('_rebootless')!=-1:
     print("This updatever is rebootless, aborting.")
     sys.exit(0)
@@ -49,59 +53,23 @@ updatedetails_info = {}
 storage = []
 
 titleinfo = {
-    '0100000000000800': { # CertStore
+    Platform + '00000000000800': { # CertStore
         'wikipage': 'SSL_services#CertStore',
     },
-    '0100000000000801': { # ErrorMessage
+    Platform + '00000000000806': { # NgWord
         'ignore': True,
     },
-    '0100000000000806': { # NgWord
-        'ignore': True,
-    },
-    '0100000000000809': { # SystemVersion
+    Platform + '00000000000809': { # SystemVersion
         'wikipage': 'System_Version_Title',
     },
-    '010000000000080E': { # TimeZoneBinary
+    Platform + '0000000000080E': { # TimeZoneBinary
         'ignore': True,
     },
-    '0100000000000818': { # FirmwareDebugSettings
+    Platform + '00000000000818': { # FirmwareDebugSettings
         'wikipage': 'System_Settings',
     },
-    '010000000000081A': { # BootImagePackageSafe
-        'group': '0100000000000819',
-    },
-    '010000000000081B': { # BootImagePackageExFat
-        'group': '0100000000000819',
-    },
-    '010000000000081C': { # BootImagePackageExFatSafe
-        'group': '0100000000000819',
-    },
-    '010000000000081F': { # PlatformConfigIcosa
-        'wikipage': 'System_Settings',
-        'group': '0100000000000818',
-    },
-    '0100000000000820': { # PlatformConfigCopper
-        'wikipage': 'System_Settings',
-        'group': '0100000000000818',
-    },
-    '0100000000000821': { # PlatformConfigHoag
-        'wikipage': 'System_Settings',
-        'group': '0100000000000818',
-    },
-    '0100000000000823': { # NgWord2
+    Platform + '00000000000823': { # NgWord2
         'ignore': True,
-    },
-    '0100000000000824': { # PlatformConfigIcosaMariko
-        'wikipage': 'System_Settings',
-        'group': '0100000000000818',
-    },
-    '0100000000000829': { # PlatformConfigCalcio
-        'wikipage': 'System_Settings',
-        'group': '0100000000000818',
-    },
-    '0100000000000831': { # PlatformConfigAula
-        'wikipage': 'System_Settings',
-        'group': '0100000000000818',
     },
     '010000000000100A': { # LibAppletWeb
         'wikipage': 'Internet_Browser',
@@ -123,6 +91,48 @@ titleinfo = {
         'group': '010000000000100A',
     },
 }
+
+if insystem == "hac":
+    titleinfo['0100000000000801'] = { # ErrorMessage
+        'ignore': True,
+    }
+    titleinfo['010000000000081A'] = { # BootImagePackageSafe
+        'group': '0100000000000819',
+    }
+    titleinfo['010000000000081B'] = { # BootImagePackageExFat
+        'group': '0100000000000819',
+    }
+    titleinfo['010000000000081C'] = { # BootImagePackageExFatSafe
+        'group': '0100000000000819',
+    }
+    titleinfo['010000000000081F'] = { # PlatformConfigIcosa
+        'wikipage': 'System_Settings',
+        'group': '0100000000000818',
+    }
+    titleinfo['0100000000000820'] = { # PlatformConfigCopper
+        'wikipage': 'System_Settings',
+        'group': '0100000000000818',
+    }
+    titleinfo['0100000000000821'] = { # PlatformConfigHoag
+        'wikipage': 'System_Settings',
+        'group': '0100000000000818',
+    }
+    titleinfo['0100000000000824'] = { # PlatformConfigIcosaMariko
+        'wikipage': 'System_Settings',
+        'group': '0100000000000818',
+    }
+    titleinfo['0100000000000829'] = { # PlatformConfigCalcio
+        'wikipage': 'System_Settings',
+        'group': '0100000000000818',
+    }
+    titleinfo['0100000000000831'] = { # PlatformConfigAula
+        'wikipage': 'System_Settings',
+        'group': '0100000000000818',
+    }
+elif insystem == "bee":
+    titleinfo['0400000000000835'] = { # ErrorMessageUtf8
+        'ignore': True,
+    }
 
 dirfilter_msgs = {
     '/message/': 'Various data',
@@ -163,7 +173,10 @@ def api_cli(region, titleid, args=[]):
 
 def GetTitlePrevInfo(Id):
     TmpRow = None
-    for Region in ["G", "C"]:
+    Regions = ["G"]
+    if insystem == "hac":
+        Regions.append("C")
+    for Region in Regions:
         apiout = api_cli(Region, Id, args=["--prevreport=%s" % (reportdate)])
         if apiout!="":
             ApiLines = apiout.split("\n")
@@ -233,7 +246,8 @@ def parse_updatedetails(inlines):
     return out
 
 def IsBootImagePackage(Id):
-    return Id=='0100000000000819' or Id=='010000000000081A' or Id=='010000000000081B' or Id=='010000000000081C'
+    Id = Id[2:]
+    return Id=='00000000000819' or Id=='0000000000081A' or Id=='0000000000081B' or Id=='0000000000081C'
 
 def FindMetaPath(TitleDir, TitleType):
     Out = None
@@ -628,7 +642,7 @@ def GetMetaText(InDirpath):
 if updatedetails is not None:
     updatedetails_info = parse_updatedetails(updatedetails)
 
-SystemUpdateInfo = GetTitlePrevInfo("0100000000000816")
+SystemUpdateInfo = GetTitlePrevInfo(Platform + "00000000000816")
 if SystemUpdateInfo is None:
     print("Failed to get API info for the SystemUpdate title.")
     sys.exit(1)
@@ -642,7 +656,7 @@ bootpkg_masterkey = None
 updatedetails_prev_info = {}
 
 if updatedetails_info['bootpkg_line_found'] is True:
-    apiout = api_cli("G", "0100000000000819", args=["--prevreport=%s" % (reportdate)])
+    apiout = api_cli("G", Platform + "00000000000819", args=["--prevreport=%s" % (reportdate)])
     if apiout!="":
         apilines = apiout.split("\n")
         reader = csv.DictReader(apilines, delimiter=',', quoting=csv.QUOTE_NONE)
@@ -711,6 +725,7 @@ else:
     print("The sysver files don't exist, skipping page handling for that.")
 
 info_path = "%s/sdk_versions.info" % (updatedir)
+sdk_versions = None
 if os.path.exists(info_path):
     with open(info_path, 'r') as infof:
         info_lines = infof.readlines()
@@ -731,6 +746,10 @@ if os.path.exists(info_path):
         sdk_versions = first_line
     else:
         sdk_versions = "%s-%s" % (first_line, last_line)
+
+if sdk_versions is not None or insystem == "bee":
+    if insystem == "bee" and sdk_versions is None:
+        sdk_versions = ""
 
     build_date = None
     titledirpath = "%s/0100000000000819" % (updatedir)
@@ -760,7 +779,11 @@ if os.path.exists(info_path):
             print("Failed to find the bootpkg nx_package1_hactool.info.")
     else:
         build_date = "!LAST"
-        print("This updatedir doesn't include bootpkg, using build_date from the last wiki entry.")
+        if insystem == "bee":
+            build_date = ""
+            print("Using an empty build_date.")
+        else:
+            print("This updatedir doesn't include bootpkg, using build_date from the last wiki entry.")
 
     if build_date is None:
         print("Loading the build_date failed, skipping the System_Versions page.")
@@ -1313,7 +1336,7 @@ def ProcessSystemSettings(Titles):
     CfgStrLen = len(CfgStr)
 
     for Id, Title in Titles.items():
-        if Id=='0100000000000818' or (Titles[Id]['desc']!="N/A" and Titles[Id]['desc'][:CfgStrLen] == CfgStr):
+        if Id[2:]=='00000000000818' or (Titles[Id]['desc']!="N/A" and Titles[Id]['desc'][:CfgStrLen] == CfgStr):
             for Change in Titles[Id]['changes']:
                 if Change['type'] == 'updated':
                     TmpPath = os.path.join(Title['dirpath'], "..")
@@ -1483,7 +1506,7 @@ if len(diff_titles)>0:
         else:
             insert_text = insert_text + title_text
 
-        if titleid=='0100000000000800': # CertStore
+        if titleid[2:]=='00000000000800': # CertStore
             process_certstore(title, title_text)
 
     text_section = {
@@ -1632,7 +1655,7 @@ if len(target["text_sections"])>0:
 
 storage.append(page)
 
-if updatedetails_info['bootpkg_line_found'] is False or (updatedetails_info['bootpkg_line_found'] is True and 'bootpkg_retail_fuses' in updatedetails_info and 'bootpkg_devunit_fuses' in updatedetails_info):
+if insystem == "hac" and (updatedetails_info['bootpkg_line_found'] is False or (updatedetails_info['bootpkg_line_found'] is True and 'bootpkg_retail_fuses' in updatedetails_info and 'bootpkg_devunit_fuses' in updatedetails_info)):
     fuse_columns = []
     if 'bootpkg_retail_fuses' in updatedetails_info and 'bootpkg_devunit_fuses' in updatedetails_info:
         fuse_columns.append(updatedetails_info['bootpkg_retail_fuses'])
