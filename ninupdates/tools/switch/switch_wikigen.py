@@ -697,9 +697,24 @@ if os.path.exists(sysver_fullversionstr_path) and os.path.exists(sysver_hexstr_p
         sysver_digest = "N/A"
         print("The sysver digest file doesn't exist, using 'N/A' for the digest instead.")
 
+    table_columns = [
+        updatever,
+        sysver_fullversionstr,
+        sysver_hexstr,
+    ]
+
+    search_prefix = ""
+    if insystem == "hac":
+        search_prefix = "== NX ==\n"
+        table_columns[] = sysver_digest
+    elif insystem == "bee":
+        search_prefix = "== Ounce ==\n"
+
+    table_columns[] = ""
+
     page = {
         "page_title": "System_Version_Title",
-        "search_section": "== Retail ==",
+        "search_section": search_prefix + "=== Retail ===",
         "targets": [
             {
                 "search_section": "{|",
@@ -707,13 +722,7 @@ if os.path.exists(sysver_fullversionstr_path) and os.path.exists(sysver_hexstr_p
                     {
                         "search_text": updatever,
                         "search_column": 0,
-                        "columns": [
-                            updatever,
-                            sysver_fullversionstr,
-                            sysver_hexstr,
-                            sysver_digest,
-                            ""
-                        ],
+                        "columns": table_columns,
                     },
                 ],
             },
