@@ -706,11 +706,11 @@ if os.path.exists(sysver_fullversionstr_path) and os.path.exists(sysver_hexstr_p
     search_prefix = ""
     if insystem == "hac":
         search_prefix = "== NX ==\n"
-        table_columns+= sysver_digest
+        table_columns.append(sysver_digest)
     elif insystem == "bee":
         search_prefix = "== Ounce ==\n"
 
-    table_columns+= ""
+    table_columns.append("")
 
     page = {
         "page_title": "System_Version_Title",
