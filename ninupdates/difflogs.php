@@ -17,6 +17,7 @@ if($argc>1)
 		$arg_difflog = $argv[2];
 		$arg_diffsys = $argv[3];
 		$arg_diffregion = $argv[4];
+		if($argc>=6)$arg_logpath = $argv[5];
 	}
 	else if($argv[1]=="--difflogs" && $argc>=5)
 	{
@@ -40,7 +41,7 @@ dbconnection_end();
 
 function diffinsert_main()
 {
-	global $mysqldb, $arg_difflog, $arg_diffregion, $system;
+	global $mysqldb, $dbcurdate, $arg_difflog, $arg_diffregion, $system, $reportid, $arg_logpath;
 
 	$query = "SELECT ninupdates_reports.curdate, ninupdates_reports.id FROM ninupdates_reports, ninupdates_consoles WHERE ninupdates_reports.reportdate='".$arg_difflog."' && ninupdates_consoles.system='".$system."' && ninupdates_reports.systemid=ninupdates_consoles.id";
 	$result=mysqli_query($mysqldb, $query);
@@ -63,6 +64,11 @@ function diffinsert_main()
 
 	if($arg_diffregion=="")
 	{
+	        if($arg_logpath!=="")
+	        {
+	                echo "Can't use arg_logpath without input region.\n";
+	                return;
+	        }
 		$query="SELECT regions FROM ninupdates_consoles WHERE system='".$system."'";
 		$result=mysqli_query($mysqldb, $query);
 		$row = mysqli_fetch_row($result);
@@ -118,20 +124,35 @@ function difflogshtml()
 
 function diffinsert($reg)
 {
-	global $mysqldb, $region, $system, $arg_difflog, $sitecfg_workdir, $reportid, $dbcurdate;
+	global $mysqldb, $region, $system, $arg_difflog, $sitecfg_workdir, $reportid, $dbcurdate, $arg_logpath;
 	$region = $reg;
 
 	echo "region $region\n";
 
-	$curlog = getlogcontents("$sitecfg_workdir/soap$system/$region/$arg_difflog.html");
-	if($curlog=="")
+	if($arg_logpath==="")
+	{
+		$curlog = getlogcontents("$sitecfg_workdir/soap$system/$region/$arg_difflog.html");
+	}
+	else
+	{
+		$curlog = file_get_contents($arg_logpath);
+	}
+	if($curlog==="" || $curlog===FALSE)
 	{
 		echo "failed to open log region $region\n";
+		if($arg_logpath!=="") echo "arg_logpath: $arg_logpath\n";
 		return;
 	}
 
 	init_titlelistarray();
-	load_newtitlelist($curlog);
+	if($arg_logpath==="")
+	{
+		load_newtitlelist($curlog);
+	}
+	else
+	{
+		parse_soapresp($curlog, 1);
+	}
 	$total = titlelist_dbupdate();
 	if($total)
 	{
