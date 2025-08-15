@@ -32,6 +32,8 @@ $sitecfg_postproc_cmd This is the command which will be executed by postproc.php
 $sitecfg_load_titlelist_cmd See ninsoap.php.
 
 $sitecfg_consoles_deviceid["{system}"]["{regioncode}"] = "{id}"; DeviceId to use, overrides the value from the db.
+
+$sitecfg_wiki_consoles_pageprefix["{system}"] = "prefix"; Optional page-title prefix to use with wiki for the specified system, where needed: "{prefix}{pagetitle}".
 */
 
 require_once(dirname(__FILE__) . "/site_cfg.php");

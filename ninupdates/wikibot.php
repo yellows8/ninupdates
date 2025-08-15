@@ -370,9 +370,9 @@ function wikibot_generate_titlelist_text(&$titles, &$new_text, $prefix, $print_t
 	}
 }
 
-function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $updateversion_norebootless)
+function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $update_page_title)
 {
-	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase, $system_wiki_pageprefix;
 
 	wikibot_writelog("wikibot_edit_titlelist(): Loading report titlelisting, then generating the titlelist wikigen...", 2, $reportdate);
 
@@ -386,7 +386,7 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 	}
 
 	$wikigen_page = array();
-	$wikigen_page["page_title"] = "Title_list";
+	$wikigen_page["page_title"] = $system_wiki_pageprefix . "Title_list";
 
 	$targets = array();
 
@@ -395,7 +395,8 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 		$search_section = "= System Modules =";
 		if($i==1) $search_section = "= System Data Archives =";
 		else if($i==2) $search_section = "= System Applets =";
-		else if($i==3) $search_section = "= System Applications =";
+		else if($i==3) $search_section = "= Development System Modules =";
+		else if($i==4) $search_section = "= System Applications =";
 
 		$target["search_section"] = $search_section;
 
@@ -424,17 +425,22 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 			$title_type=2;
 			$target = &$targets[2];
 		}
-		else
+		else if(substr($title["titleid"], 2, 11)==="0000000000B")
 		{
 			$title_type=3;
 			$target = &$targets[3];
+		}
+		else
+		{
+			$title_type=4;
+			$target = &$targets[4];
 		}
 
 		$tmpdata = array();
 		$ver = "v" . $title["version"];
 		$intver = intval($title["version"]);
 		$verparse = (($intver>>26)&0x3F) . "." . (($intver>>20)&0x3F) . "." . (($intver>>16)&0xF) . "." . ($intver&0xFFFF);
-		$ver_entry = "[[".$updateversion_norebootless."|$ver]] ($verparse)";
+		$ver_entry = "[[".$update_page_title."|$ver]] ($verparse)";
 
 		$desc = $title["description"];
 		if($desc==="N/A")
@@ -456,7 +462,7 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 			$tmpdata["sort"] = 0;
 			$tmpdata["sort_columnlen"] = 16;
 			$tmpdata["columns"] = [$title["titleid"], $ver_entry, $desc];
-			if($title_type!=0) $tmpdata["columns"][] = "";
+			if($title_type!=0 || $system_wiki_pageprefix!=="") $tmpdata["columns"][] = "";
 
 			$table_lists = array();
 
@@ -515,7 +521,10 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 
 function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation, $postproc_runfinished, $report_latest_flag)
 {
-	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase, $wikicfgid;
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase, $wikicfgid, $system_wiki_pageprefix;
+
+	$page_title = $system_wiki_pageprefix . $updateversion_norebootless;
+	$page_title_url = str_replace(" ", "_", $page_title);
 
 	$page_text = "";
 
@@ -540,7 +549,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 
 	if($rebootless_flag===False)
 	{
-		$navbox_pagename = "Template:NavboxVersions";
+		$navbox_pagename = "Template:".$system_wiki_pageprefix."NavboxVersions";
 
 		$tmp_page = $services->newPageGetter()->getFromTitle($navbox_pagename);
 		$navbox_revision = $tmp_page->getRevisions()->getLatest();
@@ -612,7 +621,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		}
 	}
 
-	$tmp_page = $services->newPageGetter()->getFromTitle($updateversion_norebootless);
+	$tmp_page = $services->newPageGetter()->getFromTitle($page_title);
 	$tmp_revision = $tmp_page->getRevisions()->getLatest();
 
 	if($tmp_revision!==NULL)
@@ -781,8 +790,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 
 		if($navbox_revision!==NULL)
 		{
-			$page_text.= "\n{{NavboxVersions}}\n\n";
-			$page_text.= "[[Category:System versions]]\n";
+			$page_text.= "\n{{".$system_wiki_pageprefix."NavboxVersions}}\n";
 		}
 	}
 	else
@@ -872,7 +880,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$services->newRevisionSaver()->save($revision);*/
 
 		$newContent = new \Mediawiki\DataModel\Content($page_text);
-		$title = new \Mediawiki\DataModel\Title($updateversion_norebootless);
+		$title = new \Mediawiki\DataModel\Title($page_title);
 		$identifier = new \Mediawiki\DataModel\PageIdentifier($title);
 		$revision = new \Mediawiki\DataModel\Revision($newContent, $identifier);
 		$services->newRevisionSaver()->save($revision);
@@ -905,7 +913,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 			$wiki_uribase = "wiki/";
 			if($apiprefixuri == "")$wiki_uribase = "index.php?title=";
 
-			$notif_msg = "The wiki page for the $msgtextnew $sysnames_list $updateversion_norebootless sysupdate has been $msgtext: $serverbaseurl$wiki_uribase$updateversion_norebootless";
+			$notif_msg = "The wiki page for the $msgtextnew $sysnames_list $updateversion_norebootless sysupdate has been $msgtext: $serverbaseurl$wiki_uribase$page_title_url";
 			if($rebootless_flag===False) $notif_msg.= " See also: ".$serverbaseurl.$wiki_uribase."Special:RecentChanges";
 			send_notif([$notif_msg, "--social"]);
 		}
@@ -2632,10 +2640,13 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 
 function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 {
-	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $wikibot_ignore_latest_requirement, $system, $wikicfgid;
+	global $mysqldb, $wikibot_loggedin, $wikibot_user, $wikibot_pass, $wikibot_ignore_latest_requirement, $sitecfg_wiki_consoles_pageprefix, $system, $wikicfgid, $system_wiki_pageprefix;
 
 	$wikibot_loggedin = 0;
 	$ret=0;
+
+	$system_wiki_pageprefix = "";
+	if(isset($sitecfg_wiki_consoles_pageprefix) && isset($sitecfg_wiki_consoles_pageprefix[$system])) $system_wiki_pageprefix = $sitecfg_wiki_consoles_pageprefix[$system];
 
 	$query="SELECT ninupdates_wikiconfig.id, ninupdates_wikiconfig.serverbaseurl, ninupdates_wikiconfig.apiprefixuri, ninupdates_wikiconfig.news_pagetitle, ninupdates_wikiconfig.newsarchive_pagetitle, ninupdates_wikiconfig.homemenu_pagetitle FROM ninupdates_wikiconfig, ninupdates_consoles WHERE ninupdates_wikiconfig.wikibot_enabled=1 && ninupdates_wikiconfig.id=ninupdates_consoles.wikicfgid && ninupdates_consoles.system='".$system."'";
 	$result=mysqli_query($mysqldb, $query);
@@ -2831,6 +2842,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 		//wikibot_writelog("Sysupdate page:\n".$sysupdate_page, 1, $reportdate);
 	//}
 
+	$actual_report_latest_flag = False;
 	$report_latest_flag = False;
 	if(isset($wikibot_ignore_latest_requirement) && $wikibot_ignore_latest_requirement===True)
 	{
@@ -2849,6 +2861,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 		if($tmp_reportdate === $reportdate)
 		{
 			$report_latest_flag = True;
+			$actual_report_latest_flag = True;
 		}
 	}
 
@@ -2857,7 +2870,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 
 	if($report_latest_flag===True)
 	{
-		if($rebootless_flag===False)
+		if($actual_report_latest_flag===True && $rebootless_flag===False)
 		{
 			$tmpret = wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri);
 			if($ret==0) $ret = $tmpret;
@@ -2870,7 +2883,7 @@ function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 
 			if($system_generation!=0)
 			{
-				$tmpret = wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $updateversion_norebootless);
+				$tmpret = wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $system_wiki_pageprefix . $updateversion_norebootless);
 				if($ret==0) $ret = $tmpret;
 			}
 		}
