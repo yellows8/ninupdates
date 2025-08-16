@@ -954,7 +954,11 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 
 function wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri)
 {
-	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase, $system_wiki_pageprefix, $sitecfg_wiki_consoles_tag;
+
+	$system_wiki_tag = "";
+	if(isset($sitecfg_wiki_consoles_tag) && isset($sitecfg_wiki_consoles_tag[$system])) $system_wiki_tag = $sitecfg_wiki_consoles_tag[$system];
+	if($system_wiki_tag!=="") $system_wiki_tag.= " ";
 
 	$page_text = "";
 
@@ -978,22 +982,30 @@ function wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate,
 
 	$page_text = $tmp_revision->getContent()->getData();
 
-	$strstart = strstr($page_text, "'''");
+	$strstart = strstr($page_text, $system_wiki_tag . "'''");
 	if($strstart===FALSE)
 	{
 		wikibot_writelog("wikibot_edit_firmwarenews(): Failed to find the curupdatetext start.", 0, $reportdate);
 		return 1;
 	}
 
-	$strendpos = strpos($strstart, "'''", 3);
+	$strstartpos = strlen($system_wiki_tag) + 3;
+	$strendpos = strpos($strstart, "'''", $strstartpos);
 	if($strendpos===FALSE)
 	{
 		wikibot_writelog("wikibot_edit_firmwarenews(): Failed to find the curupdatetext end.", 0, $reportdate);
 		return 2;
 	}
 
-	$curupdatetext = substr($strstart, 3, $strendpos-3);
-	$reportupdatetext = "[[$updateversion]]";
+	$curupdatetext = substr($strstart, $strstartpos, $strendpos-$strstartpos);
+	if($system_wiki_pageprefix==="")
+	{
+		$reportupdatetext = "[[$updateversion]]";
+	}
+	else
+	{
+		$reportupdatetext = "[[".$system_wiki_pageprefix.$updateversion."|$updateversion]]";
+	}
 
 	wikibot_writelog("wikibot_edit_firmwarenews(): curupdatetext: $curupdatetext, reportupdatetext: $reportupdatetext", 2, $reportdate);
 
@@ -1005,7 +1017,7 @@ function wikibot_edit_firmwarenews($api, $services, $updateversion, $reportdate,
 
 	wikibot_writelog("wikibot_edit_firmwarenews(): curupdatetext and reportupdatetext don't match, generating new page-text...", 2, $reportdate);
 
-	$new_page_text = str_replace("'''$curupdatetext'''", "'''$reportupdatetext'''", $page_text);
+	$new_page_text = str_replace($system_wiki_tag . "'''$curupdatetext'''", $system_wiki_tag . "'''$reportupdatetext'''", $page_text);
 
 	wikibot_writelog("New FirmwareNews page:\n$new_page_text", 1, $reportdate);
 
