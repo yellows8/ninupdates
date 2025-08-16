@@ -531,7 +531,7 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 
 function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $timestamp, $page, $serverbaseurl, $apiprefixuri, $rebootless_flag, $updateversion_norebootless, $system_generation, $postproc_runfinished, $report_latest_flag)
 {
-	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase, $wikicfgid, $system_wiki_pageprefix;
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase, $wikicfgid, $sitecfg_wiki_consoles_pageprefix, $system_wiki_pageprefix;
 
 	$page_title = $system_wiki_pageprefix . $updateversion_norebootless;
 	$page_title_url = str_replace(" ", "_", $page_title);
@@ -579,6 +579,7 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$out_titlestatus_changed_sysmodules = array();
 		$out_titlestatus_changed_systemdata = array();
 		$out_titlestatus_changed_applets = array();
+		$out_titlestatus_changed_devsysmodules = array();
 
 		foreach($out_titlestatus_changed as &$title)
 		{
@@ -594,6 +595,10 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 			else if(substr($title["titleid"], 2, 11)==="00000000001")
 			{
 				$out_titlestatus_changed_applets[] = $title;
+			}
+			else if(substr($title["titleid"], 2, 11)==="0000000000B")
+			{
+				$out_titlestatus_changed_devsysmodules[] = $title;
 			}
 			else
 			{
@@ -621,6 +626,11 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 			if(count($out_titlestatus_changed_applets)>0)
 			{
 				wikibot_generate_titlelist_text($out_titlestatus_changed_applets, $titlelist_text, "** Applets: ", False, True);
+				$titlelist_text.= "\n";
+			}
+			if(count($out_titlestatus_changed_devsysmodules)>0)
+			{
+				wikibot_generate_titlelist_text($out_titlestatus_changed_sysmodules, $titlelist_text, "** Development sysmodules: ", False, True);
 				$titlelist_text.= "\n";
 			}
 			if(count($out_titlestatus_changed_other)>0)
@@ -680,6 +690,11 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$cursysname = $row[2];
 		$cursystem = $row[3];
 		$curreportdate = $row[4];
+
+		// Only handle reports where the system wiki-pageprefix matches system_wiki_pageprefix.
+		$cur_wiki_pageprefix = "";
+		if(isset($sitecfg_wiki_consoles_pageprefix) && isset($sitecfg_wiki_consoles_pageprefix[$cursystem])) $cur_wiki_pageprefix = $sitecfg_wiki_consoles_pageprefix[$cursystem];
+		if($system_wiki_pageprefix !== $cur_wiki_pageprefix) continue;
 
 		if($system_index>0)$sysnames_list.= "+";
 		$sysnames_list.= $cursysname;
