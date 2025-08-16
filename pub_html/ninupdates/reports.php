@@ -484,7 +484,13 @@ else
 			$posend = strpos($updateversion, "_rebootless");
 			if($posend!==FALSE)$updateversion = substr($updateversion, 0, $posend);
 
-			$con.= "The wiki page is available <a href=\"".$wiki_serverbaseurl."$wiki_uribase$updateversion\">here</a>.<br/>\n<br/>\n";
+			$system_wiki_pageprefix = "";
+			if(isset($sitecfg_wiki_consoles_pageprefix) && isset($sitecfg_wiki_consoles_pageprefix[$system])) $system_wiki_pageprefix = $sitecfg_wiki_consoles_pageprefix[$system];
+
+			$page_title = $system_wiki_pageprefix . $updateversion;
+			$page_title_url = str_replace(" ", "_", $page_title);
+
+			$con.= "The wiki page is available <a href=\"".$wiki_serverbaseurl."$wiki_uribase".$page_title_url."\">here</a>.<br/>\n<br/>\n";
 		}
 	}
 
