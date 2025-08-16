@@ -248,7 +248,7 @@ function wikibot_updatepage_homemenu($api, $services, $updateversion, $reportdat
 
 function wikibot_edit_navboxversions($api, $services, $updateversion, $reportdate, $pagename, $page_text)
 {
-	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase;
+	global $mysqldb, $system, $wikibot_loggedin, $sitecfg_httpbase, $system_wiki_pageprefix;
 
 	if(strstr($page_text, $updateversion)!==FALSE)
 	{
@@ -263,7 +263,17 @@ function wikibot_edit_navboxversions($api, $services, $updateversion, $reportdat
 		return 2;
 	}
 
-	$major_version = "[[" . substr($updateversion, 0, $tmp_pos+1);
+	if($system_wiki_pageprefix==="")
+	{
+		$major_version = "[[";
+		$updatever_text = "[[$updateversion]]";
+	}
+	else
+	{
+		$major_version = "|";
+		$updatever_text = "[[".$system_wiki_pageprefix.$updateversion."|$updateversion]]";
+	}
+	$major_version .= substr($updateversion, 0, $tmp_pos+1);
 
 	$new_page = "";
 	$new_text = "";
@@ -281,7 +291,7 @@ function wikibot_edit_navboxversions($api, $services, $updateversion, $reportdat
 			return 2;
 		}
 
-		$new_text = "| align=\"center\" | [[$updateversion]]\n|-\n";
+		$new_text = "| align=\"center\" | $updatever_text\n|-\n";
 
 		if(substr($page_text, $posend-1, 1) !== "\n") $new_text = "\n" . $new_text;
 	}
@@ -295,7 +305,7 @@ function wikibot_edit_navboxversions($api, $services, $updateversion, $reportdat
 		}
 		if(substr($page_text, $posend-1, 1) === "\n") $posend--;
 
-		$new_text = " • [[$updateversion]]";
+		$new_text = " • $updatever_text";
 	}
 
 	$new_page = substr($page_text, 0, $posend) . $new_text . substr($page_text, $posend);
