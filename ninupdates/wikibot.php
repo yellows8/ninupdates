@@ -472,7 +472,7 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 			$tmpdata["sort"] = 0;
 			$tmpdata["sort_columnlen"] = 16;
 			$tmpdata["columns"] = [$title["titleid"], $ver_entry, $desc];
-			if($title_type!=0 || $system_wiki_pageprefix!=="") $tmpdata["columns"][] = "";
+			$tmpdata["columns"][] = ""; // "Notes"
 
 			$table_lists = array();
 
