@@ -449,8 +449,21 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 		$tmpdata = array();
 		$ver = "v" . $title["version"];
 		$intver = intval($title["version"]);
-		$verparse = (($intver>>26)&0x3F) . "." . (($intver>>20)&0x3F) . "." . (($intver>>16)&0xF) . "." . ($intver&0xFFFF);
-		$ver_entry = "[[".$update_page_title."|$ver]] ($verparse)";
+		$ver_major = ($intver>>26) & 0x3F;
+		$ver_minor = ($intver>>20) & 0x3F;
+		$ver_micro = ($intver>>16) & 0xF;
+		$ver_relstep = $intver & 0xFFFF;
+		$verparse = $ver_major . "." . $ver_minor . "." . $ver_micro;
+		$cur_updateversion = $verparse;
+
+		$curupdate_page_title = $update_page_title;
+		if ($ver_major >= 3) // Only valid starting with [3.0.0+].
+		{
+			$curupdate_page_title = $system_wiki_pageprefix . $cur_updateversion;
+		}
+		$verparse .= "." . $ver_relstep;
+
+		$ver_entry = "[[".$curupdate_page_title."|$ver]] ($verparse)";
 
 		$desc = $title["description"];
 		if($desc==="N/A")
@@ -464,7 +477,7 @@ function wikibot_edit_titlelist($api, $services, $updateversion, $reportdate, $t
 
 		if($title["status"]==="New")
 		{
-			$desc_prefix = "[".$updateversion."+]";
+			$desc_prefix = "[".$cur_updateversion."+]";
 			$desc = $desc_prefix." ".$desc;
 
 			$tmpdata["search_text"] = $title["titleid"];
