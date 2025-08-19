@@ -32,9 +32,12 @@ insystem = args.system
 updatever = args.updatever
 outpath = args.outpath
 
-Platform = "01"
+page_prefix = ""
+
+Platform = "0100"
 if insystem == "bee":
-    Platform = "04"
+    Platform = "0400"
+    page_prefix = "Switch 2: "
 
 if updatever.find('_rebootless')!=-1:
     print("This updatever is rebootless, aborting.")
@@ -53,42 +56,29 @@ updatedetails_info = {}
 storage = []
 
 titleinfo = {
-    Platform + '00000000000800': { # CertStore
+    Platform + '000000000800': { # CertStore
         'wikipage': 'SSL_services#CertStore',
     },
-    Platform + '00000000000806': { # NgWord
+    Platform + '000000000806': { # NgWord
         'ignore': True,
     },
-    Platform + '00000000000809': { # SystemVersion
+    Platform + '000000000809': { # SystemVersion
         'wikipage': 'System_Version_Title',
     },
-    Platform + '0000000000080E': { # TimeZoneBinary
+    Platform + '00000000080E': { # TimeZoneBinary
         'ignore': True,
     },
-    Platform + '00000000000818': { # FirmwareDebugSettings
-        'wikipage': 'System_Settings',
+    Platform + '000000000818': { # FirmwareDebugSettings
+        'wikipage': page_prefix + 'System_Settings',
     },
-    Platform + '00000000000823': { # NgWord2
+    Platform + '00000000081B': { # BootImagePackageExFat
+        'group': Platform + '000000000819',
+    },
+    Platform + '000000000823': { # NgWord2
         'ignore': True,
     },
-    '010000000000100A': { # LibAppletWeb
+    Platform + '00000000100F': { # LibAppletOff
         'wikipage': 'Internet_Browser',
-    },
-    '010000000000100B': { # LibAppletShop
-        'wikipage': 'Internet_Browser',
-        'group': '010000000000100A',
-    },
-    '010000000000100F': { # LibAppletOff
-        'wikipage': 'Internet_Browser',
-        'group': '010000000000100A',
-    },
-    '0100000000001010': { # LibAppletLns
-        'wikipage': 'Internet_Browser',
-        'group': '010000000000100A',
-    },
-    '0100000000001011': { # LibAppletAuth
-        'wikipage': 'Internet_Browser',
-        'group': '010000000000100A',
     },
 }
 
@@ -96,47 +86,73 @@ if insystem == "hac":
     titleinfo['0100000000000801'] = { # ErrorMessage
         'ignore': True,
     }
-    titleinfo['010000000000081A'] = { # BootImagePackageSafe
-        'group': '0100000000000819',
+    titleinfo[Platform + '00000000081A'] = { # BootImagePackageSafe
+        'group': Platform + '000000000819',
     }
-    titleinfo['010000000000081B'] = { # BootImagePackageExFat
-        'group': '0100000000000819',
-    }
-    titleinfo['010000000000081C'] = { # BootImagePackageExFatSafe
-        'group': '0100000000000819',
+    titleinfo[Platform + '00000000081C'] = { # BootImagePackageExFatSafe
+        'group': Platform + '000000000819',
     }
     titleinfo['010000000000081F'] = { # PlatformConfigIcosa
-        'wikipage': 'System_Settings',
-        'group': '0100000000000818',
+        'wikipage': page_prefix + 'System_Settings',
+        'group': Platform + '000000000818',
     }
     titleinfo['0100000000000820'] = { # PlatformConfigCopper
-        'wikipage': 'System_Settings',
-        'group': '0100000000000818',
+        'wikipage': page_prefix + 'System_Settings',
+        'group': Platform + '000000000818',
     }
     titleinfo['0100000000000821'] = { # PlatformConfigHoag
-        'wikipage': 'System_Settings',
-        'group': '0100000000000818',
+        'wikipage': page_prefix + 'System_Settings',
+        'group': Platform + '000000000818',
     }
     titleinfo['0100000000000824'] = { # PlatformConfigIcosaMariko
-        'wikipage': 'System_Settings',
-        'group': '0100000000000818',
+        'wikipage': page_prefix + 'System_Settings',
+        'group': Platform + '000000000818',
     }
     titleinfo['0100000000000829'] = { # PlatformConfigCalcio
-        'wikipage': 'System_Settings',
-        'group': '0100000000000818',
+        'wikipage': page_prefix + 'System_Settings',
+        'group': Platform + '000000000818',
     }
     titleinfo['0100000000000831'] = { # PlatformConfigAula
-        'wikipage': 'System_Settings',
-        'group': '0100000000000818',
+        'wikipage': page_prefix + 'System_Settings',
+        'group': Platform + '000000000818',
+    }
+    titleinfo['010000000000100A'] = { # LibAppletWeb
+        'wikipage': 'Internet_Browser',
+        'group': Platform + '00000000100F',
+    }
+    titleinfo['010000000000100B'] = { # LibAppletShop
+        'wikipage': 'Internet_Browser',
+        'group': Platform + '00000000100F',
+    }
+    titleinfo['0100000000001010'] = { # LibAppletLns
+        'wikipage': 'Internet_Browser',
+        'group': Platform + '00000000100F',
+    }
+    titleinfo['0100000000001011'] = { # LibAppletAuth
+        'wikipage': 'Internet_Browser',
+        'group': Platform + '00000000100F',
     }
 elif insystem == "bee":
+    titleinfo['0400000000000834'] = {
+        'wikipage': page_prefix + 'System_Settings',
+        'group': Platform + '000000000818',
+    }
     titleinfo['0400000000000835'] = { # ErrorMessageUtf8
         'ignore': True,
+    }
+    titleinfo['0400000000001042'] = { # LibAppletShop
+        'wikipage': 'Internet_Browser',
+        'group': Platform + '00000000100F',
+    }
+    titleinfo['0400000000001043'] = { # OpenWeb
+        'wikipage': 'Internet_Browser',
+        'group': Platform + '00000000100F',
     }
 
 dirfilter_msgs = {
     '/message/': 'Various data',
     '/lyt/': 'Various data',
+    '/ui/': 'Various data',
     '/nro/netfront/': 'Various data',
 }
 
@@ -200,6 +216,9 @@ def parse_updatedetails(inlines):
     out = {}
     out['bootpkg_line_found'] = False
 
+    if inlines is None:
+        return out
+
     for line in inlines:
         line = line.strip("\n")
         if len(line)>0:
@@ -246,8 +265,8 @@ def parse_updatedetails(inlines):
     return out
 
 def IsBootImagePackage(Id):
-    Id = Id[2:]
-    return Id=='00000000000819' or Id=='0000000000081A' or Id=='0000000000081B' or Id=='0000000000081C'
+    Id = Id[4:]
+    return Id=='000000000819' or Id=='00000000081A' or Id=='00000000081B' or Id=='00000000081C'
 
 def FindMetaPath(TitleDir, TitleType):
     Out = None
@@ -639,10 +658,9 @@ def GetMetaText(InDirpath):
 
     return ProcessMetaDiff(nx_meta.metaDiffPathArray(MetaInfo))
 
-if updatedetails is not None:
-    updatedetails_info = parse_updatedetails(updatedetails)
+updatedetails_info = parse_updatedetails(updatedetails)
 
-SystemUpdateInfo = GetTitlePrevInfo(Platform + "00000000000816")
+SystemUpdateInfo = GetTitlePrevInfo(Platform + "000000000816")
 if SystemUpdateInfo is None:
     print("Failed to get API info for the SystemUpdate title.")
     sys.exit(1)
@@ -656,7 +674,7 @@ bootpkg_masterkey = None
 updatedetails_prev_info = {}
 
 if updatedetails_info['bootpkg_line_found'] is True:
-    apiout = api_cli("G", Platform + "00000000000819", args=["--prevreport=%s" % (reportdate)])
+    apiout = api_cli("G", Platform + "000000000819", args=["--prevreport=%s" % (reportdate)])
     if apiout!="":
         apilines = apiout.split("\n")
         reader = csv.DictReader(apilines, delimiter=',', quoting=csv.QUOTE_NONE)
@@ -701,12 +719,12 @@ if os.path.exists(sysver_fullversionstr_path) and os.path.exists(sysver_hexstr_p
         updatever,
         sysver_fullversionstr,
         sysver_hexstr,
+        sysver_digest,
     ]
 
     search_prefix = ""
     if insystem == "hac":
         search_prefix = "== NX ==\n"
-        table_columns.append(sysver_digest)
     elif insystem == "bee":
         search_prefix = "== Ounce ==\n"
 
@@ -761,7 +779,7 @@ if sdk_versions is not None or insystem == "bee":
         sdk_versions = ""
 
     build_date = None
-    titledirpath = "%s/0100000000000819" % (updatedir)
+    titledirpath = "%s/%s" % (updatedir, Platform + "000000000819")
     if os.path.isdir(titledirpath) is True:
         pkg1_info_path = None
         for dirpath, dirnames, filenames in os.walk(titledirpath):
@@ -788,16 +806,19 @@ if sdk_versions is not None or insystem == "bee":
             print("Failed to find the bootpkg nx_package1_hactool.info.")
     else:
         build_date = "!LAST"
-        if insystem == "bee":
-            build_date = ""
-            print("Using an empty build_date.")
-        else:
-            print("This updatedir doesn't include bootpkg, using build_date from the last wiki entry.")
+        print("This updatedir doesn't include bootpkg, using build_date from the last wiki entry.")
+
+    if insystem == "bee":
+        build_date = ""
+        print("Using an empty build_date since system is bee.")
 
     if build_date is None:
         print("Loading the build_date failed, skipping the System_Versions page.")
     else:
-        updatever_link = "[[%s]]" % (updatever)
+        if page_prefix=="":
+            updatever_link = "[[%s]]" % (updatever)
+        else:
+            updatever_link = "[[%s%s|%s]]" % (page_prefix, updatever, updatever)
         page = {
             "page_title": "System_Versions",
             "search_section": "{| ",
@@ -1135,7 +1156,7 @@ def SettingsGetValue(Key, Value):
 
 def ProcessSystemSettingsDiff(Diff):
     SettingsPage = {
-        "page_title": "System_Settings",
+        "page_title": page_prefix + "System_Settings",
         "targets": []
     }
 
@@ -1345,7 +1366,7 @@ def ProcessSystemSettings(Titles):
     CfgStrLen = len(CfgStr)
 
     for Id, Title in Titles.items():
-        if Id[2:]=='00000000000818' or (Titles[Id]['desc']!="N/A" and Titles[Id]['desc'][:CfgStrLen] == CfgStr):
+        if Id[4:]=='000000000818' or (Titles[Id]['desc']!="N/A" and Titles[Id]['desc'][:CfgStrLen] == CfgStr):
             for Change in Titles[Id]['changes']:
                 if Change['type'] == 'updated':
                     TmpPath = os.path.join(Title['dirpath'], "..")
@@ -1403,7 +1424,7 @@ text_section = {
     "search_text": "NPDM",
     "insert_text": insert_text
 }
-if len(MetaOut['Meta'])>0 or insystem != "bee":
+if len(MetaOut['Meta'])>0:
     target["text_sections"].append(text_section)
 #print(text_section["insert_text"])
 
@@ -1516,7 +1537,7 @@ if len(diff_titles)>0:
         else:
             insert_text = insert_text + title_text
 
-        if titleid[2:]=='00000000000800': # CertStore
+        if titleid[4:]=='000000000800': # CertStore
             process_certstore(title, title_text)
 
     text_section = {
@@ -1542,7 +1563,7 @@ if len(bootpkgs_text)>0:
 
     # If all bootpkgs are present, remove the title-listing. Could just compare the full "name/name/..." str, but don't assume order.
     pos = bootpkgs_text.find(": ")
-    if pos!=-1:
+    if pos!=-1 and insystem == "hac":
         tmpstr = bootpkgs_text[:pos+1]
         if (tmpstr.find("BootImagePackage/")!=-1 or tmpstr.find("BootImagePackage:")!=-1) and tmpstr.find("BootImagePackageSafe")!=-1 and tmpstr.find("BootImagePackageExFat")!=-1 and tmpstr.find("BootImagePackageExFatSafe")!=-1:
             bootpkgs_text = bootpkgs_text[:2] + bootpkgs_text[len(tmpstr)+1:]
