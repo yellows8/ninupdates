@@ -1989,7 +1989,7 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 							}
 
 							$next_row = $i+1;
-							if($rowspan>1)
+							if($rowspan>=1)
 							{
 								$next_row+=$rowspan-1;
 								if($next_row<$table_columns_count)
@@ -2167,6 +2167,11 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 					if($errorflag) continue;
 				}
 
+				if(substr($page_text, $table_endpos-3, 3)=="|-\n")
+				{
+					$new_text = "";
+				}
+
 				for($i=0; $i<$entrycount; $i++)
 				{
 					$linetext = $columns[$i];
@@ -2313,6 +2318,10 @@ function wikibot_process_wikigen($api, $services, $updateversion, $reportdate, $
 				if($entrycount>0)
 				{
 					$tmp_page_updated = True;
+				}
+				else
+				{
+				        $new_text = "";
 				}
 
 				if($tmp_page_updated===True)
