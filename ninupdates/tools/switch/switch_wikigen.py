@@ -820,7 +820,7 @@ if sdk_versions is not None or insystem == "bee":
         else:
             updatever_link = "[[%s%s|%s]]" % (page_prefix, updatever, updatever)
         page = {
-            "page_title": "System_Versions",
+            "page_title": page_prefix + "System_Versions",
             "search_section": "{| ",
             "targets": [
                 {
@@ -1160,6 +1160,10 @@ def ProcessSystemSettingsDiff(Diff):
         "targets": []
     }
 
+    SettingsRedactList = [
+        "password",
+    ]
+
     for ChangeKey, ChangeValue in Diff.items():
         for Section, SectionValue in Diff[ChangeKey].items():
             SectionHeader = "= %s =" % (Section)
@@ -1238,7 +1242,16 @@ def ProcessSystemSettingsDiff(Diff):
                             ConfigData.append({'Value': ValueData, 'Names': [ConfigName]})
 
                     for CurData in ConfigData:
-                        ValueStr = SettingsGetValue("%s.%s" % (Section, Key), CurData['Value'])
+                        Redact = False
+                        for Rstr in SettingsRedactList:
+                            if Key.find(Rstr)!=-1:
+                                Redact = True
+                                break
+
+                        if Redact is True:
+                            ValueStr = "{REDACTED}"
+                        else:
+                            ValueStr = SettingsGetValue("%s.%s" % (Section, Key), CurData['Value'])
                         if CurData['Names'][0]!='FirmwareDebugSettings' or len(CurData['Names'])>1:
                             ConfigStr = ""
                             for ConfigName in CurData['Names']:
