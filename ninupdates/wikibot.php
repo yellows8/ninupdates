@@ -3042,7 +3042,7 @@ else
         if($wikibot_cmdtype == 3)  $updatever_autoset = "0";
 	$query="SELECT ninupdates_reports.reportdate, ninupdates_reports.updateversion, ninupdates_consoles.system FROM ninupdates_reports, ninupdates_consoles WHERE updatever_autoset=".$updatever_autoset." && wikibot_runfinished=0 && ninupdates_reports.systemid=ninupdates_consoles.id";
 
-	if($wikibot_cmdtype == 3) $query.= "AND ninupdates_reports.curdate < FROM_UNIXTIME(".(time() - 20*60).") AND ninupdates_consoles.generation!=0";
+	if($wikibot_cmdtype == 3) $query.= " AND ninupdates_reports.curdate < FROM_UNIXTIME(".(time() - 20*60).") AND ninupdates_consoles.generation!=0";
 
 	$result=mysqli_query($mysqldb, $query);
 	$numrows=mysqli_num_rows($result);
