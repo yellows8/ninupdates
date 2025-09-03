@@ -2832,6 +2832,9 @@ function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 		return $ret;
 	}
 
+	$wiki_newspagetitle = $system_wiki_pageprefix . $wiki_newspagetitle;
+	$wiki_newsarchivepagetitle = $system_wiki_pageprefix . $wiki_newsarchivepagetitle;
+
 	$newspage = $services->newPageGetter()->getFromTitle($wiki_newspagetitle);
 	$revision = $newspage->getRevisions()->getLatest();
 	$newspage_text = $revision->getContent()->getData();
@@ -2842,14 +2845,23 @@ function runwikibot_newsysupdate($updateversion, $reportdate, $wikigen_path="")
 
 	$updatelisted = 0;
 
+	if($system_wiki_pageprefix==="")
+	{
+		$reportupdatetext = "[[".$updateversion_norebootless."]]";
+	}
+	else
+	{
+		$reportupdatetext = "[[".$system_wiki_pageprefix.$updateversion_norebootless."|".$updateversion_norebootless."]]";
+	}
+
 	$sysupdate_date = gmdate("j F y", $timestamp);
 
-	$news_searchtext = "update [[$updateversion]]";
+	$news_searchtext = "update $reportupdatetext";
 	$insertstring = "*'''$sysupdate_date''' Nintendo released system ".$news_searchtext.".";
 
 	if($rebootless_flag===True)
 	{
-		$insertstring = "*'''$sysupdate_date''' Nintendo released a rebootless system update for [[".$updateversion_norebootless."]].";
+		$insertstring = "*'''$sysupdate_date''' Nintendo released a rebootless system update for $reportupdatetext.";
 		$news_searchtext = $insertstring;
 	}
 	if(strstr($newspage_text, $news_searchtext)!==FALSE)
