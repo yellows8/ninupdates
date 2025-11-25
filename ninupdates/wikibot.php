@@ -805,7 +805,9 @@ function wikibot_edit_updatepage($api, $services, $updateversion, $reportdate, $
 		$page_updated = True;
 
 		$page_text.= "The $sysnames_list ".$updateversion_norebootless." system update was released on ".$timestamp_str." (UTC). $regions_list\n\n";
-		$page_text.= "Security flaws fixed: <fill this in manually later, see the updatedetails page from the ninupdates-report page(s) once available for now>.\n\n";
+		$page_text.= "Security flaws fixed: <fill this in manually>.";
+		if($system_wiki_pageprefix!=="") $page_text.= " For changes/flaws which are not exclusive to this platform, see [[$updateversion_norebootless|here]].";
+		$page_text.= "\n\n";
 
 		$page_text.= $changelog_hdr."\n";
 		$page_text.= "$changelog_text\n";
