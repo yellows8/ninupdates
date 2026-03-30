@@ -756,7 +756,7 @@ function compare_titlelists($curdate, $generation)
 				}
 				else // Don't spam notifs when TitleHash changes without actual title-changes.
 				{
-					echo $msg;
+					echo $msg . "\n";
 				}
 			}
 
