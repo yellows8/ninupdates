@@ -862,6 +862,10 @@ function main($reg)
 		$count = 0;
 	}
 
+	$fsoap = fopen("$sitecfg_workdir/soap$system/$region/lastreq.soap", "w");
+	fwrite($fsoap, $ret);
+	fclose($fsoap);
+
 	if($count==0 && $newtotal_titles>0)
 	{
 		$retval = titlelist_dbupdate_withcmd($curdate, $generation);
