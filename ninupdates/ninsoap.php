@@ -749,8 +749,15 @@ function compare_titlelists($curdate, $generation)
 			if(($titlehashold!=NULL && $titlehashold!="") && ($sysupdate_systitlehashes[$region]!=NULL && $sysupdate_systitlehashes[$region]!=""))
 			{
 				$msg = "Potential sysupdate detected for $system region $region, checking titlelist...";
-				echo "Sending notif: $msg\n";
-				send_notif([$msg, "--webhook"]);
+				if($generation!=0)
+				{
+					echo "Sending notif: $msg\n";
+					send_notif([$msg, "--webhook"]);
+				}
+				else // Don't spam notifs when TitleHash changes without actual title-changes.
+				{
+					echo $msg;
+				}
 			}
 
 			return titlelist_dbupdate_withcmd($curdate, $generation);
