@@ -1053,8 +1053,11 @@ def process_certstore(title, title_text):
                     continue
 
                 if ent['type'] == 'added':
-                    tmpattr = ent['entry']['data_x509'].subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
-                    tmpstr = tmpattr[0].value
+                    if 'data_x509' in ent['entry']:
+                        tmpattr = ent['entry']['data_x509'].subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
+                        tmpstr = tmpattr[0].value
+                    else:
+                        tmpstr = "N/A" # In case data_x509 loading failed.
                     rowentry = {
                         "search_text": strid,
                         "search_column": 0,
