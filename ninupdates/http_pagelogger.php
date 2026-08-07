@@ -20,6 +20,109 @@ function close_curl_pagelogger()
 	fclose($error_FH_pagelogger);
 }
 
+function pagelogger_handle_version($buf, $insystem, $system_base)
+{
+	global $mysqldb;
+
+	$str = $buf;
+	if($str!==FALSE) $str = strstr($str, "<h3><a name=\"");
+	if($str!==FALSE) $str = strstr($str, "\">");
+	if($str!==FALSE) $str = substr($str, 2);
+
+	if($str!==FALSE)
+	{
+		$strdata = strtok($str, " ");
+		$strdata = strtok(" ");
+		if(ctype_alpha($strdata[strlen($strdata)-1]) === TRUE)$strdata = substr($strdata, 0, strlen($strdata)-1);
+		$strdata = mysqli_real_escape_string($mysqldb, $strdata);
+		echo "Version from site: $strdata\n";
+
+		$system = $insystem;
+		$query="SELECT id, regions FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
+		$result=mysqli_query($mysqldb, $query);
+
+		$numrows=mysqli_num_rows($result);
+		if($numrows==0)
+		{
+			echo "The specified system is invalid, with filterjs=2.\n";
+			return;
+		}
+
+		$row = mysqli_fetch_row($result);
+		$systemid = $row[0];
+		$regions = $row[1];
+
+		$sysupdate_regions = "";
+		for($i=0; $i<strlen($regions); $i++)
+		{
+			$region = substr($regions, $i, 1);
+			if($sysupdate_regions!="")$sysupdate_regions.= ",";
+			$sysupdate_regions.= $region;
+		}
+
+		$system = $system_base;
+		$query="SELECT id FROM ninupdates_consoles WHERE ninupdates_consoles.system='".$system."'";
+		$result=mysqli_query($mysqldb, $query);
+
+		$numrows=mysqli_num_rows($result);
+		if($numrows==0)
+		{
+			echo "The specified base system is invalid, with filterjs=2.\n";
+			return;
+		}
+
+		$row = mysqli_fetch_row($result);
+		$systemid_base = $row[0];
+
+		$query="SELECT reportdate, curdate, reportdaterfc FROM ninupdates_reports WHERE ninupdates_reports.updateversion='".$strdata."' && ninupdates_reports.systemid=$systemid_base";
+		$result=mysqli_query($mysqldb, $query);
+		$numrows=mysqli_num_rows($result);
+		if($numrows>0) // If a matching report with the base system is found (which should be the case normally), use timestamps from that. Otherwise generate the timestamps.
+		{
+			$row = mysqli_fetch_row($result);
+			$sysupdate_timestamp = $row[0];
+			$dbcurdate = $row[1];
+			$soap_timestamp = $row[2];
+
+			echo "Using timestamps from existing report: reportdate = " . $sysupdate_timestamp . "\n";
+		}
+		else
+		{
+			$curtime = time();
+			$soap_timestamp = gmdate(DATE_RFC822, $curtime);
+			$curdate = gmdate("Y-m-d_H-i-s", $curtime);
+			$sysupdate_timestamp = $curdate;
+
+			$query = "SELECT FROM_UNIXTIME($curtime)";
+			$result=mysqli_query($mysqldb, $query);
+			$row = mysqli_fetch_row($result);
+			$dbcurdate = $row[0];
+
+			echo "Using newly generated timestamps: reportdate = " . $sysupdate_timestamp . "\n";
+		}
+
+		$query="SELECT updateversion FROM ninupdates_reports WHERE (ninupdates_reports.updateversion='".$strdata."' || ninupdates_reports.updateversion='N/A') && ninupdates_reports.systemid=$systemid";
+		$result=mysqli_query($mysqldb, $query);
+
+		$numrows=mysqli_num_rows($result);
+		if($numrows>0)
+		{
+			$row = mysqli_fetch_row($result);
+			$updateversion = $row[0];
+
+			echo "Found a report with updateversion '".$updateversion."', skipping report creation.\n";
+		}
+		else
+		{
+			$initialscan = 0;
+			$query = "INSERT INTO ninupdates_reports (reportdate, curdate, systemid, log, regions, updateversion, reportdaterfc, initialscan, updatever_autoset, wikibot_runfinished, postproc_runfinished) VALUES ('".$sysupdate_timestamp."','".$dbcurdate."',$systemid,'report','".$sysupdate_regions."','".$strdata."','".$soap_timestamp."',$initialscan,0,0,0)";
+			$result=mysqli_query($mysqldb, $query);
+			$reportid = mysqli_insert_id($mysqldb);
+			echo "Report created.\n";
+		}
+	}
+}
+
 function send_httprequest_pagelogger($url, $filterjs)
 {
 	global $httpstat_pagelogger, $sitecfg_workdir, $curl_handle_pagelogger, $error_FH_pagelogger, $lastmod_dateid, $lastmod;
@@ -59,7 +162,7 @@ function send_httprequest_pagelogger($url, $filterjs)
 	}
 	else if($httpstat_pagelogger=="200")
 	{
-		if($filterjs=="1")
+		if($filterjs=="1" || $filterjs=="2")
 		{
 			while(1)
 			{
@@ -173,6 +276,11 @@ function process_pagelogger($url, $datadir, $msgprefix, $msgurl, $enable_notific
 	else
 	{
 		echo "Notification sending is disabled.\n";
+	}
+
+	if($filterjs=="2") // Get the system-version and create a report, if needed.
+	{
+		pagelogger_handle_version($buf, "bee", "hac");
 	}
 
 	return 0;
